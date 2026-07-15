@@ -2,6 +2,10 @@
 
 # dependencies
 node_modules/
+tools/node_modules/
+
+# local editor / MCP
+.cursor/
 
 # Expo
 .expo/
@@ -32,11 +36,13 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+server/.env
 
 # typescript
 *.tsbuildinfo
 
-app-example
+scripts/.api-url
 
 # generated native folders
 /ios

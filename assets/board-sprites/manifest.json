@@ -1,0 +1,30 @@
+{
+  "scale": 2,
+  "sprites": {
+    "idle": {
+      "file": "idle.png",
+      "w": 782,
+      "h": 1040
+    },
+    "stroke-a": {
+      "file": "stroke-a.png",
+      "w": 782,
+      "h": 1040
+    },
+    "stroke-b": {
+      "file": "stroke-b.png",
+      "w": 782,
+      "h": 1040
+    },
+    "stroke-c": {
+      "file": "stroke-c.png",
+      "w": 782,
+      "h": 1040
+    },
+    "erase": {
+      "file": "erase.png",
+      "w": 782,
+      "h": 1040
+    }
+  }
+}

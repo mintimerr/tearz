@@ -1,41 +1,115 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+/** iOS light palette — Apple system light + ChatGPT clarity */
+export const APP_THEME = {
+  color: {
+    bg: '#F2F2F7',
+    bgSoft: '#FFFFFF',
+    elevated: '#FFFFFF',
+    elevatedSoft: '#F2F2F7',
+    surface: '#FFFFFF',
+    surfaceStrong: '#F2F2F7',
+    glass: 'rgba(255, 255, 255, 0.82)',
+    glassStrong: 'rgba(255, 255, 255, 0.94)',
+    border: 'rgba(0, 0, 0, 0.08)',
+    borderStrong: 'rgba(0, 0, 0, 0.12)',
+    separator: 'rgba(60, 60, 67, 0.29)',
+    text: '#000000',
+    textSoft: 'rgba(0, 0, 0, 0.85)',
+    muted: 'rgba(60, 60, 67, 0.60)',
+    mutedSoft: 'rgba(60, 60, 67, 0.45)',
+    mutedFaint: 'rgba(60, 60, 67, 0.28)',
+    accent: '#000000',
+    accentLight: 'rgba(0, 0, 0, 0.88)',
+    accentSoft: 'rgba(0, 0, 0, 0.06)',
+    accentGlass: 'rgba(0, 0, 0, 0.08)',
+    link: '#007AFF',
+    success: '#34C759',
+    successSoft: 'rgba(52, 199, 89, 0.14)',
+    danger: '#FF3B30',
+    dangerSoft: 'rgba(255, 59, 48, 0.14)',
+    online: '#34C759',
+    brand: '#007AFF',
+    brandBright: '#5AC8FA',
+    brandDeep: '#0040DD',
+    brandSoft: 'rgba(0, 122, 255, 0.12)',
+    brandGlow: 'rgba(0, 122, 255, 0.18)',
+    brandBorder: 'rgba(0, 122, 255, 0.28)',
+    gold: '#FFCC00',
+  },
+  /** Сигнатурный градиент Tearz — синий → cyan. */
+  brandGradient: ['#007AFF', '#5AC8FA'] as const,
+  brandGradientDeep: ['#0040DD', '#007AFF', '#5AC8FA'] as const,
+  radius: {
+    xs: 10,
+    sm: 12,
+    md: 14,
+    lg: 18,
+    xl: 22,
+    xxl: 26,
+    sheet: 28,
+    pill: 999,
+  },
+  space: {
+    xxs: 4,
+    xs: 6,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    xxl: 24,
+    xxxl: 32,
+  },
+  type: {
+    hero: { fontSize: 36, fontWeight: '700' as const, letterSpacing: -0.9 },
+    display: { fontSize: 32, fontWeight: '700' as const, letterSpacing: -0.75 },
+    titleLg: { fontSize: 22, fontWeight: '600' as const, letterSpacing: -0.45 },
+    title: { fontSize: 17, fontWeight: '600' as const, letterSpacing: -0.35 },
+    body: { fontSize: 17, fontWeight: '400' as const, letterSpacing: -0.24 },
+    caption: { fontSize: 15, fontWeight: '400' as const, letterSpacing: -0.18 },
+    label: { fontSize: 13, fontWeight: '400' as const, letterSpacing: -0.08 },
+    micro: { fontSize: 11, fontWeight: '500' as const, letterSpacing: -0.04 },
+  },
+  motion: {
+    fast: 140,
+    base: 240,
+    slow: 420,
+    breathe: 5200,
+    pressScale: 0.988,
+    pressScaleDeep: 0.972,
+  },
+  tabBar: {
+    core: 54,
+    active: '#111111',
+    activeIcon: '#111111',
+    inactive: '#8E8E93',
+  },
+} as const;
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: APP_THEME.color.text,
+    background: APP_THEME.color.bg,
+    tint: APP_THEME.color.link,
+    icon: APP_THEME.color.muted,
+    tabIconDefault: APP_THEME.color.mutedSoft,
+    tabIconSelected: APP_THEME.color.text,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: APP_THEME.color.text,
+    background: APP_THEME.color.bg,
+    tint: APP_THEME.color.link,
+    icon: APP_THEME.color.muted,
+    tabIconDefault: APP_THEME.color.mutedSoft,
+    tabIconSelected: APP_THEME.color.text,
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

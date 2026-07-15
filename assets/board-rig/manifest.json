@@ -1,0 +1,19 @@
+{
+  "source": "assets/board-concept/tearz-board-write-idle.png",
+  "width": 391,
+  "height": 520,
+  "armBox": {
+    "x": 0,
+    "y": 93,
+    "w": 226,
+    "h": 260
+  },
+  "pivot": {
+    "x": 164,
+    "y": 156
+  },
+  "armOrigin": {
+    "x": 164,
+    "y": 63
+  }
+}

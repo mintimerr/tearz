@@ -1,0 +1,26 @@
+# Render Blueprint — деплой backend Tearz (https://render.com)
+# Dashboard → New → Blueprint → подключить репозиторий с этим файлом
+# Или: render deploy через API (scripts/deploy-render.mjs)
+
+services:
+  - type: web
+    name: tearz-chat-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8787
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: AUTH_FROM_EMAIL
+        sync: false
+      - key: TEACHER_MODEL
+        value: gpt-4.1-mini

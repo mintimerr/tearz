@@ -1,0 +1,52 @@
+{
+  "writing-a": {
+    "count": 5,
+    "frames": [
+      "f00.png",
+      "f01.png",
+      "f02.png",
+      "f03.png",
+      "f04.png"
+    ],
+    "w": 391,
+    "h": 520
+  },
+  "writing-b": {
+    "count": 6,
+    "frames": [
+      "f00.png",
+      "f01.png",
+      "f02.png",
+      "f03.png",
+      "f04.png",
+      "f05.png"
+    ],
+    "w": 391,
+    "h": 520
+  },
+  "writing-c": {
+    "count": 6,
+    "frames": [
+      "f00.png",
+      "f01.png",
+      "f02.png",
+      "f03.png",
+      "f04.png",
+      "f05.png"
+    ],
+    "w": 391,
+    "h": 520
+  },
+  "erasing": {
+    "count": 5,
+    "frames": [
+      "f00.png",
+      "f01.png",
+      "f02.png",
+      "f03.png",
+      "f04.png"
+    ],
+    "w": 391,
+    "h": 520
+  }
+}

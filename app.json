@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "cortex-mobile",
-    "slug": "cortex-mobile",
+    "name": "Tearz",
+    "slug": "tearz-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "cortexmobile",
-    "userInterfaceStyle": "automatic",
+    "scheme": "tearzmobile",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -28,6 +28,20 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Приложение использует фото для аватара и вложений в чате."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Доступ к галерее нужен, чтобы показывать недавние фото при отправке вложений.",
+          "savePhotosPermission": "Разрешите сохранение фото при необходимости.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
@@ -38,11 +52,30 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Микрофон нужен, чтобы записывать голосовые сообщения собеседнику."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#FFFFFF"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "014cc597-cda4-44b2-aef6-ca6b4a2ad33f"
+      }
     }
   }
 }

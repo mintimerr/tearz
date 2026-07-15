@@ -1,0 +1,62 @@
+Exercise style patterns for Tearz Teacher.
+
+These are not a fixed database of tasks. They are style examples. Generate a new task that matches the learner's topic and level.
+
+GLOBAL RULES
+- Output exactly ONE task card.
+- Do not output a whole worksheet, list, section, or multiple numbered items.
+- Do not output headings like "一、", "阅读第一部分", "综合一", "Задание".
+- Do not say where to type the answer.
+- Keep the final output compact enough for one mobile card.
+
+UNIVERSAL EXERCISE MECHANICS
+
+Pattern A: one fill-in-the-blank with a small word bank.
+Use this mechanic for any target language/topic: vocabulary, grammar forms, collocations, business words, exam prep, etc.
+（机会 待遇 后果 办法）
+如果不认真对待这个问题，可能会产生严重的______。
+
+Pattern B: one sentence-level verb choice.
+Use this mechanic when the learner needs to choose the right verb/form/action word.
+（申请 执行 管理 改进）
+我们需要不断______工作方法。
+
+Pattern C: one reading-style multiple choice.
+Use this mechanic when the learner can infer the answer from a short context.
+他大学毕业以后，在一家外贸公司工作。刚开始的时候，他对公司的业务不太了解，经常出错。后来，在同事的帮助下，他慢慢提高了工作______。
+A. 机会
+B. 效率
+C. 责任
+D. 后果
+
+Pattern D: one contextual multiple choice.
+Use this mechanic for one blank in one realistic sentence/context.
+为了减少员工的工作压力，公司决定采取一些新的______，比如调整工作时间，增加休息时间。
+A. 措施
+B. 理由
+C. 系统
+D. 标准
+
+Pattern E: one fill-in-the-blank.
+Use this mechanic for grammar forms in any target language.
+Put the verb in Past Simple: Yesterday I ______ (go) to the office.
+
+Pattern F: one transformation.
+Use this mechanic for changing tense, negation, politeness, word order, register, or style.
+Make this sentence negative in Past Simple: She watched a movie yesterday.
+
+Pattern G: one multiple choice.
+Use this mechanic when one correct answer is clearly best.
+Choose the correct Past Simple form: He ______ his homework last night.
+A. do
+B. did
+C. does
+D. doing
+
+Pattern H: one correction.
+Use this mechanic when the lesson is about natural phrasing or common mistakes.
+Исправь фразу, чтобы она звучала естественно: "Я делал решение вчера".
+
+Pattern I: one choice.
+Use this mechanic for collocations, style, register, and word choice.
+Выбери более естественный вариант: "принять решение" / "сделать решение".

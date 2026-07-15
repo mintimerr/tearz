@@ -1,0 +1,132 @@
+{
+  "canvas_size": [
+    391,
+    520
+  ],
+  "frames": {
+    "idle": {
+      "file": "idle.png",
+      "path": "idle.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "w0": {
+      "file": "write_00.png",
+      "path": "write_00.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "w1": {
+      "file": "write_01.png",
+      "path": "write_01.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "w2": {
+      "file": "write_02.png",
+      "path": "write_02.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "w3": {
+      "file": "write_03.png",
+      "path": "write_03.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "w4": {
+      "file": "write_04.png",
+      "path": "write_04.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "e0": {
+      "file": "erase_00.png",
+      "path": "erase_00.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "e1": {
+      "file": "erase_01.png",
+      "path": "erase_01.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "e2": {
+      "file": "erase_02.png",
+      "path": "erase_02.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "e3": {
+      "file": "erase_03.png",
+      "path": "erase_03.png",
+      "size": [
+        391,
+        520
+      ]
+    },
+    "e4": {
+      "file": "erase_04.png",
+      "path": "erase_04.png",
+      "size": [
+        391,
+        520
+      ]
+    }
+  },
+  "animations": {
+    "Idle": {
+      "fps": 2,
+      "loop": true,
+      "sequence": [
+        "idle",
+        "idle",
+        "idle",
+        "idle",
+        "idle",
+        "idle"
+      ]
+    },
+    "Writing": {
+      "fps": 25,
+      "loop": false,
+      "sequence": [
+        "w0",
+        "w1",
+        "w2",
+        "w3",
+        "w4"
+      ]
+    },
+    "Erasing": {
+      "fps": 19,
+      "loop": false,
+      "sequence": [
+        "e0",
+        "e1",
+        "e2",
+        "e3",
+        "e4"
+      ]
+    }
+  }
+}

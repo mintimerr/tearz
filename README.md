@@ -1,50 +1,54 @@
-# Welcome to your Expo app 👋
+# Tearz — мобильное приложение для изучения языков
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+AI-преподаватель, собеседник для практики, словарь с карточками и мини-тренировки по теме урока.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Быстрый старт (разработка)
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env          # укажите URL бэкенда
+cd server && npm install && cp .env.example .env   # OPENAI_API_KEY и т.д.
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+В двух терминалах:
 
-## Learn more
+```bash
+npm run server      # API на :8787
+npx expo start      # Expo
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Подробнее про backend: [server/README.md](server/README.md)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## TestFlight
 
-## Join the community
+Полная инструкция: **[docs/TESTFLIGHT.md](docs/TESTFLIGHT.md)**
 
-Join our community of developers creating universal apps.
+Кратко:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+eas secret:create --scope project --name EXPO_PUBLIC_COMPANION_CHAT_API_URL --value https://...
+eas build --platform ios --profile testflight
+eas submit --platform ios --latest
+```
+
+## Скрипты
+
+| Команда | Описание |
+|---------|----------|
+| `npm start` | Expo dev server |
+| `npm run server` | Backend API |
+| `npm run server:dev` | Backend с hot-reload |
+| `npm run build:ios` | EAS-сборка для TestFlight |
+| `npm run submit:ios` | Загрузка в App Store Connect |
+| `npm run lint` | ESLint |
+
+## Структура
+
+- `app/` — экраны (Expo Router)
+- `components/teacher/` — преподаватель, упражнения, paywall
+- `server/` — Node API (OpenAI, auth, упражнения)
+- `constants/teacher-drill.ts` — лимиты мини-тренировки
+
+## Версия
+
+`1.0.0` · iOS bundle `com.tearz.app`
