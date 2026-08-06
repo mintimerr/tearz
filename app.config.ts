@@ -33,7 +33,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.tearz.app',
-      buildNumber: '1',
+      // buildNumber: remote via eas.json appVersionSource
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
       },
@@ -41,7 +41,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...base.android,
       package: 'com.tearz.app',
-      versionCode: 1,
+      // versionCode managed remotely by EAS when using appVersionSource: remote
     },
     extra: {
       eas: {
