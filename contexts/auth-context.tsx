@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { DEMO_SKIP_AUTH } from '@/constants/demo';
 import { LOCALE_STORAGE_KEY, PENDING_SIGNUP_KEY } from '@/constants/locale-storage';
 import { postAuthSendCode, postAuthVerifyCode } from '@/services/auth-api';
 import {
@@ -14,6 +15,9 @@ import {
 
 const SESSION_KEY = '@tearz/auth_session';
 const ACTIVE_USER_KEY = '@tearz/auth_active_user';
+
+const DEMO_EMAIL = 'demo@tearz.app';
+const DEMO_PASSWORD = 'demo-tearz';
 
 export type NativeLanguage = 'ru' | 'zh' | 'en';
 
@@ -72,6 +76,37 @@ async function clearSession() {
   await AsyncStorage.multiRemove([SESSION_KEY, ACTIVE_USER_KEY]);
 }
 
+async function ensureDemoUser(): Promise<AuthUser> {
+  const registry = await loadAccountsRegistry();
+  const existing = registry[DEMO_EMAIL];
+  if (existing?.user) {
+    const authUser: AuthUser = {
+      ...existing.user,
+      nativeLanguage: existing.user.nativeLanguage ?? 'ru',
+    };
+    await migrateLegacyDataToUser(authUser.id);
+    await persistSession(authUser);
+    return authUser;
+  }
+
+  const authUser: AuthUser = {
+    id: userIdFromEmail(DEMO_EMAIL),
+    email: DEMO_EMAIL,
+    displayName: 'Demo',
+    nativeLanguage: 'ru',
+    createdAt: Date.now(),
+  };
+  const nextRegistry: AccountsRegistry = {
+    ...registry,
+    [DEMO_EMAIL]: { user: authUser, password: DEMO_PASSWORD },
+  };
+  await saveAccountsRegistry(nextRegistry);
+  await initEmptyUserData(authUser.id);
+  await migrateLegacyDataToUser(authUser.id);
+  await persistSession(authUser);
+  return authUser;
+}
+
 async function updateAccountUser(user: AuthUser, password?: string) {
   const registry = await loadAccountsRegistry();
   const existing = registry[user.email];
@@ -102,10 +137,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 ...parsed,
                 nativeLanguage: parsed.nativeLanguage ?? 'ru',
               });
+              return;
             } catch {
               await clearSession();
             }
           }
+        }
+        if (DEMO_SKIP_AUTH) {
+          const demoUser = await ensureDemoUser();
+          if (!cancelled) setUser(demoUser);
         }
       } catch {
         /* ignore */
@@ -281,6 +321,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadPendingSignUp]);
 
   const signOut = useCallback(async () => {
+    if (DEMO_SKIP_AUTH) {
+      const demoUser = await ensureDemoUser();
+      setUser(demoUser);
+      return;
+    }
     await clearSession();
     setUser(null);
   }, []);

@@ -22,14 +22,15 @@ import {
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Reanimated from 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CompanionAttachmentSheet } from '@/components/companion/companion-attachment-sheet';
 import { CompanionIncomingBubble } from '@/components/companion/companion-incoming-bubble';
 import { CompanionCallScreen } from '@/components/companion/companion-call-screen';
 import { companionMessageStyles as msgStyles } from '@/components/chat/chat-message-styles';
-import { ChatNavHeader } from '@/components/ui/chat-nav-header';
-import { APP_THEME } from '@/constants/theme';
+import { GameBackButton } from '@/components/game/game-back-button';
+import { GAME_THEME } from '@/constants/game-theme';
 import { CompanionVoiceComposer } from '@/components/companion/companion-voice-record-control';
 import { TeacherMessageBody } from '@/components/teacher/teacher-message-body';
 import { TeacherExerciseActions } from '@/components/teacher/teacher-exercise-actions';
@@ -41,7 +42,8 @@ import {
 import { TeacherExerciseGenerating } from '@/components/teacher/teacher-exercise-generating';
 import { TeacherChatComposer } from '@/components/teacher/teacher-chat-composer';
 import { teacherChatStyles as tStyles } from '@/components/teacher/teacher-chat-styles';
-import { AmbientBackdrop, BrandGradient, FadeInView } from '@/components/ui';
+import { FadeInView } from '@/components/ui';
+import type { ReactNode } from 'react';
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
 import { FileMessageBubble } from '@/components/companion/file-message-bubble';
 import { ImageMessageBubble } from '@/components/companion/image-message-bubble';
@@ -53,6 +55,7 @@ import { useTranslation } from '@/contexts/locale-context';
 import { useTeacherJourney } from '@/contexts/teacher-journey-context';
 import { useUserProfile } from '@/contexts/user-profile-context';
 import { useEngagement } from '@/contexts/engagement-context';
+import { useLexicon } from '@/contexts/lexicon-context';
 import { useKeyboardInset } from '@/hooks/use-keyboard-inset';
 import { useCompanionCall } from '@/hooks/use-companion-call';
 import {
@@ -193,6 +196,108 @@ function initialMessagesFromParams(params: {
   return DEFAULT_THREAD;
 }
 
+function GameChatHeader({
+  name,
+  subtitle,
+  statusText,
+  online,
+  avatarLetter,
+  avatarColor,
+  leadingIcon,
+  onBack,
+  backLabel,
+  onCallPress,
+  callAccessibilityLabel,
+}: {
+  name: string;
+  subtitle?: ReactNode;
+  statusText?: string;
+  online?: boolean;
+  avatarLetter?: string;
+  avatarColor?: string;
+  leadingIcon?: keyof typeof Ionicons.glyphMap;
+  onBack?: () => void;
+  backLabel?: string;
+  onCallPress?: () => void;
+  callAccessibilityLabel?: string;
+}) {
+  return (
+    <View style={gameHeaderStyles.bar}>
+      <View style={gameHeaderStyles.side}>
+        {onBack ? (
+          <GameBackButton
+            onPress={onBack}
+            variant="inline"
+            label={backLabel ?? 'Назад'}
+            style={gameHeaderStyles.backInline}
+          />
+        ) : leadingIcon ? (
+          <View style={gameHeaderStyles.iconBadge}>
+            <Ionicons name={leadingIcon} size={17} color={GAME_THEME.color.ink} />
+          </View>
+        ) : avatarLetter && avatarColor ? (
+          <View style={[gameHeaderStyles.avatar, { backgroundColor: avatarColor }]}>
+            <Text style={gameHeaderStyles.avatarLetter}>{avatarLetter}</Text>
+          </View>
+        ) : (
+          <View style={gameHeaderStyles.sideSpacer} />
+        )}
+      </View>
+
+      <View style={gameHeaderStyles.center}>
+        <View style={gameHeaderStyles.titleRow}>
+          {onBack && avatarLetter && avatarColor ? (
+            <View style={[gameHeaderStyles.avatarSm, { backgroundColor: avatarColor }]}>
+              <Text style={gameHeaderStyles.avatarLetterSm}>{avatarLetter}</Text>
+            </View>
+          ) : onBack && leadingIcon ? (
+            <View style={gameHeaderStyles.iconBadgeSm}>
+              <Ionicons name={leadingIcon} size={14} color={GAME_THEME.color.ink} />
+            </View>
+          ) : null}
+          <Text style={gameHeaderStyles.name} numberOfLines={1}>
+            {name}
+          </Text>
+        </View>
+        {subtitle ? (
+          typeof subtitle === 'string' ? (
+            <Text style={gameHeaderStyles.subtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : (
+            subtitle
+          )
+        ) : statusText ? (
+          <View style={gameHeaderStyles.statusRow}>
+            {online !== undefined ? (
+              <View style={[gameHeaderStyles.statusDot, online && gameHeaderStyles.statusDotOn]} />
+            ) : null}
+            <Text style={gameHeaderStyles.subtitle} numberOfLines={1}>
+              {statusText}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={[gameHeaderStyles.side, gameHeaderStyles.sideRight]}>
+        {onCallPress ? (
+          <Pressable
+            onPress={onCallPress}
+            hitSlop={10}
+            style={({ pressed }) => [gameHeaderStyles.callBtn, pressed && gameHeaderStyles.callBtnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={callAccessibilityLabel}>
+            <Ionicons name="call-outline" size={18} color={GAME_THEME.color.ink} />
+          </Pressable>
+        ) : (
+          <View style={gameHeaderStyles.sideSpacer} />
+        )}
+      </View>
+      <View pointerEvents="none" style={gameHeaderStyles.goldLip} />
+    </View>
+  );
+}
+
 function TypingDots({ dotStyle }: { dotStyle?: object }) {
   const a1 = useRef(new Animated.Value(0.35)).current;
   const a2 = useRef(new Animated.Value(0.35)).current;
@@ -289,7 +394,8 @@ export default function CompanionChatScreen() {
   const getThreadRef = useRef(getCompanionThread);
   getThreadRef.current = getCompanionThread;
   const { registerUserStudyText, recordStudySwipe } = useUserProfile();
-  const { recordActivity } = useEngagement();
+  const { recordActivity, hasPlusAccess } = useEngagement();
+  const { ingestTeacherText } = useLexicon();
   const chatRow = useMemo(
     () => (typeof params.id === 'string' ? chats.find((c) => c.id === params.id) : undefined),
     [chats, params.id],
@@ -341,6 +447,7 @@ export default function CompanionChatScreen() {
   const [drillSessionKey, setDrillSessionKey] = useState('');
   const [drillOpen, setDrillOpen] = useState(false);
   const [plusPaywallFeature, setPlusPaywallFeature] = useState<TearzPlusFeature | null>(null);
+  const pendingFullMsgRef = useRef<CompanionMsg | null>(null);
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
   const [messages, setMessages] = useState<CompanionMsg[]>(() => initialMessagesFromParams(params));
   const threadKey = `${isTeacher ? 'teacher' : 'companion'}:${chatId ?? 'new'}:${params.mode ?? ''}`;
@@ -419,8 +526,16 @@ export default function CompanionChatScreen() {
 
   const handleStartCall = useCallback(() => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (hasPlusAccess) {
+      companionCall.startCall({
+        language: companionSessionLang,
+        companionDisplayName: name,
+        ...(companionPersona ? { companionPersona } : {}),
+      });
+      return;
+    }
     setPlusPaywallFeature('companionCall');
-  }, []);
+  }, [companionCall, companionPersona, companionSessionLang, hasPlusAccess, name]);
 
   const handleEndCall = useCallback(() => {
     companionCall.endCall();
@@ -497,6 +612,7 @@ export default function CompanionChatScreen() {
           lessonTopic: lessonTopicParam,
           ...(image?.base64 ? { imageBase64: image.base64, imageMimeType: image.mimeType } : {}),
         });
+        ingestTeacherText(reply);
         const replyTime = formatChatTime();
         setMessages((m) => {
           const next =
@@ -527,7 +643,7 @@ export default function CompanionChatScreen() {
         setTyping(false);
       }
     },
-    [lessonTopicParam, teacherSessionLang],
+    [ingestTeacherText, lessonTopicParam, teacherSessionLang],
   );
 
   const teacherSeedRepliedRef = useRef(false);
@@ -976,10 +1092,28 @@ export default function CompanionChatScreen() {
   );
 
   const checkDrillExercise = useCallback(
-    async (payload: { exercise: string; answer: string }) => {
+    async (payload: {
+      exercise: string;
+      answer: string;
+      item: TeacherExerciseItem;
+      learnerAnswers: {
+        blanks: Record<string, string>;
+        selectedChoice: string | null;
+        freeText: string;
+        formChoices: Record<string, string>;
+        imageAssignments: Record<string, string>;
+        numberedAssignments: Record<string, string>;
+        matchPairs: Record<string, string>;
+        sentenceOrder: string[];
+        readSelectChoice: 'real' | 'fake' | null;
+        partialGapInputs: Record<string, string>;
+      };
+    }) => {
       const result = await postTeacherExerciseCheck({
         exercise: payload.exercise,
         answer: payload.answer,
+        item: payload.item,
+        learnerAnswers: payload.learnerAnswers,
         conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
         language: teacherSessionLang,
         lessonTopic: lessonTopicParam,
@@ -1006,29 +1140,30 @@ export default function CompanionChatScreen() {
 
   if (!companionChatsHydrated) {
     return (
-      <View style={[styles.root, styles.hydrateRoot, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color={APP_THEME.color.text} />
+      <View style={[styles.root, styles.hydrateRoot]}>
+        <StatusBar style="dark" />
+        <ActivityIndicator size="large" color={GAME_THEME.color.ink} />
       </View>
     );
   }
 
   if (isTeacher) {
     return (
-      <View style={[tStyles.root, { paddingTop: insets.top }]}>
-        <AmbientBackdrop intensity={0.85} />
-        <View style={tStyles.content}>
-        <ChatNavHeader
-          backLabel={t('companion.backToChats')}
-          onBack={() => router.back()}
+      <View style={tStyles.root}>
+        <StatusBar style="dark" />
+        <View style={[styles.statusFill, { height: insets.top }]} />
+        <GameChatHeader
           name={name}
           leadingIcon="school-outline"
           subtitle="AI преподаватель · урок"
+          onBack={() => router.back()}
+          backLabel={t('companion.backToChats')}
         />
-
+        <View style={tStyles.content}>
           <View style={tStyles.lessonContext}>
             <View style={tStyles.lessonBanner}>
               <View style={tStyles.lessonBannerIcon}>
-                <Ionicons name="book" size={17} color={APP_THEME.color.brandBright} />
+                <Ionicons name="book" size={17} color={GAME_THEME.color.ink} />
               </View>
               <View style={tStyles.lessonBannerCol}>
                 <Text style={tStyles.lessonBannerEyebrow}>Тема урока</Text>
@@ -1043,6 +1178,8 @@ export default function CompanionChatScreen() {
           </View>
 
           <View style={tStyles.threadHost}>
+            <View pointerEvents="none" style={styles.threadWashTop} />
+            <View pointerEvents="none" style={styles.threadWashBottom} />
             <ScrollView
               ref={scrollRef}
               style={tStyles.thread}
@@ -1061,8 +1198,7 @@ export default function CompanionChatScreen() {
                 m.from === 'them' ? (
                   <View key={m.id} style={tStyles.teacherBlock}>
                     <View style={tStyles.teacherAvatar}>
-                      <BrandGradient borderRadius={12} direction="diagonal" />
-                      <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                      <Ionicons name="sparkles" size={16} color={GAME_THEME.color.sky} />
                     </View>
                     <View style={tStyles.teacherColumn}>
                       <FadeInView offsetY={10} duration={420}>
@@ -1085,6 +1221,11 @@ export default function CompanionChatScreen() {
                               onMiniBlocked={(reason) => Alert.alert('Мини-тренировка', reason)}
                               onFullPress={() => {
                                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                if (hasPlusAccess) {
+                                  void generateExerciseForMessage(m);
+                                  return;
+                                }
+                                pendingFullMsgRef.current = m;
                                 setPlusPaywallFeature('fullWorkout');
                               }}
                             />
@@ -1116,8 +1257,7 @@ export default function CompanionChatScreen() {
               {typing ? (
                 <View style={tStyles.teacherBlock}>
                   <View style={tStyles.teacherAvatar}>
-                    <BrandGradient borderRadius={12} direction="diagonal" />
-                    <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                    <Ionicons name="sparkles" size={16} color={GAME_THEME.color.sky} />
                   </View>
                   <View style={tStyles.teacherColumn}>
                     <View style={tStyles.teacherCard}>
@@ -1146,7 +1286,16 @@ export default function CompanionChatScreen() {
         <TeacherFullWorkoutPaywall
           visible={plusPaywallFeature === 'fullWorkout'}
           feature="fullWorkout"
-          onClose={() => setPlusPaywallFeature(null)}
+          onClose={() => {
+            pendingFullMsgRef.current = null;
+            setPlusPaywallFeature(null);
+          }}
+          onUnlocked={() => {
+            const msg = pendingFullMsgRef.current;
+            pendingFullMsgRef.current = null;
+            setPlusPaywallFeature(null);
+            if (msg) void generateExerciseForMessage(msg);
+          }}
         />
 
         <TeacherExerciseDrill
@@ -1165,15 +1314,19 @@ export default function CompanionChatScreen() {
   }
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <ChatNavHeader
-        backLabel={t('companion.backToChats')}
-        onBack={() => router.back()}
+    <View style={styles.root}>
+      <StatusBar style="dark" />
+      <View style={[styles.statusFill, { height: insets.top }]} />
+
+      <View style={styles.chatBody}>
+      <GameChatHeader
         name={name}
         avatarLetter={letter}
         avatarColor={color}
         statusText={online ? t('companion.online') : t('companion.offline')}
         online={online}
+        onBack={() => router.back()}
+        backLabel={t('companion.backToChats')}
         onCallPress={handleStartCall}
         callAccessibilityLabel={t('companion.call')}
       />
@@ -1194,13 +1347,24 @@ export default function CompanionChatScreen() {
         visible={plusPaywallFeature === 'companionCall'}
         feature="companionCall"
         onClose={() => setPlusPaywallFeature(null)}
+        onUnlocked={() => {
+          setPlusPaywallFeature(null);
+          companionCall.startCall({
+            language: companionSessionLang,
+            companionDisplayName: name,
+            ...(companionPersona ? { companionPersona } : {}),
+          });
+        }}
       />
 
       <View style={styles.profileStrip}>
+        <Text style={styles.profileEyebrow}>Собеседник</Text>
         <LongPressWordText text={profileLine} style={styles.profileStripText} animKey="profile-strip" numberOfLines={2} />
       </View>
 
       <View style={styles.threadHost}>
+        <View pointerEvents="none" style={styles.threadWashTop} />
+        <View pointerEvents="none" style={styles.threadWashBottom} />
         {attachOpen ? (
           <Pressable
             style={styles.attachScrim}
@@ -1277,6 +1441,7 @@ export default function CompanionChatScreen() {
       </View>
 
       <Reanimated.View style={[styles.composerWrap, composerInsetStyle]}>
+        <View pointerEvents="none" style={styles.composerGoldLip} />
         <CompanionAttachmentSheet
           visible={attachOpen}
           onPhotoSelected={(uri) => void sendImageFromUri(uri)}
@@ -1293,14 +1458,172 @@ export default function CompanionChatScreen() {
           typing={typing}
         />
       </Reanimated.View>
+      </View>
     </View>
   );
 }
 
+const gameHeaderStyles = StyleSheet.create({
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 56,
+    paddingHorizontal: 10,
+    paddingBottom: 4,
+    backgroundColor: GAME_THEME.color.gold,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.ink,
+  },
+  goldLip: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -6,
+    height: 3,
+    backgroundColor: GAME_THEME.color.sky,
+  },
+  side: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sideRight: {
+    alignItems: 'center',
+  },
+  sideSpacer: {
+    width: 36,
+    height: 36,
+  },
+  backInline: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+  },
+  center: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    maxWidth: '100%',
+  },
+  name: {
+    flexShrink: 1,
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: GAME_THEME.color.ink,
+  },
+  subtitle: {
+    marginTop: 2,
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.62)',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'rgba(26,26,26,0.25)',
+    borderWidth: 1,
+    borderColor: GAME_THEME.color.ink,
+  },
+  statusDotOn: {
+    backgroundColor: GAME_THEME.color.phosphor,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+  },
+  avatarSm: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: GAME_THEME.color.ink,
+  },
+  avatarLetter: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: GAME_THEME.color.cream,
+  },
+  avatarLetterSm: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: GAME_THEME.color.cream,
+  },
+  iconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+  },
+  iconBadgeSm: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 1.5,
+    borderColor: GAME_THEME.color.ink,
+  },
+  callBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
+  },
+  callBtnPressed: {
+    opacity: 0.85,
+    transform: [{ translateY: 1 }],
+    borderBottomWidth: 2,
+  },
+});
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: APP_THEME.color.bg,
+    backgroundColor: GAME_THEME.color.cream,
+  },
+  statusFill: {
+    width: '100%',
+    backgroundColor: GAME_THEME.color.gold,
+  },
+  chatBody: {
+    flex: 1,
   },
   hydrateRoot: {
     justifyContent: 'center',
@@ -1308,32 +1631,74 @@ const styles = StyleSheet.create({
   },
   profileStrip: {
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 6,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(26,26,26,0.14)',
+    backgroundColor: 'rgba(255,252,243,0.92)',
+  },
+  profileEyebrow: {
+    fontSize: GAME_THEME.type.micro,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    color: 'rgba(26,26,26,0.4)',
+    textAlign: 'center',
+    marginBottom: 4,
   },
   profileStripText: {
-    ...APP_THEME.type.label,
+    fontSize: 13,
+    fontWeight: '700',
     lineHeight: 18,
-    color: APP_THEME.color.mutedSoft,
+    color: 'rgba(26,26,26,0.72)',
     textAlign: 'center',
   },
   threadHost: {
     flex: 1,
     position: 'relative',
+    backgroundColor: GAME_THEME.color.paper,
+  },
+  threadWashTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 88,
+    zIndex: 0,
+    backgroundColor: 'rgba(92,148,252,0.08)',
+  },
+  threadWashBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    zIndex: 0,
+    backgroundColor: 'rgba(26,16,32,0.04)',
   },
   attachScrim: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(26,16,32,0.55)',
   },
   thread: {
     flex: 1,
+    zIndex: 1,
   },
   composerWrap: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: APP_THEME.color.separator,
-    backgroundColor: APP_THEME.color.bg,
-    paddingTop: 8,
+    borderTopWidth: 3,
+    borderTopColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.cream,
+    paddingTop: 12,
     paddingHorizontal: 12,
+    position: 'relative',
+  },
+  composerGoldLip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: GAME_THEME.color.sky,
   },
 });

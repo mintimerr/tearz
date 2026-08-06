@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -7,7 +7,8 @@ import { StyleSheet, View } from 'react-native';
 import { AuthScreenBackground } from '@/components/auth/auth-screen-background';
 import { WelcomeAuthForm, type AuthFormMode } from '@/components/auth/welcome-auth-form';
 import { WelcomeIntro } from '@/components/auth/welcome-intro';
-import { APP_THEME } from '@/constants/theme';
+import { DEMO_SKIP_AUTH } from '@/constants/demo';
+import { GAME_THEME } from '@/constants/game-theme';
 import { useAuth, type NativeLanguage } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/locale-context';
 
@@ -24,6 +25,14 @@ function trError(t: (k: string) => string, error?: string) {
 }
 
 export default function WelcomeScreen() {
+  if (DEMO_SKIP_AUTH) {
+    return <Redirect href="/hub" />;
+  }
+
+  return <WelcomeScreenInner />;
+}
+
+function WelcomeScreenInner() {
   const { t, locale, setPreviewLocale } = useTranslation();
   const { signIn, requestSignUpCode } = useAuth();
 
@@ -96,7 +105,7 @@ export default function WelcomeScreen() {
         return;
       }
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/(tabs)/teacher');
+      router.replace('/hub');
     } catch {
       setError(t('common.errorGeneric'));
     } finally {
@@ -111,14 +120,17 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <AuthScreenBackground />
 
       {step === 'intro' ? (
         <WelcomeIntro
           getStartedLabel={t('auth.getStarted')}
           signInLabel={t('auth.signInExisting')}
-          legal={t('auth.legal')}
+          legalPrefix={t('auth.legalPrefix')}
+          termsLabel={t('auth.legalTerms')}
+          privacyLabel={t('auth.legalPrivacy')}
+          legalAnd={t('auth.legalAnd')}
           language={nativeLanguage}
           onLanguageChange={pickLanguage}
           onGetStarted={() => openAuth('signUp')}
@@ -164,6 +176,6 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: APP_THEME.color.bg,
+    backgroundColor: GAME_THEME.color.void,
   },
 });

@@ -3,20 +3,23 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, Easing, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { BrandGradient, GlowCard } from '@/components/ui';
+import { GAME_THEME } from '@/constants/game-theme';
 import { APP_THEME } from '@/constants/theme';
 import { TEACHER_MUTED, TEACHER_TITLE } from '@/components/teacher/teacher-tokens';
 import { TearzBoardChatAvatar } from '@/components/teacher/tearz-board-chat-avatar';
 
 type Side = 'student' | 'teacher';
+type Variant = 'default' | 'game';
 
 type Props = {
   side: Side;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
+  variant?: Variant;
 };
 
-function TypingDots() {
+function TypingDots({ game }: { game?: boolean }) {
   const a1 = useRef(new Animated.Value(0.3)).current;
   const a2 = useRef(new Animated.Value(0.3)).current;
   const a3 = useRef(new Animated.Value(0.3)).current;
@@ -56,19 +59,73 @@ function TypingDots() {
   return (
     <View style={styles.dotsRow}>
       {[a1, a2, a3].map((v, i) => (
-        <Animated.View key={i} style={[styles.dot, { opacity: v, transform: [{ scale: v }] }]} />
+        <Animated.View
+          key={i}
+          style={[
+            styles.dot,
+            game && styles.dotGame,
+            { opacity: v, transform: [{ scale: v }] },
+          ]}
+        />
       ))}
     </View>
   );
 }
 
-function TearzAvatar({ size = 40 }: { size?: number }) {
+function GamePanel({
+  side,
+  children,
+  compact,
+}: {
+  side: Side;
+  children: ReactNode;
+  compact?: boolean;
+}) {
+  const student = side === 'student';
+  return (
+    <View style={[styles.gamePanel, student ? styles.gamePanelStudent : styles.gamePanelTeacher, compact && styles.cardCompact]}>
+      <View pointerEvents="none" style={[styles.gamePanelLip, student ? styles.gamePanelLipStudent : styles.gamePanelLipTeacher]} />
+      <View style={styles.cardBody}>{children}</View>
+    </View>
+  );
+}
+
+function TearzAvatar({ size = 40, game }: { size?: number; game?: boolean }) {
+  if (game) {
+    return (
+      <View style={styles.gameAvatarFrame}>
+        <TearzBoardChatAvatar size={size - 6} bordered={false} />
+      </View>
+    );
+  }
   return <TearzBoardChatAvatar size={size} />;
 }
 
-/** Премиальная карточка сообщения — геймифицированный HUD, без дешёвых обводок. */
-export function BoardLessonBubble({ side, children, style, compact }: Props) {
+/** Карточка сообщения на доске — iOS glass или SNES dialog box. */
+export function BoardLessonBubble({ side, children, style, compact, variant = 'default' }: Props) {
   const isStudent = side === 'student';
+  const game = variant === 'game';
+
+  if (game) {
+    if (isStudent) {
+      return (
+        <View style={[styles.rowStudent, style]}>
+          <GamePanel side="student" compact={compact}>
+            {children}
+          </GamePanel>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.rowTeacher, style]}>
+        <TearzAvatar size={40} game />
+        <GamePanel side="teacher" compact={compact}>
+          {children}
+        </GamePanel>
+      </View>
+    );
+  }
 
   if (isStudent) {
     return (
@@ -107,9 +164,26 @@ export function BoardLessonBubble({ side, children, style, compact }: Props) {
 type TypingProps = {
   label: string;
   style?: StyleProp<ViewStyle>;
+  variant?: Variant;
 };
 
-export function BoardLessonTyping({ label, style }: TypingProps) {
+export function BoardLessonTyping({ label, style, variant = 'default' }: TypingProps) {
+  const game = variant === 'game';
+
+  if (game) {
+    return (
+      <View style={[styles.rowTeacher, style]}>
+        <TearzAvatar size={40} game />
+        <View style={[styles.gamePanel, styles.gamePanelTeacher, styles.typingCardGame]}>
+          <View style={styles.typingInner}>
+            <TypingDots game />
+            <Text style={styles.typingLabelGame}>{label}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.rowTeacher, style]}>
       <TearzAvatar />
@@ -132,14 +206,17 @@ export function BoardLessonTyping({ label, style }: TypingProps) {
 type StudentTextProps = {
   children: string;
   markerFamily?: string;
+  game?: boolean;
 };
 
-export function BoardStudentText({ children, markerFamily }: StudentTextProps) {
+export function BoardStudentText({ children, markerFamily, game }: StudentTextProps) {
   const [fontsLoaded] = useFonts({ Kalam_400Regular });
   const family = markerFamily ?? (fontsLoaded ? 'Kalam_400Regular' : undefined);
 
   return (
-    <Text style={[styles.studentText, family && { fontFamily: family }]}>{children}</Text>
+    <Text style={[styles.studentText, game && styles.studentTextGame, family && { fontFamily: family }]}>
+      {children}
+    </Text>
   );
 }
 
@@ -147,14 +224,14 @@ const styles = StyleSheet.create({
   rowStudent: {
     width: '100%',
     alignItems: 'flex-end',
-    marginVertical: 6,
+    marginVertical: 8,
   },
   rowTeacher: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 10,
-    marginVertical: 6,
+    marginVertical: 8,
   },
   studentCard: {
     maxWidth: '84%',
@@ -163,6 +240,53 @@ const styles = StyleSheet.create({
   teacherCard: {
     flex: 1,
     maxWidth: '78%',
+  },
+  gamePanel: {
+    position: 'relative',
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
+    borderRadius: 4,
+    backgroundColor: GAME_THEME.color.paper,
+    shadowColor: GAME_THEME.color.ink,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  gamePanelTeacher: {
+    flex: 1,
+    maxWidth: '78%',
+  },
+  gamePanelStudent: {
+    maxWidth: '84%',
+    backgroundColor: GAME_THEME.color.paperWarm,
+  },
+  gamePanelLip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    borderTopLeftRadius: 1,
+    borderTopRightRadius: 1,
+  },
+  gamePanelLipTeacher: {
+    backgroundColor: GAME_THEME.color.sky,
+  },
+  gamePanelLipStudent: {
+    backgroundColor: GAME_THEME.color.sky,
+  },
+  gameAvatarFrame: {
+    width: 40,
+    height: 40,
+    marginBottom: 2,
+    borderRadius: 4,
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.cream,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   cardCompact: {
     paddingVertical: 2,
@@ -189,10 +313,15 @@ const styles = StyleSheet.create({
     color: TEACHER_TITLE,
     letterSpacing: -0.2,
   },
-  avatarWrap: {
-    marginBottom: 2,
+  studentTextGame: {
+    color: GAME_THEME.color.ink,
+    fontWeight: '700',
+    letterSpacing: -0.1,
   },
   typingCard: {
+    flexShrink: 1,
+  },
+  typingCardGame: {
     flexShrink: 1,
   },
   typingInner: {
@@ -209,6 +338,13 @@ const styles = StyleSheet.create({
     color: TEACHER_MUTED,
     letterSpacing: -0.15,
   },
+  typingLabelGame: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: 'rgba(26,26,26,0.55)',
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
+  },
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -219,5 +355,11 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 4,
     backgroundColor: APP_THEME.color.brand,
+  },
+  dotGame: {
+    width: 6,
+    height: 6,
+    borderRadius: 1,
+    backgroundColor: GAME_THEME.color.ink,
   },
 });

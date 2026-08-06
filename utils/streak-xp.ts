@@ -1,4 +1,5 @@
 import type { NativeLanguage } from '@/contexts/auth-context';
+import type { QualifyingActivityKind } from '@/types/engagement';
 
 /** XP за ежедневный streak: растёт с каждым днём, потолок 150. */
 export function dailyStreakXp(streakDay: number): number {
@@ -20,6 +21,50 @@ export function dailyGoalRewardCopy(lang: NativeLanguage): XpRewardPayload {
     return { xp: DAILY_GOAL_BONUS_XP, title: '今日目标达成', subtitle: '完成了今天全部 3 项任务' };
   }
   return { xp: DAILY_GOAL_BONUS_XP, title: 'Цель дня выполнена', subtitle: 'Все 3 задания на сегодня' };
+}
+
+/** Оверлей только за монеты (когда XP за день уже выдан). */
+export function coinsOnlyRewardCopy(
+  lang: NativeLanguage,
+  kind: QualifyingActivityKind,
+  coins: number,
+  streak: number,
+): XpRewardPayload {
+  const titles: Record<QualifyingActivityKind, Record<'en' | 'zh' | 'ru', string>> = {
+    message: {
+      en: 'Lesson reward',
+      zh: '课程奖励',
+      ru: 'Награда за урок',
+    },
+    vocab_session: {
+      en: 'Cards complete',
+      zh: '卡片完成',
+      ru: 'Карточки готовы',
+    },
+    teacher_drill: {
+      en: 'Drill reward',
+      zh: '练习奖励',
+      ru: 'Награда за тренировку',
+    },
+  };
+  const loc = lang === 'en' || lang === 'zh' ? lang : 'ru';
+  const subtitle =
+    lang === 'en'
+      ? `+${coins} coins`
+      : lang === 'zh'
+        ? `+${coins} 金币`
+        : `+${coins} монет`;
+  return { xp: 0, coins, streak, title: titles[kind][loc], subtitle };
+}
+
+export function starterRewardCopy(lang: NativeLanguage, coins: number, streak: number): XpRewardPayload {
+  if (lang === 'en') {
+    return { xp: 0, coins, streak, title: 'Starter pack', subtitle: `+${coins} coins · Tearz unlocked` };
+  }
+  if (lang === 'zh') {
+    return { xp: 0, coins, streak, title: '新手礼包', subtitle: `+${coins} 金币 · Tearz 已解锁` };
+  }
+  return { xp: 0, coins, streak, title: 'Стартовый набор', subtitle: `+${coins} монет · Tearz открыт` };
 }
 
 export const STREAK_MILESTONES = [3, 7, 30] as const;
@@ -59,6 +104,10 @@ export function computeDrillXp(correct: number): DrillXpResult {
 
 export type XpRewardPayload = {
   xp: number;
+  /** Монеты, начисленные вместе с этим событием (0 если только XP). */
+  coins?: number;
+  /** Текущий стрик после события (для оверлея). */
+  streak?: number;
   title: string;
   subtitle: string;
 };

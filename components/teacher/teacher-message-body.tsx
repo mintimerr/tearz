@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { LongPressWordText } from '@/components/long-press-word-text';
+import { GAME_THEME } from '@/constants/game-theme';
 import { APP_THEME } from '@/constants/theme';
 import {
   cleanTeacherInline,
@@ -20,6 +21,9 @@ type Props = {
   text: string;
   messageId: string;
   textStyle: object;
+  variant?: 'default' | 'game';
+  /** Вместо текста секции «Практика» — кнопки мини/Plus тренировки. */
+  practiceActions?: ReactNode;
 };
 
 const SECTION_IONICON: Record<TeacherSectionIcon, keyof typeof Ionicons.glyphMap> = {
@@ -33,21 +37,25 @@ const SECTION_IONICON: Record<TeacherSectionIcon, keyof typeof Ionicons.glyphMap
   sparkles: 'sparkles-outline',
 };
 
+const PRACTICE_SECTION = /практика|practice|练习/i;
+
 function BodyLine({
   line,
   messageId,
   keyId,
   textStyle,
+  game,
 }: {
   line: TeacherBodyLine;
   messageId: string;
   keyId: string;
   textStyle: object;
+  game?: boolean;
 }) {
   if (line.kind === 'dialogue') {
     return (
       <View style={styles.dialogueRow}>
-        <Text style={styles.dialogueSpeaker} numberOfLines={1}>
+        <Text style={[styles.dialogueSpeaker, game && styles.dialogueSpeakerGame]} numberOfLines={1}>
           {line.speaker}
         </Text>
         <View style={styles.dialogueText}>
@@ -63,10 +71,10 @@ function BodyLine({
 
   if (line.kind === 'phrase') {
     return (
-      <View style={styles.phraseCard}>
+      <View style={[styles.phraseCard, game && styles.phraseCardGame]}>
         <LongPressWordText
           text={line.text}
-          style={[textStyle, styles.phraseText]}
+          style={[textStyle, styles.phraseText, game && styles.phraseTextGame]}
           animKey={`${messageId}-${keyId}`}
         />
       </View>
@@ -76,7 +84,7 @@ function BodyLine({
   if (line.kind === 'bullet') {
     return (
       <View style={styles.bulletRow}>
-        <View style={styles.bulletDot} />
+        <View style={[styles.bulletDot, game && styles.bulletDotGame]} />
         <View style={styles.bulletTextWrap}>
           <LongPressWordText
             text={line.text}
@@ -103,15 +111,21 @@ function TeacherSection({
   messageId,
   index,
   textStyle,
+  variant = 'default',
+  practiceActions,
 }: {
   title: string;
   body: string;
   messageId: string;
   index: number;
   textStyle: object;
+  variant?: 'default' | 'game';
+  practiceActions?: ReactNode;
 }) {
+  const game = variant === 'game';
   const label = formatTeacherSectionLabel(title);
   const icon = SECTION_IONICON[getTeacherSectionIcon(title)];
+  const isPractice = PRACTICE_SECTION.test(title.trim());
   const lines = useMemo(
     () =>
       parseTeacherBlockLines(body, {
@@ -124,28 +138,34 @@ function TeacherSection({
   return (
     <View style={index > 0 ? styles.section : undefined}>
       <View style={styles.headerRow}>
-        <View style={styles.headerIcon}>
-          <Ionicons name={icon} size={13} color={APP_THEME.color.brandBright} />
+        <View style={[styles.headerIcon, game && styles.headerIconGame]}>
+          <Ionicons name={icon} size={13} color={game ? GAME_THEME.color.ink : APP_THEME.color.brandBright} />
         </View>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, game && styles.labelGame]}>{label}</Text>
       </View>
-      <View style={styles.bodyWrap}>
-        {lines.map((line, i) => (
-          <BodyLine
-            key={`${index}-${i}`}
-            line={line}
-            messageId={messageId}
-            keyId={`${index}-${i}`}
-            textStyle={textStyle}
-          />
-        ))}
-      </View>
+      {isPractice && practiceActions ? (
+        <View style={styles.practiceSlot}>{practiceActions}</View>
+      ) : (
+        <View style={styles.bodyWrap}>
+          {lines.map((line, i) => (
+            <BodyLine
+              key={`${index}-${i}`}
+              line={line}
+              messageId={messageId}
+              keyId={`${index}-${i}`}
+              textStyle={textStyle}
+              game={game}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
-export function TeacherMessageBody({ text, messageId, textStyle }: Props) {
+export function TeacherMessageBody({ text, messageId, textStyle, variant = 'default', practiceActions }: Props) {
   const blocks = useMemo(() => parseTeacherMessageBlocks(text), [text]);
+  const game = variant === 'game';
 
   if (!blocks) {
     return (
@@ -167,8 +187,21 @@ export function TeacherMessageBody({ text, messageId, textStyle }: Props) {
           messageId={messageId}
           index={index}
           textStyle={textStyle}
+          variant={variant}
+          practiceActions={practiceActions}
         />
       ))}
+      {practiceActions && !blocks.some((b) => PRACTICE_SECTION.test(b.title.trim())) ? (
+        <View style={styles.practiceFallback}>
+          <View style={styles.headerRow}>
+            <View style={[styles.headerIcon, game && styles.headerIconGame]}>
+              <Ionicons name="barbell-outline" size={13} color={GAME_THEME.color.ink} />
+            </View>
+            <Text style={[styles.label, game && styles.labelGame]}>Практика</Text>
+          </View>
+          <View style={styles.practiceSlot}>{practiceActions}</View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -195,12 +228,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: APP_THEME.color.brandSoft,
   },
+  headerIconGame: {
+    borderRadius: 4,
+    backgroundColor: GAME_THEME.color.paperWarm,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+  },
   label: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.9,
     textTransform: 'uppercase',
     color: APP_THEME.color.muted,
+  },
+  labelGame: {
+    fontWeight: '900',
+    letterSpacing: 1.1,
+    color: GAME_THEME.color.ink,
+  },
+  practiceSlot: {
+    marginTop: 2,
+  },
+  practiceFallback: {
+    marginTop: 18,
   },
   bodyWrap: {
     alignSelf: 'stretch',
@@ -218,11 +268,23 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(100, 210, 255, 0.18)',
   },
+  phraseCardGame: {
+    borderRadius: 4,
+    backgroundColor: '#F0F8FF',
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderLeftWidth: 4,
+    borderLeftColor: GAME_THEME.color.sky,
+  },
   phraseText: {
     fontSize: 16.5,
     lineHeight: 24,
     fontWeight: '600',
     color: APP_THEME.color.text,
+  },
+  phraseTextGame: {
+    color: GAME_THEME.color.ink,
+    fontWeight: '700',
   },
   bulletRow: {
     flexDirection: 'row',
@@ -235,6 +297,12 @@ const styles = StyleSheet.create({
     backgroundColor: APP_THEME.color.mutedSoft,
     marginTop: 10,
     marginRight: 11,
+  },
+  bulletDotGame: {
+    width: 6,
+    height: 6,
+    borderRadius: 1,
+    backgroundColor: GAME_THEME.color.ink,
   },
   bulletTextWrap: {
     flex: 1,
@@ -252,6 +320,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
     color: APP_THEME.color.brandBright,
     marginRight: 10,
+  },
+  dialogueSpeakerGame: {
+    color: GAME_THEME.color.ink,
+    fontWeight: '800',
   },
   dialogueText: {
     flex: 1,

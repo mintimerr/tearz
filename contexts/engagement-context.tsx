@@ -4,6 +4,13 @@ import { AppState, Platform } from 'react-native';
 
 import type { NativeLanguage } from '@/contexts/auth-context';
 import { useAuth } from '@/contexts/auth-context';
+import {
+  COIN_REWARDS,
+  TEARZ_UNLOCK_BY_ACTIVITY,
+  coinsForActivity,
+} from '@/constants/reward-rules';
+import { STARTER_TEARZ_ID } from '@/constants/tearz-collection';
+import { PLUS_DAY_COIN_COST, PLUS_DAY_MS } from '@/types/lexicon';
 import type { DailyTasks, EngagementState, RecordActivityParams } from '@/types/engagement';
 import { DEFAULT_ENGAGEMENT_STATE, EMPTY_DAILY_TASKS } from '@/types/engagement';
 import {
@@ -22,11 +29,13 @@ import {
 } from '@/utils/daily-streak';
 import { loadEngagementState, saveEngagementState } from '@/utils/engagement-storage';
 import {
+  coinsOnlyRewardCopy,
   computeDrillXp,
   dailyGoalRewardCopy,
   dailyStreakXp,
   drillXpRewardCopy,
   milestoneXpForStreak,
+  starterRewardCopy,
   streakXpRewardCopy,
   DAILY_GOAL_BONUS_XP,
   DAILY_GOAL_TASK_COUNT,
@@ -38,6 +47,11 @@ type EngagementContextValue = {
   dailyStreak: number;
   longestStreak: number;
   bonusXp: number;
+  coins: number;
+  ownedTearzIds: string[];
+  /** Локальный Tearz Plus (монеты / день). */
+  hasPlusAccess: boolean;
+  plusExpiresAt: number | null;
   streakFreezeAvailable: boolean;
   streakExtendedToday: boolean;
   xpReward: XpRewardPayload | null;
@@ -48,6 +62,10 @@ type EngagementContextValue = {
   dailyGoalComplete: boolean;
   recordActivity: (params: RecordActivityParams) => void;
   requestNotifications: () => Promise<boolean>;
+  claimStarterPack: () => void;
+  grantCoins: (amount: number) => void;
+  spendCoinsForPlusDay: () => boolean;
+  unlockTearz: (tearzId: string) => boolean;
 };
 
 const DAILY_TASK_KEYS: (keyof DailyTasks)[] = ['lesson', 'drill', 'vocab'];
@@ -66,6 +84,7 @@ function rollDailyTasks(state: EngagementState, now = new Date()): EngagementSta
     dailyDate: today,
     dailyTasks: { ...EMPTY_DAILY_TASKS },
     dailyGoalClaimed: false,
+    messageCoinsToday: 0,
   };
 }
 
@@ -201,7 +220,11 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
           : current.claimedStreakMilestones,
       };
 
-      return { totalXp, next, reward: { xp: totalXp, title, subtitle } };
+      return {
+        totalXp,
+        next,
+        reward: { xp: totalXp, title, subtitle, streak: streak.dailyStreak },
+      };
     },
     [],
   );
@@ -324,6 +347,26 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
           DAILY_TASK_KEYS.every((k) => (k === taskKey ? true : current.dailyTasks[k]));
         current = { ...current, dailyTasks: { ...current.dailyTasks, [taskKey]: true } };
 
+        /** Монеты по reward-rules + Tearz unlock (один раз). */
+        let coinGain = coinsForActivity(params.kind, { drillCorrect: params.drillCorrect });
+        if (params.kind === 'message') {
+          if (current.messageCoinsToday >= COIN_REWARDS.messageMaxPerDay) {
+            coinGain = 0;
+          } else {
+            current = {
+              ...current,
+              messageCoinsToday: current.messageCoinsToday + 1,
+            };
+          }
+        }
+        if (coinGain > 0) {
+          current = { ...current, coins: current.coins + coinGain };
+        }
+        const tearzGain = TEARZ_UNLOCK_BY_ACTIVITY[params.kind];
+        if (tearzGain && !current.ownedTearzIds.includes(tearzGain)) {
+          current = { ...current, ownedTearzIds: [...current.ownedTearzIds, tearzGain] };
+        }
+
         await cancelReengagementNotifications();
         current = await ensurePushPermissionOnce(current);
         await persist(current);
@@ -334,22 +377,37 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
           current = xp.next;
         }
 
+        let rewardCoins = coinGain;
         let reward = xp.reward;
         if (completedAllNow) {
+          rewardCoins += COIN_REWARDS.dailyGoal;
           current = {
             ...current,
             dailyGoalClaimed: true,
             bonusXp: current.bonusXp + DAILY_GOAL_BONUS_XP,
+            coins: current.coins + COIN_REWARDS.dailyGoal,
           };
-          reward = dailyGoalRewardCopy(language);
+          reward = {
+            ...dailyGoalRewardCopy(language),
+            coins: rewardCoins,
+            streak: current.dailyStreak,
+          };
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else if (reward) {
+          reward = {
+            ...reward,
+            coins: rewardCoins,
+            streak: current.dailyStreak,
+          };
+        } else if (rewardCoins > 0) {
+          reward = coinsOnlyRewardCopy(language, params.kind, rewardCoins, current.dailyStreak);
         }
 
         if (xp.totalXp > 0 || completedAllNow) {
           await persist(current);
           setState(current);
-          if (reward) showXpReward(reward);
         }
+        if (reward) showXpReward(reward);
 
         await planPushSeries(current, language, {
           messagePreview: params.messagePreview,
@@ -375,6 +433,82 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
 
     return granted;
   }, [persist, planPushSeries, user?.nativeLanguage]);
+
+  const claimStarterPack = useCallback(() => {
+    if (!user?.id || !isAuthenticated) return;
+    const current = stateRef.current;
+    if (current.starterPackClaimed) return;
+
+    const owned = current.ownedTearzIds.includes(STARTER_TEARZ_ID)
+      ? current.ownedTearzIds
+      : [...current.ownedTearzIds, STARTER_TEARZ_ID];
+    const starterCoins = COIN_REWARDS.starter;
+
+    const next: EngagementState = {
+      ...current,
+      starterPackClaimed: true,
+      coins: current.coins + starterCoins,
+      ownedTearzIds: owned,
+    };
+    stateRef.current = next;
+    setState(next);
+    void persist(next);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    showXpReward(starterRewardCopy(user?.nativeLanguage ?? 'ru', starterCoins, next.dailyStreak));
+  }, [isAuthenticated, persist, showXpReward, user?.id, user?.nativeLanguage]);
+
+  const grantCoins = useCallback(
+    (amount: number) => {
+      if (!user?.id || !isAuthenticated || amount <= 0) return;
+      const next: EngagementState = {
+        ...stateRef.current,
+        coins: stateRef.current.coins + Math.floor(amount),
+      };
+      stateRef.current = next;
+      setState(next);
+      void persist(next);
+    },
+    [isAuthenticated, persist, user?.id],
+  );
+
+  const spendCoinsForPlusDay = useCallback((): boolean => {
+    if (!user?.id || !isAuthenticated) return false;
+    const current = stateRef.current;
+    if (current.coins < PLUS_DAY_COIN_COST) return false;
+    const now = Date.now();
+    const base =
+      typeof current.plusExpiresAt === 'number' && current.plusExpiresAt > now
+        ? current.plusExpiresAt
+        : now;
+    const next: EngagementState = {
+      ...current,
+      coins: current.coins - PLUS_DAY_COIN_COST,
+      plusExpiresAt: base + PLUS_DAY_MS,
+    };
+    stateRef.current = next;
+    setState(next);
+    void persist(next);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    return true;
+  }, [isAuthenticated, persist, user?.id]);
+
+  const unlockTearz = useCallback(
+    (tearzId: string): boolean => {
+      if (!user?.id || !isAuthenticated || !tearzId) return false;
+      const current = stateRef.current;
+      if (current.ownedTearzIds.includes(tearzId)) return false;
+      const next: EngagementState = {
+        ...current,
+        ownedTearzIds: [...current.ownedTearzIds, tearzId],
+      };
+      stateRef.current = next;
+      setState(next);
+      void persist(next);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return true;
+    },
+    [isAuthenticated, persist, user?.id],
+  );
 
   useEffect(() => {
     if (!user?.id || !hydrated) return;
@@ -424,6 +558,10 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       dailyStreak: state.dailyStreak,
       longestStreak: state.longestStreak,
       bonusXp: state.bonusXp,
+      coins: state.coins,
+      ownedTearzIds: state.ownedTearzIds,
+      hasPlusAccess: typeof state.plusExpiresAt === 'number' && state.plusExpiresAt > Date.now(),
+      plusExpiresAt: state.plusExpiresAt ?? null,
       streakFreezeAvailable: state.streakFreezeAvailable,
       streakExtendedToday,
       xpReward,
@@ -434,19 +572,30 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       dailyGoalComplete: dailyDoneCount >= DAILY_GOAL_TASK_COUNT,
       recordActivity,
       requestNotifications,
+      claimStarterPack,
+      grantCoins,
+      spendCoinsForPlusDay,
+      unlockTearz,
     }),
     [
+      claimStarterPack,
       dailyDoneCount,
       dailyTasks,
       dismissXpReward,
+      grantCoins,
       hydrated,
       recordActivity,
       requestNotifications,
+      spendCoinsForPlusDay,
       state.bonusXp,
+      state.coins,
       state.dailyStreak,
       state.longestStreak,
+      state.ownedTearzIds,
+      state.plusExpiresAt,
       state.streakFreezeAvailable,
       streakExtendedToday,
+      unlockTearz,
       xpReward,
     ],
   );

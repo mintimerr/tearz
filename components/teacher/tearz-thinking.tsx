@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-// Тот же Tearz, что на обложке, в задумчивой позе. Персонаж вырезан на
-// прозрачный фон, поэтому вписывается без «карточки» на любом фоне.
+// Mario-pixel Tearz (thinking / idle).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const SRC = require('../../assets/images/tearz-thinking.png');
+const SRC = require('../../assets/images/tearz-mario/tearz-mario-idle-sprite.png');
 
 type Props = {
   /** Сторона квадрата персонажа в пикселях. */
@@ -13,9 +12,7 @@ type Props = {
 };
 
 /**
- * «Думающий Tearz» — тот же персонаж, что на обложке/главной (3D-рендер),
- * с анимацией задумчивости: мягкое покачивание, лёгкий наклон головы и
- * всплывающие «…».
+ * «Думающий Tearz» — Mario pixel sprite.
  */
 export function TearzThinking({ size = 160, style }: Props) {
   const bob = useRef(new Animated.Value(0)).current;

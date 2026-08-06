@@ -16,13 +16,15 @@
 БАНК ТИПОВ (kind)
 
 1) drag_word_to_blank — перенести слово в пропуск внутри предложения
-   ОБЯЗАТЕЛЬНО segments с blank: [{"type":"text","value":"I "},{"type":"blank","id":"b1"},{"type":"text","value":" coffee."}]
+   ОБЯЗАТЕЛЬНО segments с blank: [{"type":"text","value":"I "},{"type":"blank","id":"b1","answer":"like"},{"type":"text","value":" coffee."}]
+   На каждом blank ОБЯЗАТЕЛЬНО поле answer (ключ для серверной проверки, не показывать ученику).
    wordBank: 4–8 слов (правильное + отвлекающие).
    checkText: само предложение с пропуском (на языке урока), НЕ общая инструкция.
    numberedSentences — только если 2–4 отдельных предложения, каждое с «___»; для одного предложения используй segments.
+   Для numberedSentences у каждого предложения добавь correctWord.
 
 2) type_word_in_blank — ввести слово в пропуск (БЕЗ wordBank)
-   segments с 1–2 blank; ученик печатает ответ.
+   segments с 1–2 blank; на каждом blank ОБЯЗАТЕЛЬНО answer.
 
 3) choose_word_form — выбрать одно из трёх слов для пропуска
    formSlots: [{ "id":"f1", "prompt":"She ___ home every day.", "options":["go","goes","going"], "correct":"goes" }]
@@ -31,8 +33,9 @@
    instruction: коротко, напр. «Выбери слово для пропуска». НЕ пиши «форму в скобках» / «глагол в скобках».
 
 4) word_to_image — перенести слово к картинке
-   imageSlots: [{ "id":"img1", "label":"яблоко", "correctWord":"apple", "imageUrl":"https://picsum.photos/seed/apple/240/240" }]
-   wordBank: все correctWord + 1–2 лишних; 2–4 картинки; imageUrl — picsum.photos/seed/{слово}/240/240
+   imageSlots: [{ "id":"img1", "label":"яблоко", "correctWord":"apple" }]
+   wordBank: все correctWord + 1–2 лишних; 2–4 картинки.
+   НЕ заполняй imageUrl и НЕ используй picsum/placeholder — сервер сгенерирует картинки сам по correctWord/label.
 
 5) sentence_order — составить предложение из слов
    shuffledWords: слова вразброс; correctOrder: правильный порядок (те же слова).
@@ -71,7 +74,11 @@
 * Не включай ответы в instruction/checkText для ученика (correct только в JSON для formSlots).
 * Каждый запрос — новый набор; Variation id обязателен; при списке «не повторять» — другой угол.
 * Уровень выводи из диалога молча: лексика, грамматика, длина сообщений, ошибки, сложность запроса. Для A1 — проще; для B2+ — сложнее. Не пиши уровень вслух.
-
+* Качество важнее случайности: distractors должны быть правдоподобными near-miss (типичные ошибки уровня), не абсурд.
+* В каждом наборе цель — закрепить 1–2 ключевых пункта из объяснения преподавателя, а не размытую «тему».
+* Для sentence_order / blanks: предложения грамматически естественные; правильный ответ однозначен.
+* Не повторяй дословно примеры из объяснения преподавателя — перефразируй или слегка усложни/упрости под уровень.
+* Для word_to_image выбирай только конкретные, легко рисуемые понятия (кот, яблоко, автобус) — не абстракции вроде «счастье» / «грамматика».
 ПИНЬИНЬ (только если целевой язык — китайский)
 * Выводи уровень чтения 汉字 из диалога молча — не объявляй вслух.
 * Низкий уровень (A1–A2), ученик почти не пишет по-китайски: аккуратно добавляй пиньинь в скобках рядом с иероглифами в полях задания (segments, wordBank, formSlots.prompt, selectWord, voicePrompt, pairs) — только где без этого трудно прочитать; не дублируй под каждым символом.
@@ -102,17 +109,20 @@ nextTopic обязателен.
 ПРИМЕРЫ ПОЛЕЙ
 
 drag_word_to_blank + segments:
-"segments": [{"type":"text","value":"I "},{"type":"blank","id":"b1"},{"type":"text","value":" coffee."}],
+"segments": [{"type":"text","value":"I "},{"type":"blank","id":"b1","answer":"like"},{"type":"text","value":" coffee."}],
 "wordBank": ["like","likes","liked"]
 
 type_word_in_blank:
-"segments": [...], без wordBank
+"segments": [{"type":"text","value":"She "},{"type":"blank","id":"b1","answer":"goes"},{"type":"text","value":" home."}], без wordBank
 
 choose_word_form:
 "formSlots": [{"id":"f1","prompt":"She ___ home every day.","options":["go","goes","going"],"correct":"goes"}]
 
 word_to_image:
-"imageSlots": [{"id":"img1","label":"кот","correctWord":"cat","imageUrl":"https://picsum.photos/seed/cat/240/240"}],
+"imageSlots": [{"id":"img1","label":"кот","correctWord":"cat"}],
+"wordBank": ["cat", "dog", "bird"],
+"checkText": "Сопоставь слова с картинками"
+(без imageUrl — картинки рисует сервер)
 "wordBank": ["cat","dog","cat","bird"]
 
 sentence_order:

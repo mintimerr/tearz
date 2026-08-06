@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect } from 'react';
-import { LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 import { useTranslation } from '@/contexts/locale-context';
 import { buildStudyShareMessage, shareText } from '@/utils/viral-share';
 import Animated, {
@@ -88,7 +87,7 @@ export function StudySessionResult({ correct, wrong, total, onClose, onRestart }
 
   const retryGlowStyle = useAnimatedStyle(() => ({
     opacity: interpolate(btnPulse.value, [0, 1], [0.35, 0]),
-    transform: [{ scale: interpolate(btnPulse.value, [0, 1], [1, 1.08]) }],
+    transform: [{ scale: interpolate(btnPulse.value, [0, 1], [1, 1.06]) }],
   }));
 
   const start = -Math.PI / 2;
@@ -116,48 +115,54 @@ export function StudySessionResult({ correct, wrong, total, onClose, onRestart }
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Готово</Text>
-      <Text style={styles.subtitle}>как прошла сессия</Text>
+      <View style={styles.panel}>
+        <Text style={styles.title}>Готово!</Text>
+        <Text style={styles.subtitle}>как прошла сессия</Text>
 
-      <View style={styles.chartBlock}>
-        <Animated.View style={[styles.svgWrap, chartGroupStyle]}>
-          <Svg width={220} height={220} viewBox="0 0 220 220">
-            <Circle cx={CX} cy={CY} r={R} fill="rgba(0,0,0,0.06)" />
-            {correct === total && total > 0 ? <Circle cx={CX} cy={CY} r={R} fill="rgba(34, 197, 94, 0.92)" /> : null}
-            {wrong === total && total > 0 ? <Circle cx={CX} cy={CY} r={R} fill="rgba(220, 53, 69, 0.9)" /> : null}
-            {correct > 0 && correct < total ? <Path d={greenPath} fill="rgba(34, 197, 94, 0.92)" /> : null}
-            {wrong > 0 && wrong < total ? <Path d={redPath} fill="rgba(220, 53, 69, 0.9)" /> : null}
-            <Circle cx={CX} cy={CY} r={HOLE} fill="#050816" />
-            <Circle cx={CX} cy={CY} r={HOLE + 2} stroke="rgba(0,0,0,0.08)" strokeWidth={2} fill="none" />
-          </Svg>
-          <View style={styles.centerLabel} pointerEvents="none">
-            <Text style={styles.pct}>{pct}%</Text>
-            <Text style={styles.pctHint}>выучено</Text>
+        <View style={styles.chartBlock}>
+          <Animated.View style={[styles.svgWrap, chartGroupStyle]}>
+            <Svg width={220} height={220} viewBox="0 0 220 220">
+              <Circle cx={CX} cy={CY} r={R} fill="rgba(26,26,26,0.08)" stroke={GAME_THEME.color.ink} strokeWidth={3} />
+              {correct === total && total > 0 ? (
+                <Circle cx={CX} cy={CY} r={R} fill={GAME_THEME.color.phosphor} />
+              ) : null}
+              {wrong === total && total > 0 ? (
+                <Circle cx={CX} cy={CY} r={R} fill={GAME_THEME.color.danger} />
+              ) : null}
+              {correct > 0 && correct < total ? <Path d={greenPath} fill={GAME_THEME.color.phosphor} /> : null}
+              {wrong > 0 && wrong < total ? <Path d={redPath} fill={GAME_THEME.color.danger} /> : null}
+              <Circle cx={CX} cy={CY} r={HOLE} fill={GAME_THEME.color.paper} />
+              <Circle cx={CX} cy={CY} r={HOLE + 2} stroke={GAME_THEME.color.ink} strokeWidth={2} fill="none" />
+            </Svg>
+            <View style={styles.centerLabel} pointerEvents="none">
+              <Text style={styles.pct}>{pct}%</Text>
+              <Text style={styles.pctHint}>выучено</Text>
+            </View>
+          </Animated.View>
+
+          <Animated.View style={[styles.barTrack, legendStyle]} onLayout={onBarTrackLayout}>
+            <Animated.View style={[styles.barSeg, styles.barGreen, greenBarStyle]} />
+            <Animated.View style={[styles.barSeg, styles.barRed, redBarStyle]} />
+          </Animated.View>
+        </View>
+
+        <Animated.View style={[styles.legendRow, legendStyle]}>
+          <View style={styles.legendItem}>
+            <View style={[styles.iconBubble, styles.iconBubbleGreen]}>
+              <Ionicons name="checkmark" size={24} color={GAME_THEME.color.ink} />
+            </View>
+            <Text style={styles.legendCount}>{correct}</Text>
+            <Text style={styles.legendLabel}>выучил</Text>
           </View>
-        </Animated.View>
-
-        <Animated.View style={[styles.barTrack, legendStyle]} onLayout={onBarTrackLayout}>
-          <Animated.View style={[styles.barSeg, styles.barGreen, greenBarStyle]} />
-          <Animated.View style={[styles.barSeg, styles.barRed, redBarStyle]} />
+          <View style={styles.legendItem}>
+            <View style={[styles.iconBubble, styles.iconBubbleRed]}>
+              <Ionicons name="close" size={24} color={GAME_THEME.color.cream} />
+            </View>
+            <Text style={styles.legendCount}>{wrong}</Text>
+            <Text style={styles.legendLabel}>не выучил</Text>
+          </View>
         </Animated.View>
       </View>
-
-      <Animated.View style={[styles.legendRow, legendStyle]}>
-        <View style={styles.legendItem}>
-          <View style={[styles.iconBubble, styles.iconBubbleGreen]}>
-            <Ionicons name="checkmark" size={26} color="#052e16" />
-          </View>
-          <Text style={styles.legendCount}>{correct}</Text>
-          <Text style={styles.legendLabel}>выучил</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.iconBubble, styles.iconBubbleRed]}>
-            <Ionicons name="close" size={28} color="#fff5f5" />
-          </View>
-          <Text style={styles.legendCount}>{wrong}</Text>
-          <Text style={styles.legendLabel}>не выучил</Text>
-        </View>
-      </Animated.View>
 
       <Animated.View style={[styles.actions, actionsStyle]}>
         <Pressable
@@ -168,8 +173,7 @@ export function StudySessionResult({ correct, wrong, total, onClose, onRestart }
             onClose();
           }}
           style={({ pressed }) => [styles.closePress, pressed && styles.closePressIn]}>
-          <BlurView intensity={Platform.OS === 'ios' ? 50 : 36} tint="dark" style={StyleSheet.absoluteFillObject} />
-          <Ionicons name="chevron-back" size={20} color="rgba(242,242,247,0.85)" />
+          <Ionicons name="chevron-back" size={20} color={GAME_THEME.color.ink} />
           <Text style={styles.closeText}>Закрыть</Text>
         </Pressable>
 
@@ -184,9 +188,8 @@ export function StudySessionResult({ correct, wrong, total, onClose, onRestart }
             }}
             style={({ pressed }) => [styles.retryPress, pressed && styles.retryPressIn]}>
             <View style={styles.retryInner}>
-              <Ionicons name="refresh" size={22} color="#fff" />
+              <Ionicons name="refresh" size={20} color={GAME_THEME.color.ink} />
               <Text style={styles.retryText}>Ещё раз</Text>
-              <Ionicons name="arrow-forward" size={18} color={APP_THEME.color.textSoft} />
             </View>
           </Pressable>
         </View>
@@ -210,7 +213,7 @@ export function StudySessionResult({ correct, wrong, total, onClose, onRestart }
               void shareText(msg, t('viral.shareResult'));
             }}
             style={({ pressed }) => [styles.sharePress, pressed && styles.sharePressIn]}>
-            <Ionicons name="share-social-outline" size={18} color="rgba(168, 148, 255, 0.95)" />
+            <Ionicons name="share-social-outline" size={18} color={GAME_THEME.color.ink} />
             <Text style={styles.shareText}>{t('viral.shareResult')}</Text>
           </Pressable>
         ) : null}
@@ -223,23 +226,42 @@ const styles = StyleSheet.create({
   wrap: {
     flex: 1,
     paddingTop: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     alignItems: 'center',
   },
+  panel: {
+    width: '100%',
+    maxWidth: 380,
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
+    shadowColor: GAME_THEME.color.ink,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '900',
-    color: '#fff',
-    letterSpacing: -1,
+    color: GAME_THEME.color.ink,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   subtitle: {
     marginTop: 6,
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(139, 146, 178, 0.95)',
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.5)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   chartBlock: {
-    marginTop: 22,
+    marginTop: 18,
     alignItems: 'center',
     width: '100%',
   },
@@ -255,177 +277,173 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pct: {
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: '900',
-    color: '#F2F2F7',
-    letterSpacing: -1.2,
+    color: GAME_THEME.color.ink,
+    letterSpacing: -0.5,
   },
   pctHint: {
     marginTop: 2,
-    fontSize: 13,
-    fontWeight: '600',
-    color: APP_THEME.color.mutedSoft,
-    letterSpacing: 0.2,
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'rgba(26,26,26,0.45)',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   barTrack: {
-    marginTop: 22,
+    marginTop: 18,
     width: '100%',
-    maxWidth: 320,
-    height: 14,
-    borderRadius: 999,
+    maxWidth: 300,
+    height: 12,
     overflow: 'hidden',
     flexDirection: 'row',
-    backgroundColor: APP_THEME.color.accentSoft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
+    backgroundColor: 'rgba(26,26,26,0.1)',
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   barGreen: {
-    backgroundColor: 'rgba(34, 197, 94, 0.95)',
-    borderRadius: 999,
+    backgroundColor: GAME_THEME.color.phosphor,
+    borderRightWidth: 2,
+    borderRightColor: GAME_THEME.color.ink,
   },
   barRed: {
-    backgroundColor: 'rgba(220, 53, 69, 0.92)',
-    borderRadius: 999,
+    backgroundColor: GAME_THEME.color.danger,
   },
   barSeg: {
     height: '100%',
   },
   legendRow: {
-    marginTop: 28,
+    marginTop: 20,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 36,
+    gap: 32,
     width: '100%',
   },
   legendItem: {
     alignItems: 'center',
-    minWidth: 100,
+    minWidth: 90,
   },
   iconBubble: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   iconBubbleGreen: {
-    backgroundColor: 'rgba(134, 239, 172, 0.95)',
-    borderColor: 'rgba(21, 128, 61, 0.55)',
-    shadowColor: '#22c55e',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    elevation: 6,
+    backgroundColor: GAME_THEME.color.phosphor,
   },
   iconBubbleRed: {
-    backgroundColor: 'rgba(220, 53, 69, 0.95)',
-    borderColor: 'rgba(254, 202, 202, 0.45)',
-    shadowColor: '#ef4444',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 5,
+    backgroundColor: GAME_THEME.color.danger,
   },
   legendCount: {
-    marginTop: 10,
+    marginTop: 8,
     fontSize: 22,
-    fontWeight: '800',
-    color: '#F2F2F7',
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
   },
   legendLabel: {
     marginTop: 2,
-    fontSize: 13,
-    fontWeight: '600',
-    color: APP_THEME.color.mutedSoft,
+    fontSize: 11,
+    fontWeight: '800',
+    color: 'rgba(26,26,26,0.45)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   actions: {
     marginTop: 'auto',
-    paddingTop: 28,
+    paddingTop: 20,
     paddingBottom: 8,
     width: '100%',
     maxWidth: 360,
-    gap: 12,
+    gap: 10,
   },
   retryWrap: {
     position: 'relative',
-    borderRadius: 18,
+    borderRadius: 4,
     overflow: 'hidden',
   },
   retryGlow: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 18,
-    backgroundColor: 'rgba(124, 92, 255, 0.55)',
+    borderRadius: 4,
+    backgroundColor: GAME_THEME.color.paperWarm,
   },
   closePress: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 18,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: APP_THEME.color.borderStrong,
+    borderRadius: 4,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.goldLip,
   },
   closePressIn: {
     opacity: 0.88,
-    transform: [{ scale: 0.98 }],
+    transform: [{ translateY: 2 }],
+    borderBottomWidth: 2,
   },
   closeText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: 'rgba(242,242,247,0.92)',
+    fontSize: 15,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   retryPress: {
-    borderRadius: 18,
+    borderRadius: 4,
     overflow: 'hidden',
-    backgroundColor: 'rgba(124, 92, 255, 0.98)',
-    borderWidth: 1,
-    borderColor: 'rgba(200, 188, 255, 0.55)',
-    shadowColor: '#7C5CFF',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.42,
-    shadowRadius: 22,
-    elevation: 10,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 5,
+    borderBottomColor: GAME_THEME.color.goldLip,
   },
   retryPressIn: {
-    transform: [{ scale: 0.97 }],
-    opacity: 0.95,
+    transform: [{ translateY: 2 }],
+    borderBottomWidth: 3,
   },
   retryInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 17,
+    paddingVertical: 15,
     paddingHorizontal: 22,
   },
   retryText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.3,
+    fontSize: 16,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   sharePress: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
-    borderRadius: APP_THEME.radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(168, 148, 255, 0.35)',
-    backgroundColor: 'rgba(124, 92, 255, 0.12)',
+    paddingVertical: 12,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: 'rgba(253,248,238,0.85)',
   },
   sharePressIn: {
     opacity: 0.88,
+    transform: [{ translateY: 1 }],
   },
   shareText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'rgba(168, 148, 255, 0.95)',
-    letterSpacing: -0.2,
+    fontSize: 13,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
+    letterSpacing: 0.2,
+    textTransform: 'uppercase',
   },
 });

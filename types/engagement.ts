@@ -48,8 +48,18 @@ export type EngagementState = {
   dailyTasks: DailyTasks;
   /** Бонус за выполнение всех заданий дня уже выдан сегодня. */
   dailyGoalClaimed: boolean;
+  /** Сколько раз сегодня уже выдали монеты за message (кап в reward-rules). */
+  messageCoinsToday: number;
   /** История заработанного XP по дням (для графика активности). */
   xpHistory: DailyXpEntry[];
+  /** Монеты автомата / хаба. */
+  coins: number;
+  /** Tearz Plus активен до этого epoch ms (локальная покупка за монеты). */
+  plusExpiresAt: number | null;
+  /** Собранные id Tearz из каталога. */
+  ownedTearzIds: string[];
+  /** Стартовый Newbie + монеты уже выданы. */
+  starterPackClaimed: boolean;
   notificationPermission: NotificationPermissionStatus;
   permissionPromptShown: boolean;
   permissionFailureModalShown: boolean;
@@ -75,7 +85,12 @@ export const DEFAULT_ENGAGEMENT_STATE: EngagementState = {
   dailyDate: null,
   dailyTasks: { ...EMPTY_DAILY_TASKS },
   dailyGoalClaimed: false,
+  messageCoinsToday: 0,
   xpHistory: [],
+  coins: 0,
+  plusExpiresAt: null,
+  ownedTearzIds: [],
+  starterPackClaimed: false,
   notificationPermission: 'undetermined',
   permissionPromptShown: false,
   permissionFailureModalShown: false,

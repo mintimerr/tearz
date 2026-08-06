@@ -1,26 +1,43 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
-import { CHAT_MSG, chatBubbleHairline } from '@/constants/chat-message';
+import { CHAT_MSG } from '@/constants/chat-message';
+import { GAME_THEME } from '@/constants/game-theme';
 import { APP_THEME } from '@/constants/theme';
 
 const outgoingShell = {
   maxWidth: CHAT_MSG.bubble.maxWidth,
-  paddingVertical: CHAT_MSG.bubble.padV,
+  paddingVertical: CHAT_MSG.bubble.padV + 2,
   paddingHorizontal: CHAT_MSG.bubble.padH,
-  borderRadius: CHAT_MSG.bubble.radius,
-  backgroundColor: CHAT_MSG.bubble.outgoingBg,
-  borderWidth: chatBubbleHairline,
-  borderColor: CHAT_MSG.bubble.outgoingBorder,
+  borderRadius: 16,
+  backgroundColor: GAME_THEME.color.paperWarm,
+  borderWidth: 2,
+  borderColor: GAME_THEME.color.ink,
+  borderBottomWidth: 4,
+  borderBottomColor: GAME_THEME.color.ink,
+  ...Platform.select({
+    ios: {
+      shadowColor: GAME_THEME.color.ink,
+      shadowOpacity: 0.2,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 3 },
+    },
+    android: {
+      elevation: 3,
+    },
+    default: {},
+  }),
 };
 
 const incomingSubtleShell = {
   maxWidth: CHAT_MSG.bubble.maxWidth,
   paddingVertical: CHAT_MSG.bubble.padV,
   paddingHorizontal: CHAT_MSG.bubble.padH,
-  borderRadius: CHAT_MSG.bubble.radius,
-  backgroundColor: CHAT_MSG.bubble.incomingSubtleBg,
-  borderWidth: chatBubbleHairline,
-  borderColor: CHAT_MSG.bubble.incomingSubtleBorder,
+  borderRadius: 16,
+  backgroundColor: GAME_THEME.color.paper,
+  borderWidth: 2,
+  borderColor: GAME_THEME.color.ink,
+  borderBottomWidth: 4,
+  borderBottomColor: GAME_THEME.color.ink,
 };
 
 /** Companion chat message styles */
@@ -35,14 +52,19 @@ export const companionMessageStyles = StyleSheet.create({
     marginVertical: 12,
   },
   dateChip: {
-    paddingHorizontal: 11,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: APP_THEME.radius.pill,
-    backgroundColor: APP_THEME.color.accentSoft,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   dateChipText: {
     ...CHAT_MSG.meta,
-    color: APP_THEME.color.mutedSoft,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: 'rgba(26,26,26,0.55)',
   },
   incomingWrap: {
     alignSelf: 'stretch',
@@ -57,13 +79,14 @@ export const companionMessageStyles = StyleSheet.create({
   incomingBubble: incomingSubtleShell,
   incomingText: {
     ...CHAT_MSG.body,
-    color: CHAT_MSG.incomingColor,
+    color: GAME_THEME.color.ink,
     letterSpacing: -0.38,
   },
   bubbleTimeIn: {
     ...CHAT_MSG.meta,
     marginTop: 7,
     marginLeft: 1,
+    color: 'rgba(26,26,26,0.45)',
   },
   outgoingWrap: {
     alignSelf: 'stretch',
@@ -73,7 +96,7 @@ export const companionMessageStyles = StyleSheet.create({
   outgoingBubble: outgoingShell,
   outgoingText: {
     ...CHAT_MSG.body,
-    color: CHAT_MSG.outgoingColor,
+    color: GAME_THEME.color.ink,
   },
   outMeta: {
     flexDirection: 'row',
@@ -83,15 +106,18 @@ export const companionMessageStyles = StyleSheet.create({
     marginTop: 6,
     marginRight: 2,
   },
-  bubbleTimeOut: CHAT_MSG.meta,
+  bubbleTimeOut: {
+    ...CHAT_MSG.meta,
+    color: 'rgba(26,26,26,0.45)',
+  },
   readMark: {
     fontSize: 11,
     fontWeight: '600',
-    color: APP_THEME.color.mutedFaint,
+    color: 'rgba(26,26,26,0.35)',
     letterSpacing: -0.5,
   },
   readMarkRead: {
-    color: 'rgba(10, 132, 255, 0.85)',
+    color: GAME_THEME.color.ink,
   },
   imageMsgBody: {
     gap: 6,
@@ -110,6 +136,7 @@ export const companionMessageStyles = StyleSheet.create({
     marginTop: 8,
     ...CHAT_MSG.meta,
     fontStyle: 'normal',
+    color: 'rgba(26,26,26,0.55)',
   },
   typingRow: {
     flexDirection: 'row',
@@ -121,7 +148,7 @@ export const companionMessageStyles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: APP_THEME.color.mutedSoft,
+    backgroundColor: GAME_THEME.color.ink,
   },
 });
 

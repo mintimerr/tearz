@@ -23,4 +23,8 @@ services:
       - key: AUTH_FROM_EMAIL
         sync: false
       - key: TEACHER_MODEL
+        value: gpt-4.1
+      - key: TEACHER_FAST_MODEL
         value: gpt-4.1-mini
+      - key: COMPANION_MODEL
+        value: gpt-4.1

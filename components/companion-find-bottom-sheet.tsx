@@ -23,17 +23,16 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AuthPrimaryButton } from '@/components/auth/auth-primary-button';
 import { LongPressWordText } from '@/components/long-press-word-text';
-import { PremiumButton, PremiumChip, PremiumSurface } from '@/components/ui';
-import { APP_THEME } from '@/constants/theme';
+import { GameGoldButton } from '@/components/game/game-gold-button';
+import { GAME_THEME } from '@/constants/game-theme';
 import { useCompanionChats } from '@/contexts/companion-chats-context';
 import { useTranslation } from '@/contexts/locale-context';
 import { postCompanionProfile } from '@/services/companion-chat-ai';
 import type { CompanionChatApiLanguage, GeneratedCompanionProfile } from '@/types/companion-chat-api';
 import { fallbackCompanionProfile } from '@/utils/companion-ai-fallback-profile';
 
-const SHEET_MAX = Math.min(Dimensions.get('window').height * 0.9, 620);
+const SHEET_MAX = Math.min(Dimensions.get('window').height * 0.9, 640);
 const SLIDE_OFF = SHEET_MAX + 56;
 
 const OPEN_SPRING = { damping: 26, stiffness: 340, mass: 0.82, overshootClamping: false };
@@ -54,6 +53,31 @@ type Props = {
   onClose: () => void;
 };
 
+function GameLangChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.langChip,
+        active && styles.langChipOn,
+        pressed && styles.langChipPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}>
+      <Text style={[styles.langChipText, active && styles.langChipTextOn]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** Поиск собеседника — игровой sheet (cream / ink / gold). */
 export function CompanionFindBottomSheet({ visible, onClose }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -205,10 +229,23 @@ export function CompanionFindBottomSheet({ visible, onClose }: Props) {
             sheetStyle,
             {
               maxHeight: SHEET_MAX,
-              paddingBottom: Math.max(insets.bottom, 16),
+              paddingBottom: Math.max(insets.bottom, 14),
             },
           ]}>
-          <View style={styles.handle} />
+          <View style={styles.titleBar}>
+            <View style={styles.titleBarSide} />
+            <Text style={styles.titleBarText} numberOfLines={1}>
+              {t('companion.findTitle')}
+            </Text>
+            <Pressable
+              onPress={() => closeSheet()}
+              hitSlop={10}
+              style={({ pressed }) => [styles.closeX, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('companion.findClose')}>
+              <Text style={styles.closeXText}>×</Text>
+            </Pressable>
+          </View>
 
           {phase === 'form' ? (
             <Animated.View
@@ -220,25 +257,24 @@ export function CompanionFindBottomSheet({ visible, onClose }: Props) {
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.sheetScroll}>
-                <Text style={styles.sheetTitle}>{t('companion.findTitle')}</Text>
                 <Text style={styles.sheetSubtitle}>{t('companion.findLead')}</Text>
 
                 <Text style={styles.fieldLabel}>{t('companion.findLanguage')}</Text>
                 <View style={styles.chipRow}>
                   {LANGUAGES.map((opt) => (
-                    <PremiumChip
+                    <GameLangChip
                       key={opt}
                       label={langLabel(opt)}
                       active={lang === opt}
                       onPress={() => setLang(opt)}
-                      style={styles.chip}
                     />
                   ))}
                 </View>
 
-                <AuthPrimaryButton
+                <GameGoldButton
                   label={t('companion.findStart')}
                   onPress={() => void startSearch()}
+                  size="lg"
                   style={styles.startBtn}
                 />
               </ScrollView>
@@ -251,7 +287,7 @@ export function CompanionFindBottomSheet({ visible, onClose }: Props) {
               entering={FadeIn.duration(280)}
               exiting={FadeOut.duration(180)}
               style={[styles.phaseWrap, styles.searching]}>
-              <ActivityIndicator size="large" color={APP_THEME.color.text} />
+              <ActivityIndicator size="large" color={GAME_THEME.color.ink} />
               <Text style={styles.searchingTitle}>{t('companion.findSearching')}</Text>
               <Text style={styles.searchingHint}>{langLabel(lang)}</Text>
             </Animated.View>
@@ -284,25 +320,26 @@ export function CompanionFindBottomSheet({ visible, onClose }: Props) {
                   </Text>
                 ) : null}
 
-                <PremiumSurface variant="elevated" style={styles.bioCard}>
+                <View style={styles.bioCard}>
                   <LongPressWordText
                     text={generatedProfile.bio}
                     style={styles.resultBio}
                     animKey="sheet-found-bio"
                   />
-                </PremiumSurface>
+                </View>
 
-                <AuthPrimaryButton
+                <GameGoldButton
                   label={t('companion.findStartChat')}
                   onPress={openChat}
+                  size="lg"
                   style={styles.startBtn}
                 />
-                <PremiumButton
-                  label={t('companion.findClose')}
-                  variant="ghost"
+                <Pressable
                   onPress={() => closeSheet()}
-                  style={styles.closeBtn}
-                />
+                  style={({ pressed }) => [styles.ghostBtn, pressed && { opacity: 0.7 }]}
+                  accessibilityRole="button">
+                  <Text style={styles.ghostBtnText}>{t('companion.findClose')}</Text>
+                </Pressable>
               </ScrollView>
             </Animated.View>
           ) : null}
@@ -319,134 +356,215 @@ const styles = StyleSheet.create({
   },
   dim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(10, 8, 20, 0.72)',
   },
   sheet: {
-    borderTopLeftRadius: APP_THEME.radius.xxl,
-    borderTopRightRadius: APP_THEME.radius.xxl,
-    paddingHorizontal: APP_THEME.space.xl,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
     overflow: 'hidden',
-    backgroundColor: APP_THEME.color.elevated,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 3,
+    borderBottomWidth: 0,
+    borderColor: GAME_THEME.color.ink,
+  },
+  titleBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    paddingHorizontal: 10,
+    backgroundColor: GAME_THEME.color.gold,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.ink,
+  },
+  titleBarSide: {
+    width: 36,
+  },
+  titleBarText: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: GAME_THEME.color.ink,
+  },
+  closeX: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+  },
+  closeXText: {
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 24,
+    color: GAME_THEME.color.ink,
+    marginTop: -1,
   },
   phaseWrap: {
     flexGrow: 1,
   },
-  handle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: APP_THEME.color.borderStrong,
-    marginTop: 10,
-    marginBottom: 8,
-  },
   sheetScroll: {
-    paddingTop: APP_THEME.space.md,
-    paddingBottom: APP_THEME.space.sm,
-  },
-  sheetTitle: {
-    ...APP_THEME.type.titleLg,
-    color: APP_THEME.color.text,
-    letterSpacing: -0.5,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   sheetSubtitle: {
-    marginTop: APP_THEME.space.sm,
-    marginBottom: APP_THEME.space.xxl,
-    ...APP_THEME.type.caption,
-    lineHeight: 22,
-    color: APP_THEME.color.muted,
+    marginBottom: 20,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    color: 'rgba(26,26,26,0.55)',
   },
   fieldLabel: {
-    marginBottom: APP_THEME.space.md,
-    ...APP_THEME.type.label,
-    color: APP_THEME.color.mutedSoft,
+    marginBottom: 10,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: 'rgba(26,26,26,0.5)',
   },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: APP_THEME.space.sm,
-    marginBottom: APP_THEME.space.xxl,
+    gap: 8,
+    marginBottom: 22,
   },
-  chip: {
+  langChip: {
     flexGrow: 1,
     minWidth: 96,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.cream,
+    alignItems: 'center',
+  },
+  langChipOn: {
+    backgroundColor: GAME_THEME.color.gold,
+    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.goldLip,
+  },
+  langChipPressed: {
+    opacity: 0.85,
+    transform: [{ translateY: 1 }],
+  },
+  langChipText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: 'rgba(26,26,26,0.5)',
+  },
+  langChipTextOn: {
+    color: GAME_THEME.color.ink,
   },
   startBtn: {
-    marginTop: APP_THEME.space.sm,
-  },
-  closeBtn: {
-    marginTop: APP_THEME.space.sm,
     alignSelf: 'stretch',
   },
   searching: {
     paddingVertical: 48,
-    paddingHorizontal: APP_THEME.space.lg,
+    paddingHorizontal: 18,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 280,
   },
   searchingTitle: {
-    marginTop: APP_THEME.space.xl,
-    ...APP_THEME.type.title,
-    color: APP_THEME.color.text,
+    marginTop: 18,
+    fontSize: 18,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
   },
   searchingHint: {
-    marginTop: APP_THEME.space.sm,
-    ...APP_THEME.type.label,
-    color: APP_THEME.color.mutedSoft,
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.5)',
   },
   resultScroll: {
-    paddingTop: APP_THEME.space.md,
-    paddingBottom: APP_THEME.space.sm,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 12,
     alignItems: 'center',
   },
   foundLabel: {
-    ...APP_THEME.type.label,
-    color: APP_THEME.color.mutedSoft,
-    marginBottom: APP_THEME.space.lg,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: 'rgba(26,26,26,0.5)',
+    marginBottom: 14,
   },
   resultAvatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 88,
+    height: 88,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: APP_THEME.space.lg,
+    marginBottom: 14,
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
   },
   resultLetter: {
-    fontSize: 36,
-    fontWeight: '600',
+    fontSize: 34,
+    fontWeight: '900',
     color: '#FFFFFF',
   },
   resultName: {
-    ...APP_THEME.type.titleLg,
-    color: APP_THEME.color.text,
+    fontSize: 22,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
     textAlign: 'center',
   },
   resultMeta: {
-    marginTop: APP_THEME.space.xs,
-    ...APP_THEME.type.caption,
-    color: APP_THEME.color.muted,
+    marginTop: 4,
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
     textAlign: 'center',
   },
   profileHint: {
-    marginTop: APP_THEME.space.md,
-    paddingHorizontal: APP_THEME.space.lg,
-    ...APP_THEME.type.label,
+    marginTop: 12,
+    paddingHorizontal: 8,
+    fontSize: 12,
+    fontWeight: '700',
     lineHeight: 18,
     textAlign: 'center',
-    color: APP_THEME.color.danger,
+    color: GAME_THEME.color.danger,
   },
   bioCard: {
-    marginTop: APP_THEME.space.xl,
-    marginBottom: APP_THEME.space.lg,
+    marginTop: 16,
+    marginBottom: 16,
     alignSelf: 'stretch',
-    padding: APP_THEME.space.lg,
+    padding: 14,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderRadius: 6,
   },
   resultBio: {
-    ...APP_THEME.type.body,
-    lineHeight: 24,
-    color: APP_THEME.color.textSoft,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+    color: GAME_THEME.color.ink,
     textAlign: 'left',
+  },
+  ghostBtn: {
+    marginTop: 10,
+    alignSelf: 'stretch',
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.cream,
+  },
+  ghostBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
   },
 });

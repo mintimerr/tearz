@@ -191,7 +191,8 @@ function normalizeSegments(raw: unknown, checkText: string): TeacherExerciseSegm
       if (value) out.push({ type: 'text', value });
     } else if (type === 'blank') {
       const id = asString((item as { id?: unknown }).id, 16) || `b${out.filter((s) => s.type === 'blank').length + 1}`;
-      out.push({ type: 'blank', id });
+      const answer = asString((item as { answer?: unknown }).answer, 48) || undefined;
+      out.push(answer ? { type: 'blank', id, answer } : { type: 'blank', id });
     }
   }
   if (out.some((s) => s.type === 'blank')) return out;
@@ -209,7 +210,8 @@ function normalizeNumberedSentences(raw: unknown): TeacherNumberedSentence[] | u
     if (!text) continue;
     const id = asString((item as { id?: unknown }).id, 16) || `s${i + 1}`;
     const label = asString((item as { label?: unknown }).label, 8) || `${i + 1}.`;
-    out.push({ id, label, text });
+    const correctWord = asString((item as { correctWord?: unknown }).correctWord, 48) || undefined;
+    out.push({ id, label, text, ...(correctWord ? { correctWord } : {}) });
   }
   return out.length > 0 ? out.slice(0, 6) : undefined;
 }
@@ -256,7 +258,7 @@ function normalizeImageSlots(raw: unknown): TeacherImageSlot[] | undefined {
     if (!correctWord) continue;
     const id = asString((item as { id?: unknown }).id, 16) || `img${i + 1}`;
     const label = asString((item as { label?: unknown }).label, 80) || undefined;
-    const imageUrl = asString((item as { imageUrl?: unknown }).imageUrl, 400) || undefined;
+    const imageUrl = asString((item as { imageUrl?: unknown }).imageUrl, 1_800_000) || undefined;
     out.push({ id, correctWord, ...(label ? { label } : {}), ...(imageUrl ? { imageUrl } : {}) });
   }
   return out.length > 0 ? out.slice(0, 4) : undefined;
@@ -413,7 +415,8 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     maskedSentence: kind === 'fill_partial_word' ? maskedSentence : undefined,
     partialGaps: kind === 'fill_partial_word' ? partialGaps : undefined,
     passage: kind === 'identify_main_idea' ? passage : undefined,
-    correctChoice: kind === 'identify_main_idea' ? correctChoice : undefined,
+    correctChoice:
+      kind === 'identify_main_idea' || kind === 'multiple_choice' ? correctChoice : undefined,
     checkText: resolvedCheckText,
   });
 }
@@ -450,7 +453,23 @@ export function buildExerciseCheckPayload(
   item: TeacherExerciseItem,
   state: ExerciseAnswerState,
   voiceTranscript = '',
-): { exercise: string; answer: string } {
+): {
+  exercise: string;
+  answer: string;
+  item: TeacherExerciseItem;
+  learnerAnswers: {
+    blanks: Record<string, string>;
+    selectedChoice: string | null;
+    freeText: string;
+    formChoices: Record<string, string>;
+    imageAssignments: Record<string, string>;
+    numberedAssignments: Record<string, string>;
+    matchPairs: Record<string, string>;
+    sentenceOrder: string[];
+    readSelectChoice: 'real' | 'fake' | null;
+    partialGapInputs: Record<string, string>;
+  };
+} {
   const {
     blanks,
     selectedChoice,
@@ -464,39 +483,50 @@ export function buildExerciseCheckPayload(
     partialGapInputs,
   } = state;
 
+  const learnerAnswers = {
+    blanks,
+    selectedChoice,
+    freeText,
+    formChoices,
+    imageAssignments,
+    numberedAssignments,
+    matchPairs,
+    sentenceOrder,
+    readSelectChoice,
+    partialGapInputs,
+  };
+
+  const wrap = (exercise: string, answer: string) => ({
+    exercise,
+    answer,
+    item,
+    learnerAnswers,
+  });
+
   if (item.kind === 'read_and_select' && item.selectWord) {
-    return {
-      exercise: `Настоящее ли слово «${item.selectWord}»?`,
-      answer: readSelectChoice === 'real' ? 'настоящее' : readSelectChoice === 'fake' ? 'выдуманное' : '',
-    };
+    return wrap(
+      `Настоящее ли слово «${item.selectWord}»?`,
+      readSelectChoice === 'real' ? 'настоящее' : readSelectChoice === 'fake' ? 'выдуманное' : '',
+    );
   }
 
   if (item.kind === 'fill_partial_word' && item.maskedSentence) {
     const gapAnswers =
       item.partialGaps?.map((g) => partialGapInputs[g.id] ?? '').join(', ') ??
       Object.values(partialGapInputs).join(', ');
-    return {
-      exercise: `${item.maskedSentence}\nПолное предложение: ${item.checkText}`.trim(),
-      answer: gapAnswers,
-    };
+    return wrap(`${item.maskedSentence}\nПолное предложение: ${item.checkText}`.trim(), gapAnswers);
   }
 
   if (item.kind === 'identify_main_idea' && item.passage) {
-    return {
-      exercise: `${item.passage}\n${item.checkText}`.trim(),
-      answer: (selectedChoice ?? '').trim(),
-    };
+    return wrap(`${item.passage}\n${item.checkText}`.trim(), (selectedChoice ?? '').trim());
   }
 
   if (item.kind === 'voice_recording') {
-    return {
-      exercise: (item.voicePrompt || item.checkText).trim(),
-      answer: voiceTranscript.trim(),
-    };
+    return wrap((item.voicePrompt || item.checkText).trim(), voiceTranscript.trim());
   }
 
   if (item.kind === 'write_sentences' || item.kind === 'free_text') {
-    return { exercise: item.checkText.trim(), answer: freeText.trim() };
+    return wrap(item.checkText.trim(), freeText.trim());
   }
 
   if (item.kind === 'multiple_choice') {
@@ -507,50 +537,47 @@ export function buildExerciseCheckPayload(
         .map((s) => s.value)
         .join('') ||
       item.checkText;
-    return { exercise: prompt.trim(), answer: (selectedChoice ?? '').trim() };
+    return wrap(prompt.trim(), (selectedChoice ?? '').trim());
   }
 
   if (item.kind === 'choose_word_form' && item.formSlots?.length) {
     const lines = item.formSlots.map((s) => s.prompt).join('\n');
     const answer = item.formSlots.map((s) => `${s.id}: ${formChoices[s.id] ?? ''}`).join('; ');
-    return { exercise: `${item.checkText}\n${lines}`.trim(), answer };
+    return wrap(`${item.checkText}\n${lines}`.trim(), answer);
   }
   if (item.kind === 'choose_word_form') {
-    return { exercise: item.checkText.trim(), answer: freeText.trim() };
+    return wrap(item.checkText.trim(), freeText.trim());
   }
 
   if (item.kind === 'word_to_image' && item.imageSlots?.length) {
     const answer = item.imageSlots.map((s) => `${s.id}: ${imageAssignments[s.id] ?? ''}`).join('; ');
-    return { exercise: item.checkText.trim(), answer };
+    return wrap(item.checkText.trim(), answer);
   }
   if (item.kind === 'word_to_image') {
-    return { exercise: item.checkText.trim(), answer: freeText.trim() };
+    return wrap(item.checkText.trim(), freeText.trim());
   }
 
   if (item.kind === 'match_pairs' && item.pairs?.length) {
     const answer = item.pairs.map((p) => `${p.left} → ${matchPairs[p.id] ?? ''}`).join('\n');
-    return { exercise: item.checkText.trim(), answer };
+    return wrap(item.checkText.trim(), answer);
   }
   if (item.kind === 'match_pairs') {
-    return { exercise: item.checkText.trim(), answer: freeText.trim() };
+    return wrap(item.checkText.trim(), freeText.trim());
   }
 
   if (item.kind === 'sentence_order') {
     const target = item.shuffledWords?.length ?? item.correctOrder?.length ?? 0;
     if (target > 0) {
-      return {
-        exercise: item.checkText.trim(),
-        answer: sentenceOrder.join(' '),
-      };
+      return wrap(item.checkText.trim(), sentenceOrder.join(' '));
     }
-    return { exercise: item.checkText.trim(), answer: freeText.trim() };
+    return wrap(item.checkText.trim(), freeText.trim());
   }
 
   if (item.numberedSentences?.length) {
     const answer = item.numberedSentences
       .map((s) => `${s.label} ${fillBlankInText(s.text, numberedAssignments[s.id] ?? '')}`)
       .join('; ');
-    return { exercise: item.checkText.trim(), answer };
+    return wrap(item.checkText.trim(), answer);
   }
 
   const sentence = segmentsToPromptText(item.segments);
@@ -560,14 +587,11 @@ export function buildExerciseCheckPayload(
     .filter(Boolean);
 
   if (blankAnswers.length === 0 && freeText.trim()) {
-    return { exercise: item.checkText.trim(), answer: freeText.trim() };
+    return wrap(item.checkText.trim(), freeText.trim());
   }
 
   const exerciseParts = [item.instruction, sentence || item.checkText].filter(Boolean);
-  return {
-    exercise: exerciseParts.join('\n').trim(),
-    answer: blankAnswers.join(', '),
-  };
+  return wrap(exerciseParts.join('\n').trim(), blankAnswers.join(', '));
 }
 
 export function exerciseHasCompleteAnswer(item: TeacherExerciseItem, state: ExerciseAnswerState): boolean {

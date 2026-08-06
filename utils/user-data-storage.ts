@@ -17,6 +17,7 @@ export const USER_SUFFIX = {
   profileLangs: 'profile.activity_langs',
   vocabulary: 'vocabulary.entries.v1',
   vocabularyFolders: 'vocabulary.folders.v1',
+  lexiconHarvest: 'lexicon.harvest.v1',
   engagement: 'engagement.v1',
 } as const;
 

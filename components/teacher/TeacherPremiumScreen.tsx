@@ -30,10 +30,11 @@ import {
   type TeacherComposerAttachment,
   type TeacherHomeComposerRef,
 } from '@/components/teacher/tearz-board-composer';
-import { TeacherBoardChat } from '@/components/teacher/teacher-board-chat';
+import { GameWindowShell } from '@/components/game/game-window-shell';
+import { TeacherLessonWindow } from '@/components/teacher/teacher-lesson-window';
 import { TeacherLessonSwipeItem } from '@/components/teacher/teacher-lesson-swipe-item';
 import { TearzThinking } from '@/components/teacher/tearz-thinking';
-import { PremiumScreenShell } from '@/components/ui';
+import { GAME_THEME } from '@/constants/game-theme';
 import { translate, type AppLocale } from '@/constants/i18n/translations';
 import { APP_THEME } from '@/constants/theme';
 import { useTranslation } from '@/contexts/locale-context';
@@ -539,15 +540,15 @@ export function TeacherPremiumScreen() {
 
   if (!ready) {
     return (
-      <PremiumScreenShell style={styles.root}>
+      <View style={[styles.rootGame, { paddingTop: insets.top }]}>
         <View style={styles.rootLoading} />
-      </PremiumScreenShell>
+      </View>
     );
   }
 
   return (
-    <PremiumScreenShell topOffset={8} horizontalPadding={0} style={styles.rootLight}>
-      <StatusBar style="dark" />
+    <GameWindowShell title="Учитель" contentPadding={0} backdrop="void">
+      <StatusBar style="light" />
       <View style={styles.screenBody}>
       <Animated.View
         style={[
@@ -562,7 +563,7 @@ export function TeacherPremiumScreen() {
           accessibilityRole="button"
           accessibilityLabel={t('teacher.chatsTitle')}
           style={({ pressed }) => [styles.chatsBtnLight, pressed && styles.chatsBtnPressed]}>
-          <Ionicons name="chatbubbles-outline" size={20} color="#333333" />
+          <Ionicons name="chatbubbles-outline" size={20} color={GAME_THEME.color.ink} />
           {lessons.length > 0 ? (
             <View style={styles.chatsCount}>
               <Text style={styles.chatsCountText}>{lessons.length > 99 ? '99+' : lessons.length}</Text>
@@ -591,9 +592,9 @@ export function TeacherPremiumScreen() {
       </KeyboardAvoidingView>
 
       {boardChatOpen ? (
-        <Modal visible animationType="none" presentationStyle="fullScreen" onRequestClose={closeBoardChat}>
+        <Modal visible animationType="fade" presentationStyle="fullScreen" onRequestClose={closeBoardChat}>
           <Animated.View style={[styles.boardChatLayer, { opacity: chatFade }]}>
-            <TeacherBoardChat seedQuestion={boardSeed} onClose={closeBoardChat} />
+            <TeacherLessonWindow seedQuestion={boardSeed} onClose={closeBoardChat} />
           </Animated.View>
         </Modal>
       ) : null}
@@ -713,14 +714,18 @@ export function TeacherPremiumScreen() {
         </KeyboardAvoidingView>
       </Modal>
       </View>
-    </PremiumScreenShell>
+    </GameWindowShell>
   );
 }
 
 const styles = StyleSheet.create({
+  rootGame: {
+    flex: 1,
+    backgroundColor: GAME_THEME.color.void,
+  },
   rootLight: {
     flex: 1,
-    backgroundColor: APP_THEME.color.bgSoft,
+    backgroundColor: GAME_THEME.color.cream,
   },
   screenBody: {
     flex: 1,
@@ -728,7 +733,7 @@ const styles = StyleSheet.create({
   },
   boardChatLayer: {
     flex: 1,
-    backgroundColor: '#FAFAF8',
+    backgroundColor: GAME_THEME.color.void,
   },
   root: {
     flex: 1,

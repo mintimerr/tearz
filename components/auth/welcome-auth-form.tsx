@@ -14,8 +14,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AuthField } from '@/components/auth/auth-field';
-import { AuthPrimaryButton } from '@/components/auth/auth-primary-button';
-import { APP_THEME } from '@/constants/theme';
+import { GameGoldButton } from '@/components/game/game-gold-button';
+import { GAME_THEME } from '@/constants/game-theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -91,9 +91,9 @@ export function WelcomeAuthForm({
         contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-        <View style={styles.inner}>
+        <View style={styles.panel}>
           <Pressable onPress={onBack} style={styles.backFab} hitSlop={8} accessibilityRole="button">
-            <Ionicons name="chevron-back" size={20} color={APP_THEME.color.textSoft} />
+            <Ionicons name="chevron-back" size={20} color={GAME_THEME.color.ink} />
           </Pressable>
 
           <Text style={styles.eyebrow}>tearz</Text>
@@ -137,10 +137,11 @@ export function WelcomeAuthForm({
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <AuthPrimaryButton
+          <GameGoldButton
             label={ctaLabel}
             onPress={onSubmit}
             disabled={!canSubmit || loading}
+            size="lg"
             style={styles.cta}
           />
 
@@ -160,39 +161,46 @@ const styles = StyleSheet.create({
   flex: { flex: 1, zIndex: 1 },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: 26,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
   },
-  inner: {
+  panel: {
     maxWidth: 420,
     width: '100%',
     alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thick,
+    borderColor: GAME_THEME.color.ink,
+    borderRadius: 6,
   },
   backFab: {
     width: 44,
     height: 44,
-    borderRadius: APP_THEME.radius.pill,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: APP_THEME.color.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
-    marginBottom: 28,
+    backgroundColor: 'rgba(26,26,26,0.06)',
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
+    marginBottom: 20,
   },
   eyebrow: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: 0.42,
     textTransform: 'lowercase',
-    color: APP_THEME.color.mutedSoft,
+    color: 'rgba(26,26,26,0.45)',
     marginBottom: 10,
   },
   title: {
     fontSize: 26,
     lineHeight: 32,
-    fontWeight: '700',
+    fontWeight: '900',
     letterSpacing: -0.64,
-    color: APP_THEME.color.text,
-    marginBottom: 32,
+    color: GAME_THEME.color.ink,
+    marginBottom: 28,
   },
   fields: {
     gap: 4,
@@ -201,24 +209,24 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 4,
     fontSize: 14,
-    fontWeight: '500',
-    color: APP_THEME.color.danger,
+    fontWeight: '700',
+    color: GAME_THEME.color.danger,
   },
   cta: {
-    marginTop: 28,
+    marginTop: 24,
   },
   switch: {
     alignSelf: 'center',
-    marginTop: 22,
+    marginTop: 20,
     paddingVertical: 8,
   },
   switchText: {
     fontSize: 15,
-    color: APP_THEME.color.muted,
-    letterSpacing: -0.15,
+    color: 'rgba(26,26,26,0.55)',
+    fontWeight: '600',
   },
   switchAction: {
-    color: APP_THEME.color.textSoft,
-    fontWeight: '600',
+    color: GAME_THEME.color.ink,
+    fontWeight: '800',
   },
 });

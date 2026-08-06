@@ -6,7 +6,10 @@
 
 - `OPENAI_API_KEY` — ключ OpenAI (никогда не кладите его в Expo / mobile).
 - `PORT` — порт HTTP (по умолчанию `8787`).
-- `TEACHER_MODEL` — модель для преподавателя (по умолчанию `gpt-4.1-mini`).
+- `TEACHER_MODEL` — уроки / drills / проверка (по умолчанию `gpt-4.1`).
+- `TEACHER_FAST_MODEL` — intent + push-copy (по умолчанию `gpt-4.1-mini`).
+- `COMPANION_MODEL` — чат собеседника (по умолчанию `gpt-4.1`).
+- `COMPANION_PROFILE_MODEL` — генерация persona (по умолчанию = `COMPANION_MODEL`).
 - `RESEND_API_KEY` — **нужен для писем с кодом** на почту ([Resend](https://resend.com) → API Keys). Без ключа код только в логе сервера (режим разработки).
 - `AUTH_FROM_EMAIL` — отправитель. Для старта: `Tearz <onboarding@resend.dev>` (бесплатно). **Важно:** без своего домена Resend шлёт письма **только на email, с которым вы зарегистрировались в Resend** — для регистрации в приложении используйте тот же адрес или верифицируйте домен в Resend.
 

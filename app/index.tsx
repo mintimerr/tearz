@@ -1,5 +1,6 @@
 import { Redirect } from 'expo-router';
 
+import { DEMO_SKIP_AUTH } from '@/constants/demo';
 import { useAuth } from '@/contexts/auth-context';
 
 export default function Index() {
@@ -9,9 +10,9 @@ export default function Index() {
     return null;
   }
 
-  if (!isAuthenticated) {
-    return <Redirect href="/(auth)/welcome" />;
+  if (DEMO_SKIP_AUTH || isAuthenticated) {
+    return <Redirect href="/hub" />;
   }
 
-  return <Redirect href="/(tabs)/teacher" />;
+  return <Redirect href="/(auth)/welcome" />;
 }

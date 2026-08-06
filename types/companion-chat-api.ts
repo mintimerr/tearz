@@ -73,7 +73,7 @@ export type TeacherExerciseSuccessBody = {
 
 export type TeacherExerciseSegment =
   | { type: 'text'; value: string }
-  | { type: 'blank'; id: string };
+  | { type: 'blank'; id: string; answer?: string };
 
 export type TeacherExerciseKind =
   | 'drag_word_to_blank'
@@ -100,6 +100,8 @@ export type TeacherNumberedSentence = {
   id: string;
   label: string;
   text: string;
+  /** Правильное слово для пропуска — только для проверки */
+  correctWord?: string;
 };
 
 export type TeacherFormSlot = {
@@ -183,6 +185,20 @@ export type TeacherExerciseSetSuccessBody = {
   nextTopic?: TeacherNextTopicRecommendation;
 };
 
+/** Structured learner answers for deterministic server grading */
+export type TeacherExerciseLearnerAnswers = {
+  blanks?: Record<string, string>;
+  selectedChoice?: string | null;
+  freeText?: string;
+  formChoices?: Record<string, string>;
+  imageAssignments?: Record<string, string>;
+  numberedAssignments?: Record<string, string>;
+  matchPairs?: Record<string, string>;
+  sentenceOrder?: string[];
+  readSelectChoice?: 'real' | 'fake' | null;
+  partialGapInputs?: Record<string, string>;
+};
+
 /** POST /api/teacher-exercise-check — проверка ответа ученика */
 export type TeacherExerciseCheckRequestBody = {
   exercise: string;
@@ -190,6 +206,9 @@ export type TeacherExerciseCheckRequestBody = {
   conversationHistory: CompanionChatHistoryItem[];
   language?: CompanionChatApiLanguage;
   lessonTopic?: string;
+  /** Full item with answer keys — enables deterministic grading when keys exist */
+  item?: TeacherExerciseItem;
+  learnerAnswers?: TeacherExerciseLearnerAnswers;
 };
 
 export type TeacherExerciseCheckSuccessBody = {

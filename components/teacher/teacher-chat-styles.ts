@@ -2,16 +2,17 @@ import { Platform, StyleSheet } from 'react-native';
 
 import { teacherMessageStyles } from '@/components/chat/chat-message-styles';
 import { CHAT_MSG } from '@/constants/chat-message';
+import { GAME_THEME } from '@/constants/game-theme';
 import { APP_THEME } from '@/constants/theme';
 import { TEACHER_MUTED, TEACHER_MUTED_SOFT, TEACHER_TITLE } from '@/components/teacher/teacher-tokens';
 
 /** Subtle accent for teacher-specific positive feedback */
-export const TEACHER_LESSON_ACCENT = APP_THEME.color.success;
+export const TEACHER_LESSON_ACCENT = GAME_THEME.color.ok;
 
 export const teacherChatStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: APP_THEME.color.bg,
+    backgroundColor: GAME_THEME.color.cream,
   },
   content: {
     flex: 1,
@@ -27,39 +28,41 @@ export const teacherChatStyles = StyleSheet.create({
     gap: 11,
     paddingVertical: 11,
     paddingHorizontal: 13,
-    borderRadius: APP_THEME.radius.lg,
-    backgroundColor: APP_THEME.color.elevated,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
+    borderRadius: GAME_THEME.radius.panel,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
   },
   lessonBannerIcon: {
     width: 34,
     height: 34,
-    borderRadius: 11,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: APP_THEME.color.brandSoft,
+    backgroundColor: GAME_THEME.color.sky,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   lessonBannerCol: {
     flex: 1,
     minWidth: 0,
   },
   lessonBannerEyebrow: {
-    ...APP_THEME.type.micro,
-    fontWeight: '700',
+    fontSize: GAME_THEME.type.micro,
+    fontWeight: '800',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    color: APP_THEME.color.brandBright,
+    color: 'rgba(26,26,26,0.45)',
     marginBottom: 2,
   },
   lessonContextIcon: {
     display: 'none',
   },
   lessonContextText: {
-    ...APP_THEME.type.label,
-    fontWeight: '500',
+    fontSize: GAME_THEME.type.body,
+    fontWeight: '700',
     lineHeight: 18,
-    color: APP_THEME.color.textSoft,
+    color: GAME_THEME.color.ink,
   },
   threadHost: {
     flex: 1,
@@ -88,13 +91,14 @@ export const teacherChatStyles = StyleSheet.create({
   teacherAvatar: {
     width: 34,
     height: 34,
-    borderRadius: 12,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     marginTop: 2,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.borderStrong,
+    backgroundColor: GAME_THEME.color.ink,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.sky,
   },
   teacherColumn: {
     flex: 1,
@@ -104,30 +108,22 @@ export const teacherChatStyles = StyleSheet.create({
     alignSelf: 'stretch',
     paddingVertical: 14,
     paddingHorizontal: 15,
-    borderRadius: APP_THEME.radius.xl,
-    backgroundColor: APP_THEME.color.elevated,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000000',
-        shadowOpacity: 0.32,
-        shadowRadius: 18,
-        shadowOffset: { width: 0, height: 10 },
-      },
-      android: { elevation: 6 },
-      default: {},
-    }),
+    borderRadius: GAME_THEME.radius.panel,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.ink,
   },
   teacherCardTopEdge: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 1,
-    borderTopLeftRadius: APP_THEME.radius.xl,
-    borderTopRightRadius: APP_THEME.radius.xl,
-    backgroundColor: APP_THEME.color.accentSoft,
+    height: 3,
+    borderTopLeftRadius: GAME_THEME.radius.panel,
+    borderTopRightRadius: GAME_THEME.radius.panel,
+    backgroundColor: GAME_THEME.color.sky,
   },
   teacherLabel: teacherMessageStyles.teacherLabel,
   teacherText: {

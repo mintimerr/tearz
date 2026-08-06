@@ -4,16 +4,21 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
-import { AuthField, authScreenStyles as styles } from '@/components/auth/auth-field';
+import { AuthField } from '@/components/auth/auth-field';
+import { AuthScreenBackground } from '@/components/auth/auth-screen-background';
 import { VerifyCodeDevBanner } from '@/components/auth/verify-code-dev-banner';
-import { PremiumScreenShell } from '@/components/ui/premium-screen-shell';
+import { GameGoldButton } from '@/components/game/game-gold-button';
+import { DEMO_SKIP_AUTH } from '@/constants/demo';
+import { GAME_THEME } from '@/constants/game-theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/locale-context';
 
@@ -30,6 +35,14 @@ function trError(t: (k: string, params?: Record<string, string | number>) => str
 }
 
 export default function VerifyCodeScreen() {
+  if (DEMO_SKIP_AUTH) {
+    return <Redirect href="/hub" />;
+  }
+
+  return <VerifyCodeScreenInner />;
+}
+
+function VerifyCodeScreenInner() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { completeSignUpWithCode, resendSignUpCode } = useAuth();
@@ -81,7 +94,7 @@ export default function VerifyCodeScreen() {
         return;
       }
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/(tabs)/teacher');
+      router.replace('/hub');
     } catch {
       setError(t('common.errorGeneric'));
     } finally {
@@ -115,89 +128,188 @@ export default function VerifyCodeScreen() {
   }
 
   return (
-    <PremiumScreenShell horizontalPadding={20} topOffset={4}>
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <AuthScreenBackground />
+
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}>
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 16 }]}
+          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           automaticallyAdjustKeyboardInsets>
-          <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-            <Text style={styles.backBtnText}>← {t('auth.back')}</Text>
-          </Pressable>
+          <View style={styles.panel}>
+            <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
+              <Text style={styles.backBtnText}>← {t('auth.back')}</Text>
+            </Pressable>
 
-          <View style={styles.hero}>
-            <Text style={styles.wordmark}>tearz</Text>
-            <Text style={styles.title}>{t('auth.codeTitle')}</Text>
-            <Text style={styles.hint}>
-              {t('auth.codeHint')}{' '}
-              <Text style={styles.hintEmail}>{maskedEmail}</Text>
-            </Text>
-            {!isDevDelivery ? (
-              <>
-                <Text style={styles.emailSent}>{t('auth.codeEmailSent')}</Text>
-                <Text style={styles.spamHint}>{t('auth.codeEmailSpam')}</Text>
-              </>
+            <View style={styles.hero}>
+              <Text style={styles.wordmark}>tearz</Text>
+              <Text style={styles.title}>{t('auth.codeTitle')}</Text>
+              <Text style={styles.hint}>
+                {t('auth.codeHint')}{' '}
+                <Text style={styles.hintEmail}>{maskedEmail}</Text>
+              </Text>
+              {!isDevDelivery ? (
+                <>
+                  <Text style={styles.emailSent}>{t('auth.codeEmailSent')}</Text>
+                  <Text style={styles.spamHint}>{t('auth.codeEmailSpam')}</Text>
+                </>
+              ) : null}
+            </View>
+
+            {devCode && __DEV__ ? (
+              <VerifyCodeDevBanner
+                code={devCode}
+                title={t('auth.codeDevTitle')}
+                hint={t('auth.codeDevHint')}
+                serverHint={t('auth.codeDevServer')}
+                tapHint={t('auth.codeDevTap')}
+                onUseCode={() => setCode(devCode)}
+              />
             ) : null}
-          </View>
 
-          {devCode && __DEV__ ? (
-            <VerifyCodeDevBanner
-              code={devCode}
-              title={t('auth.codeDevTitle')}
-              hint={t('auth.codeDevHint')}
-              serverHint={t('auth.codeDevServer')}
-              tapHint={t('auth.codeDevTap')}
-              onUseCode={() => setCode(devCode)}
+            <AuthField
+              label={t('auth.codeLabel')}
+              placeholder={t('auth.codePlaceholder')}
+              value={code}
+              onChangeText={(txt) => {
+                setCode(txt.replace(/\D/g, '').slice(0, 6));
+                setError(null);
+              }}
+              keyboardType="number-pad"
+              textContentType="oneTimeCode"
+              autoComplete={Platform.OS === 'ios' ? 'one-time-code' : 'sms-otp'}
+              maxLength={6}
+              autoFocus
             />
-          ) : null}
 
-          <AuthField
-            label={t('auth.codeLabel')}
-            placeholder={t('auth.codePlaceholder')}
-            value={code}
-            onChangeText={(txt) => {
-              setCode(txt.replace(/\D/g, '').slice(0, 6));
-              setError(null);
-            }}
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            autoComplete={Platform.OS === 'ios' ? 'one-time-code' : 'sms-otp'}
-            maxLength={6}
-            autoFocus
-          />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+            <GameGoldButton
+              label={loading ? t('common.loading') : t('auth.verifyCta')}
+              onPress={() => void verify()}
+              disabled={!canVerify || loading}
+              size="lg"
+              style={styles.cta}
+            />
 
-          <Pressable
-            onPress={() => void verify()}
-            disabled={!canVerify || loading}
-            style={({ pressed }) => [
-              styles.cta,
-              !canVerify && styles.ctaDisabled,
-              pressed && canVerify && !loading && styles.ctaPressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canVerify || loading }}>
-            <Text style={[styles.ctaLabel, !canVerify && styles.ctaLabelDisabled]}>
-              {loading ? t('common.loading') : t('auth.verifyCta')}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => void resend()}
-            disabled={resendIn > 0 || loading}
-            style={styles.altAction}
-            hitSlop={10}>
-            <Text style={[styles.altActionText, resendIn > 0 && styles.altActionMuted]}>
-              {resendIn > 0 ? t('auth.resendIn', { sec: resendIn }) : t('auth.resendCode')}
-            </Text>
-          </Pressable>
+            <Pressable
+              onPress={() => void resend()}
+              disabled={resendIn > 0 || loading}
+              style={styles.altAction}
+              hitSlop={10}>
+              <Text style={[styles.altActionText, resendIn > 0 && styles.altActionMuted]}>
+                {resendIn > 0 ? t('auth.resendIn', { sec: resendIn }) : t('auth.resendCode')}
+              </Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </PremiumScreenShell>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: GAME_THEME.color.void,
+  },
+  flex: { flex: 1, zIndex: 1 },
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+  },
+  panel: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thick,
+    borderColor: GAME_THEME.color.ink,
+    borderRadius: 6,
+  },
+  backBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+    paddingVertical: 4,
+    paddingRight: 12,
+  },
+  backBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.55)',
+  },
+  hero: {
+    marginBottom: 18,
+  },
+  wordmark: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    color: 'rgba(26,26,26,0.45)',
+    textTransform: 'lowercase',
+    marginBottom: 8,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+    lineHeight: 30,
+    color: GAME_THEME.color.ink,
+    marginBottom: 8,
+  },
+  hint: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
+  },
+  hintEmail: {
+    color: GAME_THEME.color.ink,
+    fontWeight: '800',
+  },
+  emailSent: {
+    marginTop: 10,
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 22,
+    color: GAME_THEME.color.ink,
+  },
+  spamHint: {
+    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.45)',
+  },
+  error: {
+    marginTop: -4,
+    marginBottom: 10,
+    fontSize: 14,
+    fontWeight: '700',
+    color: GAME_THEME.color.danger,
+  },
+  cta: {
+    marginTop: 8,
+  },
+  altAction: {
+    alignSelf: 'center',
+    paddingVertical: 4,
+    marginTop: 14,
+  },
+  altActionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
+  },
+  altActionMuted: {
+    color: 'rgba(26,26,26,0.35)',
+  },
+});

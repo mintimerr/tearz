@@ -1,13 +1,13 @@
 import { StyleSheet, View } from 'react-native';
 
-import { AmbientOrbsBackground } from '@/components/ambient-orbs-background';
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 
-/** Тёмный фон auth — без SVG, совпадает с остальным приложением */
+/** Title-screen backdrop — sky over void, no orbs. */
 export function AuthScreenBackground() {
   return (
     <View style={styles.base} pointerEvents="none">
-      <AmbientOrbsBackground intensity="calm" />
+      <View style={styles.sky} />
+      <View style={styles.void} />
     </View>
   );
 }
@@ -15,6 +15,13 @@ export function AuthScreenBackground() {
 const styles = StyleSheet.create({
   base: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: APP_THEME.color.bg,
+  },
+  sky: {
+    flex: 1,
+    backgroundColor: GAME_THEME.color.sky,
+  },
+  void: {
+    flex: 1.15,
+    backgroundColor: GAME_THEME.color.void,
   },
 });

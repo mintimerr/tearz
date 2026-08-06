@@ -2,16 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 import { FULL_WORKOUT_TASK_COUNT } from '@/constants/teacher-drill';
-
-const PLUS = {
-  core: '#0A84FF',
-  bright: '#64D2FF',
-  muted: 'rgba(100, 210, 255, 0.95)',
-  soft: 'rgba(10, 132, 255, 0.12)',
-  border: 'rgba(100, 210, 255, 0.28)',
-} as const;
 
 type Props = {
   disabled?: boolean;
@@ -50,8 +42,8 @@ export function TeacherFullWorkoutCta({ disabled, onPress }: Props) {
       accessibilityLabel={`Plus тренировка, ${FULL_WORKOUT_TASK_COUNT} заданий, доступно с подпиской`}>
       <Animated.View
         style={[styles.shell, disabled && styles.shellDisabled, { transform: [{ scale }] }]}>
-        <View style={styles.iconWrap}>
-          <Ionicons name="diamond" size={10} color={PLUS.core} />
+        <View style={styles.seal}>
+          <Ionicons name="diamond" size={10} color={GAME_THEME.color.ink} />
         </View>
         <View style={styles.copy}>
           <Text style={styles.label}>Plus</Text>
@@ -69,37 +61,39 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 7,
     paddingHorizontal: 11,
-    borderRadius: APP_THEME.radius.pill,
-    backgroundColor: APP_THEME.color.bgSoft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: PLUS.border,
+    borderRadius: GAME_THEME.radius.button,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.goldLip,
   },
   shellDisabled: {
     opacity: 0.42,
   },
-  iconWrap: {
+  seal: {
     width: 22,
     height: 22,
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PLUS.soft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: PLUS.border,
+    backgroundColor: GAME_THEME.color.paperWarm,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   copy: {
     gap: 1,
   },
   label: {
     fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.45,
-    color: PLUS.muted,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    color: GAME_THEME.color.ink,
   },
   count: {
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: '600',
     letterSpacing: 0.1,
-    color: APP_THEME.color.mutedSoft,
+    color: 'rgba(26,26,26,0.55)',
   },
 });

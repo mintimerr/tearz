@@ -1,5 +1,6 @@
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
+import { GAME_THEME } from '@/constants/game-theme';
 import { APP_THEME } from '@/constants/theme';
 
 type Props = TextInputProps & {
@@ -14,7 +15,7 @@ export function AuthField({ label, style, placeholderTextColor, variant = 'fille
         <Text style={styles.fieldLabel}>{label}</Text>
         <TextInput
           {...props}
-          placeholderTextColor={placeholderTextColor ?? APP_THEME.color.mutedFaint}
+          placeholderTextColor={placeholderTextColor ?? 'rgba(26,26,26,0.35)'}
           style={[styles.fieldInput, style]}
         />
         <View style={styles.fieldLine} />
@@ -28,7 +29,7 @@ export function AuthField({ label, style, placeholderTextColor, variant = 'fille
       <View style={styles.fieldShell}>
         <TextInput
           {...props}
-          placeholderTextColor={placeholderTextColor ?? APP_THEME.color.mutedFaint}
+          placeholderTextColor={placeholderTextColor ?? 'rgba(26,26,26,0.35)'}
           style={[styles.fieldInputFilled, style]}
         />
       </View>
@@ -241,25 +242,25 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: 0.35,
     textTransform: 'uppercase',
-    color: APP_THEME.color.mutedFaint,
+    color: 'rgba(26,26,26,0.45)',
     marginBottom: 6,
   },
   fieldInput: {
     paddingVertical: 8,
     paddingHorizontal: 0,
     fontSize: 18,
-    fontWeight: '400',
+    fontWeight: '600',
     letterSpacing: -0.32,
-    color: APP_THEME.color.text,
+    color: GAME_THEME.color.ink,
   },
   fieldShell: {
-    borderRadius: APP_THEME.radius.sm,
-    backgroundColor: APP_THEME.color.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
+    borderRadius: GAME_THEME.radius.panel,
+    backgroundColor: GAME_THEME.color.paperWarm,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
     paddingHorizontal: 14,
     minHeight: 48,
     justifyContent: 'center',
@@ -267,12 +268,12 @@ const styles = StyleSheet.create({
   fieldInputFilled: {
     paddingVertical: 12,
     fontSize: 17,
-    fontWeight: '400',
+    fontWeight: '600',
     letterSpacing: -0.28,
-    color: APP_THEME.color.text,
+    color: GAME_THEME.color.ink,
   },
   fieldLine: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: APP_THEME.color.borderStrong,
+    height: 2,
+    backgroundColor: GAME_THEME.color.ink,
   },
 });

@@ -44,6 +44,9 @@ server/.env
 
 scripts/.api-url
 
+# local scratch / export junk
+tmp-*.png
+
 # generated native folders
 /ios
 /android

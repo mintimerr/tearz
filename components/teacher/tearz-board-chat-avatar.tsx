@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 import {
   TEARZ_BOARD_CHAT_AVATAR,
   TEARZ_BOARD_CHAT_AVATAR_OFFSET_Y,
@@ -13,7 +13,7 @@ type Props = {
   bordered?: boolean;
 };
 
-/** Tearz — torso-up, руки сложены, улыбка, в камеру. */
+/** Tearz в чате — Mario pixel sprite. */
 export function TearzBoardChatAvatar({ size = 44, bordered = true }: Props) {
   const side = size * TEARZ_BOARD_CHAT_AVATAR_SCALE;
 
@@ -24,13 +24,13 @@ export function TearzBoardChatAvatar({ size = 44, bordered = true }: Props) {
         {
           width: size,
           height: size,
-          borderRadius: size / 2,
-          borderWidth: bordered ? StyleSheet.hairlineWidth : 0,
+          borderRadius: bordered ? 6 : 4,
+          borderWidth: bordered ? 2 : 0,
         },
       ]}>
       <Image
         source={TEARZ_BOARD_CHAT_AVATAR}
-        contentFit="cover"
+        contentFit="contain"
         cachePolicy="memory-disk"
         style={{
           width: side,
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: APP_THEME.color.border,
+    backgroundColor: GAME_THEME.color.cream,
+    borderColor: GAME_THEME.color.ink,
   },
 });

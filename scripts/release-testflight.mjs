@@ -156,19 +156,26 @@ async function ensureEasProject() {
 }
 
 async function setEasEnv(apiUrl) {
+  const pairs = [
+    ['EXPO_PUBLIC_COMPANION_CHAT_API_URL', apiUrl],
+    ['EXPO_PUBLIC_PRIVACY_URL', `${apiUrl}/privacy`],
+    ['EXPO_PUBLIC_TERMS_URL', `${apiUrl}/terms`],
+  ];
   for (const env of ['production', 'preview']) {
-    run(EAS_BIN, [
-      'env:create',
-      env,
-      '--name',
-      'EXPO_PUBLIC_COMPANION_CHAT_API_URL',
-      '--value',
-      apiUrl,
-      '--visibility',
-      'plaintext',
-      '--force',
-      '--non-interactive',
-    ]);
+    for (const [name, value] of pairs) {
+      run(EAS_BIN, [
+        'env:create',
+        env,
+        '--name',
+        name,
+        '--value',
+        value,
+        '--visibility',
+        'plaintext',
+        '--force',
+        '--non-interactive',
+      ]);
+    }
   }
 }
 

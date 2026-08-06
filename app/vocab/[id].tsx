@@ -3,10 +3,10 @@ import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PremiumScreenShell } from '@/components/ui';
-import { APP_THEME } from '@/constants/theme';
+import { GameGoldButton } from '@/components/game/game-gold-button';
+import { GameWindowShell } from '@/components/game/game-window-shell';
+import { GAME_THEME } from '@/constants/game-theme';
 import { useTranslation } from '@/contexts/locale-context';
 import { useVocabulary } from '@/contexts/vocabulary-context';
 import { fetchSharedVocabPack } from '@/services/vocab-share-api';
@@ -16,7 +16,6 @@ import { cardCountLabel } from '@/utils/vocab-folders';
 export default function VocabImportScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { importSharedFolder, vocabularyHydrated } = useVocabulary();
 
@@ -66,68 +65,55 @@ export default function VocabImportScreen() {
   const loading = !pack && !error;
 
   return (
-    <PremiumScreenShell style={styles.root}>
-      <View style={[styles.body, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
-        {loading ? (
-          <View style={styles.center}>
-            <ActivityIndicator color={APP_THEME.color.text} size="large" />
-            <Text style={styles.hint}>{t('vocabulary.shareLoading')}</Text>
+    <GameWindowShell
+      title={t('vocabulary.shareImportTitle')}
+      onBack={goBack}
+      backHref="/(tabs)/vocabulary"
+      contentPadding={20}>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={GAME_THEME.color.ink} size="large" />
+          <Text style={styles.hint}>{t('vocabulary.shareLoading')}</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.center}>
+          <View style={styles.iconWrap}>
+            <Ionicons name="alert-circle-outline" size={32} color="rgba(26,26,26,0.45)" />
           </View>
-        ) : error ? (
-          <View style={styles.center}>
-            <View style={styles.iconWrap}>
-              <Ionicons name="alert-circle-outline" size={32} color={APP_THEME.color.muted} />
-            </View>
-            <Text style={styles.title}>{t('vocabulary.shareNotFound')}</Text>
-            <Text style={styles.sub}>{error}</Text>
-            <Pressable style={styles.primaryBtn} onPress={goBack}>
-              <Text style={styles.primaryBtnText}>{t('vocabulary.shareGoVocab')}</Text>
+          <Text style={styles.title}>{t('vocabulary.shareNotFound')}</Text>
+          <Text style={styles.sub}>{error}</Text>
+          <GameGoldButton label={t('vocabulary.shareGoVocab')} onPress={goBack} style={styles.primaryBtn} />
+        </View>
+      ) : pack ? (
+        <View style={styles.center}>
+          <View style={styles.iconWrap}>
+            <Ionicons name="folder-open-outline" size={30} color={GAME_THEME.color.ink} />
+          </View>
+          <Text style={styles.eyebrow}>{t('vocabulary.shareImportTitle')}</Text>
+          <Text style={styles.title}>{pack.name}</Text>
+          <Text style={styles.sub}>{cardCountLabel(pack.cards.length, t)}</Text>
+          <View style={styles.actions}>
+            <Pressable style={styles.ghostBtn} onPress={goBack} disabled={importing}>
+              <Text style={styles.ghostBtnText}>{t('common.cancel')}</Text>
             </Pressable>
+            <GameGoldButton
+              label={importing ? t('common.loading') : t('vocabulary.shareImportConfirm')}
+              onPress={onImport}
+              disabled={importing || !vocabularyHydrated}
+              style={styles.primaryBtn}
+            />
           </View>
-        ) : pack ? (
-          <View style={styles.center}>
-            <View style={styles.iconWrap}>
-              <Ionicons name="folder-open-outline" size={30} color={APP_THEME.color.text} />
-            </View>
-            <Text style={styles.eyebrow}>{t('vocabulary.shareImportTitle')}</Text>
-            <Text style={styles.title}>{pack.name}</Text>
-            <Text style={styles.sub}>
-              {cardCountLabel(pack.cards.length, t)}
-            </Text>
-            <View style={styles.actions}>
-              <Pressable style={styles.ghostBtn} onPress={goBack} disabled={importing}>
-                <Text style={styles.ghostBtnText}>{t('common.cancel')}</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.primaryBtn, importing && styles.primaryBtnDisabled]}
-                onPress={onImport}
-                disabled={importing || !vocabularyHydrated}>
-                {importing ? (
-                  <ActivityIndicator color="#09090B" size="small" />
-                ) : (
-                  <Text style={styles.primaryBtnText}>{t('vocabulary.shareImportConfirm')}</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-      </View>
-    </PremiumScreenShell>
+        </View>
+      ) : null}
+    </GameWindowShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: APP_THEME.color.bg,
-  },
-  body: {
-    flex: 1,
-    paddingHorizontal: 28,
-    justifyContent: 'center',
-  },
   center: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 10,
   },
   iconWrap: {
@@ -136,31 +122,37 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: APP_THEME.color.elevated,
+    backgroundColor: 'rgba(26,26,26,0.06)',
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
     marginBottom: 6,
   },
   eyebrow: {
-    ...APP_THEME.type.label,
-    color: APP_THEME.color.mutedSoft,
+    fontSize: GAME_THEME.type.micro,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    color: 'rgba(26,26,26,0.45)',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   title: {
-    ...APP_THEME.type.titleLg,
-    color: APP_THEME.color.text,
+    fontSize: GAME_THEME.type.title,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
     textAlign: 'center',
   },
   sub: {
-    ...APP_THEME.type.caption,
-    color: APP_THEME.color.muted,
+    fontSize: GAME_THEME.type.body,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 8,
   },
   hint: {
     marginTop: 12,
-    ...APP_THEME.type.caption,
-    color: APP_THEME.color.mutedSoft,
+    fontSize: GAME_THEME.type.body,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.45)',
   },
   actions: {
     flexDirection: 'row',
@@ -171,29 +163,16 @@ const styles = StyleSheet.create({
   ghostBtn: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: APP_THEME.radius.pill,
+    borderRadius: GAME_THEME.radius.button,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
   },
   ghostBtnText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: APP_THEME.color.muted,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.55)',
   },
   primaryBtn: {
     minWidth: 148,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: APP_THEME.radius.pill,
-    backgroundColor: '#F4F4F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryBtnDisabled: {
-    opacity: 0.7,
-  },
-  primaryBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    color: '#09090B',
   },
 });

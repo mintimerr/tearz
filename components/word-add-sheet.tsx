@@ -23,10 +23,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PremiumButton, PremiumSurface } from '@/components/ui';
+import { PremiumButton } from '@/components/ui';
+import { GAME_THEME } from '@/constants/game-theme';
 import { useTranslation } from '@/contexts/locale-context';
 import { useVocabulary } from '@/contexts/vocabulary-context';
-import { APP_THEME } from '@/constants/theme';
 import { detectWordLang } from '@/utils/detect-word-lang';
 import { fetchCardSuggestion, instantCardFields } from '@/utils/card-suggestion';
 import { isAbortError } from '@/utils/abort-error';
@@ -219,7 +219,7 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
               {sheetDuplicate ? (
                 <View style={styles.dupBlock}>
                   <View style={styles.dupBadge}>
-                    <Ionicons name="bookmark" size={14} color={APP_THEME.color.muted} />
+                    <Ionicons name="bookmark" size={14} color={GAME_THEME.color.ink} />
                     <Text style={styles.dupText}>{t('vocabulary.alreadyInList')}</Text>
                   </View>
                   <PremiumButton
@@ -233,10 +233,10 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
                 <>
                   <Text style={styles.sheetHint}>{sheetHint}</Text>
 
-                  <PremiumSurface variant="elevated" style={styles.translationCard}>
+                  <View style={styles.translationCard}>
                     {prefetching && !prefetchedTr ? (
                       <View style={styles.prefetchRow}>
-                        <ActivityIndicator color={APP_THEME.color.mutedSoft} size="small" />
+                        <ActivityIndicator color="rgba(26,26,26,0.45)" size="small" />
                         <Text style={styles.prefetchText}>{t('vocabulary.fetchingTranslation')}</Text>
                       </View>
                     ) : null}
@@ -250,7 +250,7 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
                     ) : !prefetching ? (
                       <Text style={styles.translationMuted}>{t('vocabulary.translationPending')}</Text>
                     ) : null}
-                  </PremiumSurface>
+                  </View>
 
                   {sheetErr ? <Text style={styles.sheetErr}>{sheetErr}</Text> : null}
 
@@ -303,10 +303,13 @@ const styles = StyleSheet.create({
   },
   sheet: {
     maxHeight: Math.min(WIN_H * 0.82, 520),
-    borderTopLeftRadius: APP_THEME.radius.xxl,
-    borderTopRightRadius: APP_THEME.radius.xxl,
-    backgroundColor: APP_THEME.color.elevated,
-    paddingHorizontal: APP_THEME.space.xl,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thick,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 0,
+    paddingHorizontal: 16,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -322,96 +325,107 @@ const styles = StyleSheet.create({
     width: 36,
     height: 5,
     borderRadius: 3,
-    backgroundColor: APP_THEME.color.borderStrong,
+    backgroundColor: GAME_THEME.color.ink,
     marginTop: 10,
     marginBottom: 6,
   },
   sheetScroll: {
-    paddingTop: APP_THEME.space.sm,
-    paddingBottom: APP_THEME.space.sm,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   sheetEyebrow: {
-    ...APP_THEME.type.label,
-    color: APP_THEME.color.mutedSoft,
-    marginBottom: APP_THEME.space.xs,
+    fontSize: GAME_THEME.type.micro,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: 'rgba(26,26,26,0.45)',
+    marginBottom: 4,
   },
   sheetWord: {
-    ...APP_THEME.type.titleLg,
-    color: APP_THEME.color.text,
-    letterSpacing: -0.55,
-    marginBottom: APP_THEME.space.lg,
+    fontSize: GAME_THEME.type.title,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
+    marginBottom: 16,
   },
   sheetHint: {
-    ...APP_THEME.type.caption,
+    fontSize: GAME_THEME.type.body,
     lineHeight: 22,
-    color: APP_THEME.color.muted,
-    marginBottom: APP_THEME.space.md,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
+    marginBottom: 12,
   },
   translationCard: {
-    padding: APP_THEME.space.lg,
+    padding: 14,
     minHeight: 72,
-    marginBottom: APP_THEME.space.md,
-    borderRadius: APP_THEME.radius.lg,
-    backgroundColor: APP_THEME.color.bgSoft,
+    marginBottom: 12,
+    borderRadius: GAME_THEME.radius.panel,
+    backgroundColor: GAME_THEME.color.paperWarm,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
   },
   prefetchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: APP_THEME.space.sm,
+    gap: 8,
   },
   prefetchText: {
-    ...APP_THEME.type.label,
-    color: APP_THEME.color.mutedSoft,
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.45)',
   },
   pinyin: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: -0.2,
-    color: APP_THEME.color.muted,
-    marginBottom: APP_THEME.space.xs,
+    color: 'rgba(26,26,26,0.55)',
+    marginBottom: 4,
   },
   translation: {
-    ...APP_THEME.type.body,
-    fontWeight: '500',
+    fontSize: GAME_THEME.type.body,
+    fontWeight: '700',
     lineHeight: 24,
-    color: APP_THEME.color.textSoft,
+    color: GAME_THEME.color.ink,
   },
   translationMuted: {
-    ...APP_THEME.type.caption,
+    fontSize: GAME_THEME.type.body,
     lineHeight: 22,
-    color: APP_THEME.color.mutedSoft,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.45)',
   },
   sheetErr: {
-    ...APP_THEME.type.label,
-    color: APP_THEME.color.danger,
-    marginBottom: APP_THEME.space.md,
+    fontSize: 12,
+    fontWeight: '700',
+    color: GAME_THEME.color.danger,
+    marginBottom: 12,
   },
   actions: {
     flexDirection: 'row',
-    gap: APP_THEME.space.sm,
-    marginTop: APP_THEME.space.xs,
+    gap: 8,
+    marginTop: 4,
   },
   actionBtn: {
     flex: 1,
   },
   dupBlock: {
-    gap: APP_THEME.space.lg,
-    paddingTop: APP_THEME.space.xs,
+    gap: 16,
+    paddingTop: 4,
   },
   dupBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: APP_THEME.space.xs,
-    paddingHorizontal: APP_THEME.space.md,
-    paddingVertical: APP_THEME.space.sm,
-    borderRadius: APP_THEME.radius.pill,
-    backgroundColor: APP_THEME.color.accentSoft,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: GAME_THEME.radius.pill,
+    backgroundColor: GAME_THEME.color.paperWarm,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
   },
   dupText: {
-    ...APP_THEME.type.label,
-    fontWeight: '500',
-    color: APP_THEME.color.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    color: GAME_THEME.color.ink,
   },
   soloBtn: {
     alignSelf: 'stretch',
@@ -425,11 +439,13 @@ const styles = StyleSheet.create({
   toastPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: APP_THEME.space.sm,
-    paddingVertical: APP_THEME.space.sm + 2,
-    paddingHorizontal: APP_THEME.space.lg,
-    borderRadius: APP_THEME.radius.pill,
-    backgroundColor: APP_THEME.color.text,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: GAME_THEME.radius.pill,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -444,13 +460,13 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: APP_THEME.color.success,
+    backgroundColor: GAME_THEME.color.ok,
     alignItems: 'center',
     justifyContent: 'center',
   },
   toastText: {
-    ...APP_THEME.type.caption,
-    fontWeight: '600',
-    color: '#000000',
+    fontSize: GAME_THEME.type.body,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
   },
 });

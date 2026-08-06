@@ -22,17 +22,16 @@ import {
 
 import { TeacherAttachGallery } from '@/components/teacher/teacher-attach-gallery';
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 import {
   TEACHER_MUTED,
-  TEACHER_MUTED_SOFT,
   TEACHER_TITLE,
 } from '@/components/teacher/teacher-tokens';
 
 const SEND_SIZE = 36;
-const SEND_BTN_ACTIVE = '#F4F4F5';
-const SEND_ICON_ACTIVE = '#09090B';
-const SEND_ICON_IDLE = APP_THEME.color.muted;
+const SEND_BTN_ACTIVE = GAME_THEME.color.paperWarm;
+const SEND_ICON_ACTIVE = GAME_THEME.color.ink;
+const SEND_ICON_IDLE = 'rgba(26,26,26,0.35)';
 
 type Props = {
   input: string;
@@ -67,7 +66,7 @@ export function TeacherChatComposer({
     backgroundColor: interpolateColor(
       focusProgress.value,
       [0, 1],
-      [APP_THEME.color.elevated, APP_THEME.color.elevatedSoft],
+      ['#F0F6FF', GAME_THEME.color.cream],
     ),
   }));
 
@@ -144,7 +143,7 @@ export function TeacherChatComposer({
             style={({ pressed }) => [styles.attachFileBtn, pressed && styles.attachFileBtnPressed]}
             accessibilityRole="button"
             accessibilityLabel="Выбрать файл">
-            <Ionicons name="document-outline" size={20} color={APP_THEME.color.textSoft} />
+            <Ionicons name="document-outline" size={20} color={GAME_THEME.color.ink} />
             <Text style={styles.attachMenuLabel}>Файл</Text>
           </Pressable>
         </View>
@@ -167,9 +166,7 @@ export function TeacherChatComposer({
             <Ionicons
               name={attachOpen ? 'close' : 'attach-outline'}
               size={21}
-              color={
-                attachOpen || pendingAttachment ? APP_THEME.color.textSoft : APP_THEME.color.mutedSoft
-              }
+              color={GAME_THEME.color.ink}
             />
           </Pressable>
 
@@ -179,7 +176,7 @@ export function TeacherChatComposer({
                 <Ionicons
                   name={pendingAttachment.kind === 'image' ? 'image-outline' : 'document-outline'}
                   size={14}
-                  color="rgba(242, 242, 247, 0.55)"
+                  color="rgba(26,26,26,0.55)"
                 />
                 <Text style={styles.pendingText} numberOfLines={1}>
                   {pendingAttachment.kind === 'image'
@@ -191,7 +188,7 @@ export function TeacherChatComposer({
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Убрать вложение">
-                  <Ionicons name="close-circle" size={18} color={APP_THEME.color.mutedSoft} />
+                  <Ionicons name="close-circle" size={18} color="rgba(26,26,26,0.45)" />
                 </Pressable>
               </View>
             ) : null}
@@ -199,7 +196,7 @@ export function TeacherChatComposer({
               ref={inputRef}
               style={styles.input}
               placeholder="Задайте вопрос по уроку…"
-              placeholderTextColor={TEACHER_MUTED_SOFT}
+              placeholderTextColor="rgba(26,26,26,0.35)"
               value={input}
               onChangeText={onChangeText}
               onFocus={() => {
@@ -244,11 +241,11 @@ export function TeacherChatComposer({
 const styles = StyleSheet.create({
   dock: {
     position: 'relative',
-    paddingTop: 8,
+    paddingTop: 12,
     paddingHorizontal: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: APP_THEME.color.separator,
-    backgroundColor: APP_THEME.color.bg,
+    borderTopWidth: 3,
+    borderTopColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.cream,
     zIndex: 4,
   },
   attachBackdrop: {
@@ -267,17 +264,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 12,
-    borderRadius: APP_THEME.radius.md,
-    backgroundColor: APP_THEME.color.elevated,
+    borderRadius: GAME_THEME.radius.button,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   attachFileBtnPressed: {
-    backgroundColor: APP_THEME.color.elevatedSoft,
+    backgroundColor: GAME_THEME.color.gold,
   },
   attachMenuLabel: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: -0.2,
-    color: APP_THEME.color.textSoft,
+    color: GAME_THEME.color.ink,
   },
   inputMount: {
     width: '100%',
@@ -291,8 +290,12 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
     paddingRight: 6,
     paddingVertical: 6,
-    borderRadius: 24,
-    backgroundColor: APP_THEME.color.elevated,
+    borderRadius: 14,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
   },
   inputShellDisabled: {
     opacity: 0.5,
@@ -300,15 +303,17 @@ const styles = StyleSheet.create({
   attachBtn: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
-    backgroundColor: APP_THEME.color.elevatedSoft,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   attachBtnPressed: {
     opacity: 0.85,
-    backgroundColor: APP_THEME.color.accentSoft,
+    backgroundColor: GAME_THEME.color.gold,
   },
   inputCol: {
     flex: 1,
@@ -322,7 +327,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: APP_THEME.color.elevatedSoft,
+    backgroundColor: 'rgba(26,26,26,0.06)',
     alignSelf: 'flex-start',
     maxWidth: '100%',
   },
@@ -348,15 +353,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
   },
   sendBtnOn: {
     backgroundColor: SEND_BTN_ACTIVE,
   },
   sendBtnOff: {
-    backgroundColor: APP_THEME.color.elevatedSoft,
+    backgroundColor: 'rgba(26,26,26,0.08)',
   },
   sendBtnPressed: {
     opacity: 0.88,
-    transform: [{ scale: 0.95 }],
+    transform: [{ translateY: 1 }],
   },
 });

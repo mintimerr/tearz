@@ -2,8 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Animated, Pressable, StyleSheet, Text } from 'react-native';
 
-import { BrandGradient } from '@/components/ui';
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 import { MINI_DRILL_TASK_COUNT } from '@/constants/teacher-drill';
 
 type Props = {
@@ -50,7 +49,7 @@ export function TeacherExerciseCta({
     }).start();
   };
 
-  const tint = filled ? '#FFFFFF' : APP_THEME.color.mutedSoft;
+  const tint = filled ? GAME_THEME.color.ink : 'rgba(26,26,26,0.42)';
 
   return (
     <Pressable
@@ -67,14 +66,13 @@ export function TeacherExerciseCta({
           filled ? styles.shellFilled : styles.shellMuted,
           { transform: [{ scale }] },
         ]}>
-        {filled ? <BrandGradient borderRadius={APP_THEME.radius.pill} direction="horizontal" /> : null}
         {loading ? (
           <ActivityIndicator size="small" color={tint} style={styles.spinner} />
         ) : (
           <Ionicons name="barbell" size={14} color={tint} />
         )}
         <Text style={[styles.label, { color: tint }]}>
-          {loading ? 'Готовлю…' : exhausted ? 'Лимит' : `Тренировка · ${MINI_DRILL_TASK_COUNT}`}
+          {loading ? 'Готовлю…' : exhausted ? 'Лимит' : `Мини · ${MINI_DRILL_TASK_COUNT}`}
         </Text>
         {!loading && !exhausted && isRepeat && typeof refreshesLeft === 'number' ? (
           <Text style={[styles.refresh, { color: tint }]}>↻{refreshesLeft}</Text>
@@ -92,26 +90,35 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: 34,
     paddingHorizontal: 13,
-    borderRadius: APP_THEME.radius.pill,
-    overflow: 'hidden',
+    borderRadius: GAME_THEME.radius.button,
   },
-  shellFilled: {},
+  shellFilled: {
+    backgroundColor: GAME_THEME.color.paperWarm,
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 5,
+    borderBottomColor: GAME_THEME.color.goldLip,
+    minHeight: 40,
+    paddingHorizontal: 16,
+  },
   shellMuted: {
-    backgroundColor: APP_THEME.color.elevatedSoft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
+    backgroundColor: GAME_THEME.color.creamSoft,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    opacity: 0.72,
   },
   spinner: {
     transform: [{ scale: 0.82 }],
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: -0.15,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   refresh: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '800',
     marginLeft: 1,
   },
 });

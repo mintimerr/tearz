@@ -22,7 +22,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 
 const THUMB = 76;
 const THUMB_GAP = 8;
@@ -129,11 +129,11 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
                 style={styles.thumbSkeleton}
               />
             ))}
-            <ActivityIndicator style={styles.loaderSpinner} color={APP_THEME.color.muted} />
+            <ActivityIndicator style={styles.loaderSpinner} color={GAME_THEME.color.ink} />
           </View>
         ) : denied || photos.length === 0 ? (
           <Animated.View entering={FadeIn.duration(240)} style={styles.emptyRow}>
-            <Ionicons name="images-outline" size={22} color={APP_THEME.color.mutedFaint} />
+            <Ionicons name="images-outline" size={22} color="rgba(26,26,26,0.4)" />
             <Text style={styles.emptyText}>
               {denied ? 'Нет доступа к галерее' : 'Нет недавних фото'}
             </Text>
@@ -169,10 +169,10 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
             accessibilityRole="button"
             accessibilityLabel="Добавить файлы">
             <View style={styles.browseIconWrap}>
-              <Ionicons name="folder-open-outline" size={20} color={APP_THEME.color.textSoft} />
+              <Ionicons name="folder-open-outline" size={20} color={GAME_THEME.color.ink} />
             </View>
             <Text style={styles.browseLabel}>Добавить файлы</Text>
-            <Ionicons name="chevron-forward" size={18} color={APP_THEME.color.mutedSoft} />
+            <Ionicons name="chevron-forward" size={18} color="rgba(26,26,26,0.4)" />
           </Pressable>
         </Animated.View>
       </View>
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: APP_THEME.color.borderStrong,
+    backgroundColor: 'rgba(26,26,26,0.2)',
   },
   thumbStrip: {
     gap: THUMB_GAP,
@@ -202,13 +202,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   thumbWrap: {
-    borderRadius: 14,
+    borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: APP_THEME.color.elevated,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   thumbPressed: {
     opacity: 0.82,
-    transform: [{ scale: 0.96 }],
+    transform: [{ translateY: 1 }],
   },
   thumb: {
     width: THUMB,
@@ -224,8 +226,10 @@ const styles = StyleSheet.create({
   thumbSkeleton: {
     width: THUMB,
     height: THUMB,
-    borderRadius: 14,
-    backgroundColor: APP_THEME.color.elevated,
+    borderRadius: 10,
+    backgroundColor: 'rgba(26,26,26,0.08)',
+    borderWidth: 2,
+    borderColor: 'rgba(26,26,26,0.12)',
   },
   loaderSpinner: {
     marginLeft: 4,
@@ -240,8 +244,8 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: APP_THEME.color.mutedSoft,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.5)',
     letterSpacing: -0.2,
   },
   browsePill: {
@@ -250,25 +254,33 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 11,
     paddingHorizontal: 14,
-    borderRadius: APP_THEME.radius.md,
-    backgroundColor: APP_THEME.color.elevated,
+    borderRadius: GAME_THEME.radius.button,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
   },
   browsePillPressed: {
-    backgroundColor: APP_THEME.color.elevatedSoft,
+    backgroundColor: GAME_THEME.color.sky,
+    transform: [{ translateY: 1 }],
+    borderBottomWidth: 2,
   },
   browseIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: APP_THEME.color.elevatedSoft,
+    backgroundColor: GAME_THEME.color.sky,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   browseLabel: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '600',
-    color: APP_THEME.color.text,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
     letterSpacing: -0.25,
   },
 });

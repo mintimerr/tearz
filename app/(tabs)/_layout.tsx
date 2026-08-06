@@ -3,9 +3,8 @@ import { BlurView } from 'expo-blur';
 import { Tabs } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Animated, Platform, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 import { useTranslation } from '@/contexts/locale-context';
 
 function TabBarBackground() {
@@ -46,27 +45,17 @@ function TabGlyph({
 }
 
 export default function TabLayout() {
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const tabBarHeight = APP_THEME.tabBar.core + insets.bottom;
 
   return (
     <Tabs
       initialRouteName="teacher"
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: GAME_THEME.color.void },
+        /** Навигация — через игровой хаб, таббар скрыт. */
+        tabBarStyle: { display: 'none', height: 0 },
         tabBarBackground: TabBarBackground,
-        tabBarStyle: {
-          position: 'absolute',
-          height: tabBarHeight,
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 4,
-          paddingHorizontal: 4,
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
         tabBarActiveTintColor: '#111111',
         tabBarInactiveTintColor: '#8E8E93',
         tabBarLabelStyle: {
@@ -115,7 +104,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -1,20 +1,17 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AuthPrimaryButton } from '@/components/auth/auth-primary-button';
+import { GameGoldButton } from '@/components/game/game-gold-button';
+import { GameWindowShell } from '@/components/game/game-window-shell';
 import { LongPressWordText } from '@/components/long-press-word-text';
-import { PremiumScreenShell, PremiumSurface } from '@/components/ui';
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 import { useCompanionChats } from '@/contexts/companion-chats-context';
 import { useTranslation } from '@/contexts/locale-context';
 import { postCompanionProfile } from '@/services/companion-chat-ai';
@@ -35,7 +32,6 @@ export default function CompanionFindScreen() {
         : 'english';
 
   const { addChat } = useCompanionChats();
-  const insets = useSafeAreaInsets();
   const [phase, setPhase] = useState<Phase>('searching');
   const [profile, setProfile] = useState<GeneratedCompanionProfile | null>(null);
   const cancelled = useRef(false);
@@ -106,20 +102,13 @@ export default function CompanionFindScreen() {
   }, [addChat, practiceLang, profile, router, t]);
 
   return (
-    <PremiumScreenShell topOffset={0} horizontalPadding={0} style={styles.root}>
-      <View style={[styles.topBar, { paddingTop: insets.top }]}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
-          style={styles.backBtn}
-          accessibilityRole="button">
-          <Ionicons name="chevron-back" size={24} color={APP_THEME.color.text} />
-        </Pressable>
-      </View>
-
+    <GameWindowShell
+      title={t('companion.findTitle')}
+      onBack={() => router.back()}
+      contentPadding={16}>
       {phase === 'searching' ? (
         <View style={styles.centerBlock}>
-          <ActivityIndicator size="large" color={APP_THEME.color.text} />
+          <ActivityIndicator size="large" color={GAME_THEME.color.ink} />
           <Text style={styles.searchingTitle}>{t('companion.findSearching')}</Text>
           <Text style={styles.searchingHint}>{t('companion.findSearchingHint')}</Text>
         </View>
@@ -127,7 +116,7 @@ export default function CompanionFindScreen() {
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.resultScroll, { paddingBottom: insets.bottom + 24 }]}>
+          contentContainerStyle={styles.resultScroll}>
           <Text style={styles.foundLabel}>{t('companion.found')}</Text>
           <View style={[styles.resultAvatar, { backgroundColor: profile.color }]}>
             <Text style={styles.resultAvatarLetter}>{profile.letter}</Text>
@@ -136,59 +125,52 @@ export default function CompanionFindScreen() {
           <Text style={styles.resultMeta}>
             {profile.age} · {profile.city}
           </Text>
-          <PremiumSurface variant="elevated" style={styles.bioCard}>
+          <View style={styles.bioCard}>
             <LongPressWordText text={profile.bio} style={styles.resultBio} animKey="find-full-bio" />
-          </PremiumSurface>
-          <AuthPrimaryButton label={t('companion.findStartChat')} onPress={openChat} style={styles.startBtn} />
+          </View>
+          <GameGoldButton label={t('companion.findStartChat')} onPress={openChat} size="lg" style={styles.startBtn} />
         </ScrollView>
       ) : null}
-    </PremiumScreenShell>
+    </GameWindowShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    backgroundColor: APP_THEME.color.bg,
-  },
-  topBar: {
-    paddingHorizontal: APP_THEME.space.sm,
-    zIndex: 2,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   centerBlock: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: APP_THEME.space.xxl,
+    paddingHorizontal: 24,
     paddingBottom: 48,
   },
   searchingTitle: {
-    marginTop: APP_THEME.space.xl,
-    ...APP_THEME.type.titleLg,
-    color: APP_THEME.color.text,
+    marginTop: 20,
+    fontSize: GAME_THEME.type.title,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   searchingHint: {
-    marginTop: APP_THEME.space.sm,
-    ...APP_THEME.type.caption,
-    color: APP_THEME.color.muted,
+    marginTop: 8,
+    fontSize: GAME_THEME.type.body,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
     textAlign: 'center',
     lineHeight: 22,
   },
   resultScroll: {
-    paddingHorizontal: APP_THEME.space.xl,
-    paddingTop: APP_THEME.space.lg,
+    flexGrow: 1,
+    paddingBottom: 24,
     alignItems: 'center',
   },
   foundLabel: {
-    ...APP_THEME.type.label,
-    color: APP_THEME.color.mutedSoft,
-    marginBottom: APP_THEME.space.lg,
+    fontSize: GAME_THEME.type.micro,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: 'rgba(26,26,26,0.45)',
+    marginBottom: 16,
   },
   resultAvatar: {
     width: 96,
@@ -196,34 +178,43 @@ const styles = StyleSheet.create({
     borderRadius: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: APP_THEME.space.lg,
+    marginBottom: 16,
+    borderWidth: GAME_THEME.border.thick,
+    borderColor: GAME_THEME.color.ink,
   },
   resultAvatarLetter: {
     fontSize: 36,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: '800',
+    color: GAME_THEME.color.cream,
   },
   resultName: {
-    ...APP_THEME.type.titleLg,
-    color: APP_THEME.color.text,
+    fontSize: GAME_THEME.type.title,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
     textAlign: 'center',
   },
   resultMeta: {
-    marginTop: APP_THEME.space.xs,
-    ...APP_THEME.type.caption,
-    color: APP_THEME.color.muted,
+    marginTop: 4,
+    fontSize: GAME_THEME.type.body,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
     textAlign: 'center',
   },
   bioCard: {
-    marginTop: APP_THEME.space.xxl,
-    marginBottom: APP_THEME.space.xl,
+    marginTop: 24,
+    marginBottom: 20,
     alignSelf: 'stretch',
-    padding: APP_THEME.space.lg,
+    padding: 14,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
+    borderRadius: GAME_THEME.radius.panel,
   },
   resultBio: {
-    ...APP_THEME.type.body,
+    fontSize: GAME_THEME.type.body,
     lineHeight: 24,
-    color: APP_THEME.color.textSoft,
+    fontWeight: '600',
+    color: GAME_THEME.color.ink,
   },
   startBtn: {
     alignSelf: 'stretch',

@@ -12,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { BoardDirectorCue } from '@/hooks/use-board-director';
-import { TEARZ_BOARD_SPRITE_IDLE } from './tearz-board-sequences';
+import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
 
 type Props = {
   width: number;
@@ -22,8 +22,8 @@ type Props = {
 };
 
 /**
- * Tearz у доски — присутствие (Duolingo-style calm mascot).
- * Реакция на ввод: чернила + haptics в composer, не fake-письмо.
+ * Tearz у доски — Mario pixel presence.
+ * Реакция на ввод: чернила + haptics, не fake-письмо.
  */
 export function TearzBoardRig({ width, height }: Props) {
   const breath = useSharedValue(0);
@@ -66,7 +66,7 @@ export function TearzBoardRig({ width, height }: Props) {
   return (
     <Animated.View pointerEvents="none" style={[{ width, height }, bodyStyle]}>
       <ExpoImage
-        source={TEARZ_BOARD_SPRITE_IDLE}
+        source={TEARZ_MARIO.idle}
         contentFit="contain"
         contentPosition="bottom right"
         cachePolicy="memory-disk"

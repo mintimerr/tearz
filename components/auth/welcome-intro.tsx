@@ -1,16 +1,20 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AuthPrimaryButton } from '@/components/auth/auth-primary-button';
+import { GameGoldButton } from '@/components/game/game-gold-button';
 import { LanguagePicker } from '@/components/auth/language-picker';
 import { WelcomeLetterForge } from '@/components/auth/welcome-letter-forge';
 import type { NativeLanguage } from '@/contexts/auth-context';
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
+import { getPrivacyPolicyUrl, getTermsOfServiceUrl } from '@/constants/legal';
 
 type Props = {
   getStartedLabel: string;
   signInLabel: string;
-  legal: string;
+  legalPrefix: string;
+  termsLabel: string;
+  privacyLabel: string;
+  legalAnd: string;
   language: NativeLanguage;
   onLanguageChange: (lang: NativeLanguage) => void;
   onGetStarted: () => void;
@@ -20,13 +24,23 @@ type Props = {
 export function WelcomeIntro({
   getStartedLabel,
   signInLabel,
-  legal,
+  legalPrefix,
+  termsLabel,
+  privacyLabel,
+  legalAnd,
   language,
   onLanguageChange,
   onGetStarted,
   onSignIn,
 }: Props) {
   const insets = useSafeAreaInsets();
+
+  const openTerms = () => {
+    void Linking.openURL(getTermsOfServiceUrl());
+  };
+  const openPrivacy = () => {
+    void Linking.openURL(getPrivacyPolicyUrl());
+  };
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 20 }]}>
@@ -39,7 +53,7 @@ export function WelcomeIntro({
       </View>
 
       <View style={styles.footer}>
-        <AuthPrimaryButton label={getStartedLabel} onPress={onGetStarted} />
+        <GameGoldButton label={getStartedLabel} onPress={onGetStarted} size="lg" />
 
         <Pressable
           onPress={onSignIn}
@@ -49,7 +63,16 @@ export function WelcomeIntro({
           <Text style={styles.secondaryLabel}>{signInLabel}</Text>
         </Pressable>
 
-        <Text style={styles.legal}>{legal}</Text>
+        <Text style={styles.legal}>
+          {legalPrefix}{' '}
+          <Text style={styles.legalLink} onPress={openTerms} accessibilityRole="link">
+            {termsLabel}
+          </Text>
+          {legalAnd}
+          <Text style={styles.legalLink} onPress={openPrivacy} accessibilityRole="link">
+            {privacyLabel}
+          </Text>
+        </Text>
       </View>
     </View>
   );
@@ -74,41 +97,52 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 24,
     overflow: 'visible',
-    backgroundColor: APP_THEME.color.bg,
-    marginHorizontal: -26,
-    paddingHorizontal: 26,
   },
   footer: {
     gap: 0,
+    paddingHorizontal: 4,
+    paddingTop: 16,
+    paddingBottom: 4,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thick,
+    borderColor: GAME_THEME.color.ink,
+    borderRadius: 6,
+    marginHorizontal: -4,
+    padding: 16,
   },
   secondary: {
     alignSelf: 'stretch',
     marginTop: 12,
     minHeight: 50,
-    borderRadius: APP_THEME.radius.pill,
+    borderRadius: GAME_THEME.radius.button,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: APP_THEME.space.xl,
-    backgroundColor: APP_THEME.color.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.borderStrong,
+    paddingHorizontal: 20,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
   },
   secondaryPressed: {
-    opacity: 0.88,
-    backgroundColor: APP_THEME.color.surfaceStrong,
+    opacity: 0.85,
+    transform: [{ translateY: 1 }],
   },
   secondaryLabel: {
     fontSize: 16,
-    fontWeight: '500',
-    letterSpacing: -0.22,
-    color: APP_THEME.color.textSoft,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    color: GAME_THEME.color.ink,
   },
   legal: {
-    marginTop: 24,
+    marginTop: 20,
     fontSize: 11,
     lineHeight: 15,
     textAlign: 'center',
-    color: APP_THEME.color.mutedFaint,
+    color: 'rgba(26,26,26,0.45)',
     paddingHorizontal: 12,
+  },
+  legalLink: {
+    color: GAME_THEME.color.ink,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });

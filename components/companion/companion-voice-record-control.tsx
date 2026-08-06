@@ -16,16 +16,16 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { useCompanionVoiceRecorder } from '@/hooks/use-companion-voice-recorder';
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 
 const LOCK_DRAG_Y = 72;
 const CANCEL_DRAG_X = 100;
 const CANCEL_COMMIT_X = 118;
 const MIC_SIZE = 48;
 const ATTACH_SIZE = 42;
-const RECORD_RED = '#FF453A';
-const SEND_BTN_ACTIVE = '#F4F4F5';
-const SEND_ICON_ACTIVE = '#09090B';
+const RECORD_RED = '#E85D4C';
+const SEND_BTN_ACTIVE = GAME_THEME.color.paperWarm;
+const SEND_ICON_ACTIVE = GAME_THEME.color.ink;
 
 function formatRecordMs(ms: number) {
   const sec = Math.max(0, Math.floor(ms / 1000));
@@ -371,8 +371,8 @@ export function CompanionVoiceComposer({
 
                 <Animated.View style={[styles.lockFloat, lockFloatStyle]} pointerEvents="none">
                   <View style={styles.lockCircle}>
-                    <Ionicons name="chevron-up" size={14} color={APP_THEME.color.mutedSoft} style={styles.lockChevron} />
-                    <Ionicons name="lock-open-outline" size={20} color={APP_THEME.color.textSoft} />
+                    <Ionicons name="chevron-up" size={14} color="rgba(26,26,26,0.45)" style={styles.lockChevron} />
+                    <Ionicons name="lock-open-outline" size={20} color={GAME_THEME.color.ink} />
                   </View>
                 </Animated.View>
               </>
@@ -395,7 +395,7 @@ export function CompanionVoiceComposer({
                     attachIconStyle,
                     (typing || disabled) && styles.attachBtnOff,
                   ]}>
-                  <Ionicons name="add" size={26} color={APP_THEME.color.textSoft} />
+                  <Ionicons name="add" size={26} color={GAME_THEME.color.ink} />
                 </Animated.View>
               </TouchableOpacity>
             ) : null}
@@ -403,7 +403,7 @@ export function CompanionVoiceComposer({
             <TextInput
               style={styles.input}
               placeholder="Сообщение"
-              placeholderTextColor={APP_THEME.color.mutedFaint}
+              placeholderTextColor="rgba(26,26,26,0.35)"
               value={input}
               onChangeText={onChangeText}
               multiline
@@ -447,15 +447,16 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: APP_THEME.color.elevatedSoft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.borderStrong,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.goldLip,
     alignItems: 'center',
     justifyContent: 'center',
   },
   lockCircleOn: {
-    backgroundColor: APP_THEME.color.accentGlass,
-    borderColor: APP_THEME.color.borderStrong,
+    backgroundColor: GAME_THEME.color.gold,
   },
   lockChevron: {
     position: 'absolute',
@@ -472,8 +473,10 @@ const styles = StyleSheet.create({
     height: MIC_SIZE,
     paddingLeft: 6,
     paddingRight: 4,
-    borderRadius: MIC_SIZE / 2,
-    backgroundColor: APP_THEME.color.elevated,
+    borderRadius: 14,
+    backgroundColor: GAME_THEME.color.void,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
     gap: 6,
     overflow: 'visible',
   },
@@ -497,8 +500,8 @@ const styles = StyleSheet.create({
   releaseHint: {
     flexShrink: 1,
     fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(242, 242, 247, 0.48)',
+    fontWeight: '700',
+    color: GAME_THEME.color.creamSoft,
     letterSpacing: -0.2,
   },
   micSlot: {
@@ -513,19 +516,21 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: RECORD_RED,
+    borderWidth: 1.5,
+    borderColor: GAME_THEME.color.cream,
   },
   timer: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '800',
     fontVariant: ['tabular-nums'],
-    color: 'rgba(242, 242, 247, 0.92)',
+    color: GAME_THEME.color.cream,
     letterSpacing: -0.3,
     flexShrink: 0,
   },
   cancelText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(242, 242, 247, 0.45)',
+    fontWeight: '700',
+    color: 'rgba(255,248,231,0.55)',
     letterSpacing: -0.2,
     flexShrink: 1,
   },
@@ -550,7 +555,7 @@ const styles = StyleSheet.create({
   waveLine: {
     width: 2,
     borderRadius: 1,
-    backgroundColor: 'rgba(242, 242, 247, 0.75)',
+    backgroundColor: GAME_THEME.color.phosphor,
   },
   sideBtn: {
     width: 44,
@@ -563,6 +568,10 @@ const styles = StyleSheet.create({
     height: MIC_SIZE,
     borderRadius: MIC_SIZE / 2,
     backgroundColor: SEND_BTN_ACTIVE,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -575,30 +584,38 @@ const styles = StyleSheet.create({
   attachBtn: {
     width: ATTACH_SIZE,
     height: ATTACH_SIZE,
-    borderRadius: ATTACH_SIZE / 2,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 3,
-    backgroundColor: APP_THEME.color.elevated,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
   },
   attachBtnActive: {
-    backgroundColor: APP_THEME.color.elevatedSoft,
+    backgroundColor: GAME_THEME.color.gold,
   },
   attachBtnOff: {
     opacity: 0.4,
   },
   input: {
     flex: 1,
-    minHeight: 42,
+    minHeight: 44,
     maxHeight: 120,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 22,
-    backgroundColor: APP_THEME.color.elevated,
+    borderRadius: 14,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
     fontSize: 16,
     lineHeight: 21,
     letterSpacing: -0.2,
-    color: APP_THEME.color.text,
+    color: GAME_THEME.color.ink,
     marginBottom: 2,
   },
   actionDock: {
@@ -618,11 +635,16 @@ const styles = StyleSheet.create({
     height: MIC_SIZE,
     borderRadius: MIC_SIZE / 2,
     backgroundColor: SEND_BTN_ACTIVE,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
     alignItems: 'center',
     justifyContent: 'center',
   },
   micCircleRec: {
     backgroundColor: RECORD_RED,
+    borderBottomColor: '#9B2E24',
   },
   actionOff: {
     opacity: 0.45,

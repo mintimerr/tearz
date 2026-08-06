@@ -4,7 +4,7 @@ export function getCompanionChatApiBaseUrl(): string {
   if (!u) {
     throw new Error(
       __DEV__
-        ? 'Не задан EXPO_PUBLIC_COMPANION_CHAT_API_URL. Добавьте в .env адрес server (см. docs/TESTFLIGHT.md).'
+        ? 'Не задан EXPO_PUBLIC_COMPANION_CHAT_API_URL. Добавьте в .env адрес server (см. docs/PUBLIC_RELEASE.md).'
         : 'Сервер недоступен: приложение собрано без адреса API. Обновите сборку.',
     );
   }

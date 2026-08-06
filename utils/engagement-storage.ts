@@ -17,6 +17,19 @@ export async function loadEngagementState(userId: string): Promise<EngagementSta
         ? parsed.claimedStreakMilestones.filter((n) => typeof n === 'number')
         : [],
       streakFreezeAvailable: parsed.streakFreezeAvailable !== false,
+      coins: typeof parsed.coins === 'number' ? Math.max(0, Math.floor(parsed.coins)) : 0,
+      plusExpiresAt:
+        typeof parsed.plusExpiresAt === 'number' && parsed.plusExpiresAt > 0
+          ? parsed.plusExpiresAt
+          : null,
+      ownedTearzIds: Array.isArray(parsed.ownedTearzIds)
+        ? parsed.ownedTearzIds.filter((id): id is string => typeof id === 'string')
+        : [],
+      starterPackClaimed: parsed.starterPackClaimed === true,
+      messageCoinsToday:
+        typeof parsed.messageCoinsToday === 'number'
+          ? Math.max(0, Math.floor(parsed.messageCoinsToday))
+          : 0,
       dailyTasks: {
         ...EMPTY_DAILY_TASKS,
         ...(parsed.dailyTasks ?? {}),

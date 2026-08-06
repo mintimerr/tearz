@@ -25,7 +25,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StudySessionResult } from '@/components/vocabulary/study-session-result';
-import { APP_THEME } from '@/constants/theme';
+import { GAME_THEME } from '@/constants/game-theme';
 import { useTranslation } from '@/contexts/locale-context';
 import { useUserProfile } from '@/contexts/user-profile-context';
 import { useEngagement } from '@/contexts/engagement-context';
@@ -49,7 +49,6 @@ type Props = {
 const SWIPE_THRESHOLD = 72;
 const VELOCITY_COMMIT = 720;
 const DRAG_LABEL_FULL = 168;
-const SEND_BTN_ACTIVE = '#F4F4F5';
 const STACK_SCALE = 0.96;
 const STACK_PEEK = 20;
 const STACK_OFFSET_Y = 4;
@@ -361,22 +360,20 @@ export function VocabStudyModal({
   const leftCornerIconStyle = useAnimatedStyle(() => {
     const glow = interpolate(translateX.value, [-DRAG_LABEL_FULL, -40, 0], [1, 0.3, 0], Extrapolation.CLAMP);
     return {
-      opacity: interpolate(translateX.value, [-DRAG_LABEL_FULL, 0], [0.88, 0.34], Extrapolation.CLAMP),
-      borderColor: `rgba(255, 69, 58, ${0.18 + glow * 0.28})`,
-      backgroundColor: `rgba(255, 69, 58, ${0.04 + glow * 0.1})`,
+      opacity: interpolate(translateX.value, [-DRAG_LABEL_FULL, 0], [1, 0.45], Extrapolation.CLAMP),
+      transform: [{ scale: interpolate(glow, [0, 1], [1, 1.06]) }],
     };
   });
 
   const rightCornerPlusStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [0, 72, DRAG_LABEL_FULL], [0, 0, 0.75], Extrapolation.CLAMP),
+    opacity: interpolate(translateX.value, [0, 72, DRAG_LABEL_FULL], [0, 0, 1], Extrapolation.CLAMP),
   }));
 
   const rightCornerIconStyle = useAnimatedStyle(() => {
     const glow = interpolate(translateX.value, [0, 40, DRAG_LABEL_FULL], [0, 0.3, 1], Extrapolation.CLAMP);
     return {
-      opacity: interpolate(translateX.value, [0, DRAG_LABEL_FULL], [0.34, 0.88], Extrapolation.CLAMP),
-      borderColor: `rgba(48, 209, 88, ${0.18 + glow * 0.28})`,
-      backgroundColor: `rgba(48, 209, 88, ${0.04 + glow * 0.1})`,
+      opacity: interpolate(translateX.value, [0, DRAG_LABEL_FULL], [0.45, 1], Extrapolation.CLAMP),
+      transform: [{ scale: interpolate(glow, [0, 1], [1, 1.06]) }],
     };
   });
 
@@ -426,15 +423,15 @@ export function VocabStudyModal({
         ]}
         pointerEvents={isClosing ? 'none' : 'auto'}>
         <View style={styles.sheet}>
-          <View style={styles.topBar}>
+          <View style={styles.titleBar}>
             <Pressable
               hitSlop={12}
               onPress={requestClose}
               disabled={isClosing}
-              style={styles.closeBtn}
+              style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
               accessibilityRole="button"
               accessibilityLabel={t('vocabulary.studyClose')}>
-              <Ionicons name="close" size={26} color="rgba(242,242,247,0.92)" />
+              <Ionicons name="close" size={20} color={GAME_THEME.color.cream} />
             </Pressable>
             <View style={styles.topCenter}>
               {folderName ? (
@@ -450,7 +447,7 @@ export function VocabStudyModal({
                 <Text style={styles.progress}>{t('vocabulary.studyDone')}</Text>
               )}
             </View>
-            <View style={{ width: 44 }} />
+            <View style={styles.topSpacer} />
           </View>
 
           {phase === 'study' ? (
@@ -467,7 +464,7 @@ export function VocabStudyModal({
                 <Animated.View
                   pointerEvents="none"
                   style={[styles.edgeTag, styles.edgeTagLeft, leftCornerIconStyle]}>
-                  <Ionicons name="close" size={17} color="#FF6961" />
+                  <Text style={styles.edgeTagLabel}>✕ Учим</Text>
                 </Animated.View>
 
                 <Animated.View
@@ -476,7 +473,7 @@ export function VocabStudyModal({
                   <Animated.Text style={[styles.edgeTagPlus, rightCornerPlusStyle]}>
                     {t('vocabulary.studyPlusOne')}
                   </Animated.Text>
-                  <Ionicons name="checkmark" size={18} color="#30D158" />
+                  <Text style={styles.edgeTagLabelDark}>✓ Знаю</Text>
                 </Animated.View>
               </View>
 
@@ -495,7 +492,7 @@ export function VocabStudyModal({
                           <Text style={styles.term}>{nextCard.front}</Text>
                         </View>
                         <View style={styles.cardFooter}>
-                          <Ionicons name="scan-outline" size={16} color={APP_THEME.color.mutedSoft} />
+                          <Ionicons name="hand-left-outline" size={15} color="rgba(26,26,26,0.45)" />
                           <Text style={styles.subHint}>{t('vocabulary.studyTapFlip')}</Text>
                         </View>
                       </View>
@@ -506,8 +503,11 @@ export function VocabStudyModal({
                 )}
 
                 <GestureDetector gesture={gesture}>
-                  <Animated.View style={[styles.cardWrap, cardStyle]}>
-                    <Animated.View style={styles.cardInner}>
+                  <Animated.View
+                    style={[styles.cardWrap, cardStyle]}
+                    renderToHardwareTextureAndroid
+                    shouldRasterizeIOS>
+                    <View style={styles.cardInner}>
                       <Animated.View style={[styles.face, styles.faceFront, frontFaceStyle]}>
                         <View style={styles.cardTopRow}>
                           <Text style={styles.langTag}>{frontLabel}</Text>
@@ -531,7 +531,7 @@ export function VocabStudyModal({
                           </View>
                         </View>
                         <Animated.View style={[styles.cardFooter, frontHintStyle]}>
-                          <Ionicons name="scan-outline" size={16} color={APP_THEME.color.mutedSoft} />
+                          <Ionicons name="hand-left-outline" size={15} color="rgba(26,26,26,0.45)" />
                           <Text style={styles.subHint}>{t('vocabulary.studyTapFlip')}</Text>
                         </Animated.View>
                       </Animated.View>
@@ -546,11 +546,11 @@ export function VocabStudyModal({
                           <Text style={[styles.term, styles.termBack]}>{current.back}</Text>
                         </View>
                         <View style={styles.cardFooter}>
-                          <Ionicons name="swap-horizontal-outline" size={16} color={APP_THEME.color.mutedSoft} />
+                          <Ionicons name="swap-horizontal" size={15} color="rgba(26,26,26,0.45)" />
                           <Text style={styles.subHint}>{t('vocabulary.studyTapSwipe')}</Text>
                         </View>
                       </Animated.View>
-                    </Animated.View>
+                    </View>
                   </Animated.View>
                 </GestureDetector>
               </View>
@@ -585,7 +585,7 @@ export function VocabStudyModal({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: APP_THEME.color.bg,
+    backgroundColor: GAME_THEME.color.sky,
     overflow: 'hidden',
   },
   sheet: {
@@ -595,12 +595,13 @@ const styles = StyleSheet.create({
   studyBody: {
     flex: 1,
   },
-  topBar: {
+  titleBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    paddingHorizontal: 18,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: GAME_THEME.color.sky,
   },
   topCenter: {
     flex: 1,
@@ -608,54 +609,57 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingHorizontal: 8,
   },
+  topSpacer: {
+    width: 40,
+  },
   folderName: {
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: -0.25,
-    color: APP_THEME.color.text,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: GAME_THEME.color.cream,
   },
   closeBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: APP_THEME.color.accentSoft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  closeBtnPressed: {
+    opacity: 0.75,
   },
   progress: {
     fontSize: 15,
-    fontWeight: '700',
-    color: APP_THEME.color.textSoft,
-    letterSpacing: -0.2,
+    fontWeight: '900',
+    color: GAME_THEME.color.cream,
+    letterSpacing: 0.5,
   },
   progressTrack: {
     height: 4,
-    borderRadius: 999,
     overflow: 'hidden',
-    backgroundColor: APP_THEME.color.accentSoft,
-    marginHorizontal: 22,
-    marginBottom: 14,
+    backgroundColor: 'rgba(255,255,255,0.28)',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 999,
-    backgroundColor: SEND_BTN_ACTIVE,
+    backgroundColor: GAME_THEME.color.cream,
   },
   lead: {
-    marginTop: 2,
-    fontSize: 13,
-    lineHeight: 18,
-    color: APP_THEME.color.muted,
+    marginTop: 10,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.42)',
     textAlign: 'center',
     paddingHorizontal: 22,
   },
   tagStrip: {
     position: 'relative',
-    height: 34,
-    marginTop: 8,
-    marginBottom: 6,
+    height: 32,
+    marginTop: 6,
+    marginBottom: 4,
+    paddingHorizontal: 16,
     overflow: 'visible',
   },
   deck: {
@@ -663,8 +667,8 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
     overflow: 'visible',
-    paddingHorizontal: 14,
-    paddingBottom: 14,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   edgeTag: {
     position: 'absolute',
@@ -672,46 +676,41 @@ const styles = StyleSheet.create({
     zIndex: 6,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    minHeight: 30,
+    gap: 5,
+    minHeight: 28,
     paddingVertical: 5,
-    borderWidth: 1.5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.22,
-    shadowRadius: 4,
+    paddingHorizontal: 12,
+    borderRadius: 999,
     ...Platform.select({
-      android: { elevation: 3 },
+      android: { elevation: 2 },
       default: {},
     }),
   },
   edgeTagLeft: {
-    left: 0,
-    paddingLeft: 12,
-    paddingRight: 10,
-    borderTopRightRadius: 9,
-    borderBottomRightRadius: 9,
-    borderTopLeftRadius: 3,
-    borderBottomLeftRadius: 3,
-    borderColor: 'rgba(255, 69, 58, 0.28)',
-    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+    left: 16,
+    backgroundColor: GAME_THEME.color.danger,
   },
   edgeTagRight: {
-    right: 0,
-    paddingLeft: 8,
-    paddingRight: 12,
-    borderTopLeftRadius: 9,
-    borderBottomLeftRadius: 9,
-    borderTopRightRadius: 3,
-    borderBottomRightRadius: 3,
-    borderColor: 'rgba(48, 209, 88, 0.28)',
-    backgroundColor: 'rgba(48, 209, 88, 0.1)',
+    right: 16,
+    backgroundColor: GAME_THEME.color.ok,
+  },
+  edgeTagLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    color: GAME_THEME.color.cream,
+  },
+  edgeTagLabelDark: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    color: GAME_THEME.color.cream,
   },
   edgeTagPlus: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: -0.1,
-    color: 'rgba(48, 209, 88, 0.72)',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+    color: GAME_THEME.color.ink,
   },
   cardBehind: {
     position: 'absolute',
@@ -728,11 +727,10 @@ const styles = StyleSheet.create({
     top: STACK_PEEK,
     bottom: 0,
     zIndex: 0,
-    borderRadius: APP_THEME.radius.xl,
-    backgroundColor: APP_THEME.color.elevated,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.7)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.separator,
-    opacity: 0.35,
+    borderColor: 'rgba(26,26,26,0.1)',
     transform: [{ scale: STACK_SCALE }],
   },
   cardWrap: {
@@ -747,20 +745,19 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
     overflow: 'hidden',
-    borderRadius: APP_THEME.radius.xl,
-    backgroundColor: APP_THEME.color.elevated,
+    borderRadius: 12,
+    backgroundColor: GAME_THEME.color.cream,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.separator,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 12,
-      },
-      android: { elevation: 4 },
-      default: {},
-    }),
+    borderColor: 'rgba(26,26,26,0.1)',
+    // hard shadow — GPU-friendly (no blur)
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  cardGoldLip: {
+    display: 'none',
   },
   face: {
     position: 'absolute',
@@ -769,18 +766,19 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     backfaceVisibility: 'hidden',
-    borderRadius: APP_THEME.radius.xl,
-    paddingVertical: 28,
-    paddingHorizontal: 28,
+    borderRadius: 4,
+    paddingTop: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 22,
     justifyContent: 'space-between',
     alignItems: 'stretch',
     zIndex: 3,
   },
   faceFront: {
-    backgroundColor: 'transparent',
+    backgroundColor: GAME_THEME.color.cream,
   },
   faceBack: {
-    backgroundColor: APP_THEME.color.elevatedSoft,
+    backgroundColor: '#F0F6FF',
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -790,23 +788,23 @@ const styles = StyleSheet.create({
   },
   langTag: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: APP_THEME.color.accentSoft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.accentSoft,
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.25,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: 'rgba(26,26,26,0.07)',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: APP_THEME.color.mutedSoft,
+    color: 'rgba(26,26,26,0.5)',
+    overflow: 'hidden',
   },
   cardStep: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: -0.08,
-    color: APP_THEME.color.mutedSoft,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    color: 'rgba(26,26,26,0.45)',
+    textTransform: 'uppercase',
   },
   termBlock: {
     flex: 1,
@@ -824,11 +822,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   term: {
-    fontSize: 37,
-    fontWeight: '700',
-    letterSpacing: -0.92,
-    lineHeight: 45,
-    color: APP_THEME.color.text,
+    fontSize: 40,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    lineHeight: 48,
+    color: GAME_THEME.color.ink,
     textAlign: 'center',
   },
   verdictOverlay: {
@@ -837,52 +835,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   termVerdict: {
-    fontSize: 37,
-    fontWeight: '700',
-    letterSpacing: -0.92,
-    lineHeight: 45,
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+    lineHeight: 42,
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
   termVerdictRight: {
-    color: 'rgba(48, 209, 88, 0.82)',
+    color: GAME_THEME.color.ok,
   },
   termVerdictLeft: {
-    color: 'rgba(255, 105, 97, 0.82)',
+    color: GAME_THEME.color.danger,
   },
   termBack: {
-    fontSize: 27,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '800',
     marginTop: 6,
-    lineHeight: 34,
+    lineHeight: 36,
   },
   pinyin: {
     marginBottom: 10,
     fontSize: 17,
-    fontWeight: '500',
-    letterSpacing: 0.4,
-    color: APP_THEME.color.accentLight,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    color: 'rgba(26,26,26,0.55)',
     textAlign: 'center',
   },
   subHint: {
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: -0.08,
-    color: APP_THEME.color.mutedSoft,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    color: 'rgba(26,26,26,0.42)',
     textAlign: 'center',
   },
   cardFooter: {
-    minHeight: 34,
+    minHeight: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     paddingHorizontal: 12,
   },
   lastHint: {
     textAlign: 'center',
-    fontSize: 13,
-    color: APP_THEME.color.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.5)',
     paddingHorizontal: 22,
     paddingVertical: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
 });

@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Keyboard,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,7 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { Image as ExpoImage, type ImageSource } from 'expo-image';
 import Animated, {
   Easing,
   FadeIn,
@@ -24,9 +23,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AmbientBackdrop } from '@/components/ui/ambient-backdrop';
-import { APP_THEME } from '@/constants/theme';
-import { TEACHER_MUTED, TEACHER_TITLE } from '@/components/teacher/teacher-tokens';
+import { GameGoldButton } from '@/components/game/game-gold-button';
+import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
+import { GAME_THEME } from '@/constants/game-theme';
+import { TearzThinking } from '@/components/teacher/tearz-thinking';
 import { useCompanionVoiceRecorder } from '@/hooks/use-companion-voice-recorder';
 import { postCompanionVoiceTranscribe } from '@/services/companion-voice-transcribe';
 import type {
@@ -48,15 +48,10 @@ import {
 
 const CHOICE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const COACH_SRC = require('../../assets/images/tearz-thinking.png');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const EMOTE_HAPPY = require('../../assets/images/tearz-emote-happy.png');
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const EMOTE_BAD = require('../../assets/images/tearz-emote-displeased.png');
+const AnimatedExpoImage = Animated.createAnimatedComponent(ExpoImage);
 
-/** Анимированный Tearz с мягким «дыханием». */
-function AnimatedMascot({ source, size }: { source: number; size: number }) {
+/** Анимированный Mario Tearz. */
+function AnimatedMarioTearz({ source, size }: { source: ImageSource; size: number }) {
   const bob = useSharedValue(0);
 
   useEffect(() => {
@@ -70,9 +65,9 @@ function AnimatedMascot({ source, size }: { source: number; size: number }) {
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: -4 * bob.value }] }));
 
   return (
-    <Animated.Image
+    <AnimatedExpoImage
       source={source}
-      resizeMode="contain"
+      contentFit="contain"
       style={[{ width: size, height: size }, style]}
     />
   );
@@ -93,20 +88,20 @@ function DrillHeader({
 
   return (
     <View style={styles.header}>
-      <View style={styles.headerRow}>
+      <View style={styles.titleBar}>
         <Pressable
           onPress={onClose}
           hitSlop={10}
           style={({ pressed }) => [styles.headerSideBtn, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel="Закрыть тренировку">
-          <Ionicons name="chevron-down" size={22} color={APP_THEME.color.mutedSoft} />
+          <Ionicons name="chevron-down" size={22} color={GAME_THEME.color.ink} />
         </Pressable>
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>Мини-тренировка</Text>
           <Text style={styles.headerMeta}>{finished ? 'Итог' : `${index + 1} из ${total}`}</Text>
         </View>
-        <View style={styles.headerSideBtn} />
+        <View style={styles.headerSpacer} />
       </View>
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
@@ -127,7 +122,7 @@ function DrillFeedback({
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.feedback}>
       <View style={styles.fbRow}>
-        <AnimatedMascot source={ok ? EMOTE_HAPPY : EMOTE_BAD} size={116} />
+        <AnimatedMarioTearz source={ok ? TEARZ_MARIO.jump : TEARZ_MARIO.phone} size={108} />
         <View style={[styles.fbBubble, ok ? styles.fbBubbleOk : styles.fbBubbleWarn]}>
           <View style={[styles.fbTail, ok ? styles.fbTailOk : styles.fbTailWarn]} />
           <Text style={styles.fbTitle}>{result.title}</Text>
@@ -199,7 +194,7 @@ function DrillVoiceAnswer({
       <View style={styles.voicePanel}>
         <View style={styles.voiceReadyRow}>
           <View style={styles.voiceReadyIcon}>
-            <Ionicons name="checkmark" size={16} color={APP_THEME.color.success} />
+            <Ionicons name="checkmark" size={16} color={GAME_THEME.color.ink} />
           </View>
           <View style={styles.voiceReadyCopy}>
             <Text style={styles.voiceReadyTitle}>Запись готова</Text>
@@ -212,7 +207,7 @@ function DrillVoiceAnswer({
           style={({ pressed }) => [styles.voiceRetakeBtn, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel="Перезаписать голосовой ответ">
-          <Ionicons name="refresh" size={15} color={APP_THEME.color.textSoft} />
+          <Ionicons name="refresh" size={15} color={GAME_THEME.color.ink} />
           <Text style={styles.voiceRetakeText}>Перезаписать</Text>
         </Pressable>
       </View>
@@ -233,7 +228,7 @@ function DrillVoiceAnswer({
         accessibilityRole="button"
         accessibilityLabel="Удерживай, чтобы записать голосовой ответ">
         <View style={[styles.voiceMicBtn, recording && styles.voiceMicBtnActive]}>
-          <Ionicons name="mic" size={26} color={recording ? '#000000' : APP_THEME.color.text} />
+          <Ionicons name="mic" size={26} color={recording ? GAME_THEME.color.cream : GAME_THEME.color.ink} />
         </View>
       </Pressable>
       <Text style={styles.voiceHint}>
@@ -253,7 +248,12 @@ type Props = {
   transcribeLanguage: CompanionChatApiLanguage;
   onClose: (summary: DrillSummary | null) => void;
   onNextTopicPress?: (topic: TeacherNextTopicRecommendation) => void;
-  onCheck: (payload: { exercise: string; answer: string }) => Promise<TeacherExerciseCheckSuccessBody>;
+  onCheck: (payload: {
+    exercise: string;
+    answer: string;
+    item: TeacherExerciseItem;
+    learnerAnswers: ExerciseAnswerState;
+  }) => Promise<TeacherExerciseCheckSuccessBody>;
 };
 
 function ChoiceOption({
@@ -429,15 +429,13 @@ export function TeacherExerciseDrill({
   if (!open) return null;
 
   return (
-    <Modal visible={open} animationType="fade" transparent statusBarTranslucent onRequestClose={handleClose}>
-      <Pressable
+    <Modal visible={open} animationType="fade" presentationStyle="fullScreen" onRequestClose={handleClose}>
+      <View
         style={[
           styles.root,
-          { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 },
-        ]}
-        onPress={Keyboard.dismiss}
-        accessible={false}>
-        <AmbientBackdrop intensity={0.85} />
+          { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 10) },
+        ]}>
+        <Pressable style={styles.flex} onPress={Keyboard.dismiss} accessible={false}>
         <WordDragProvider>
         <DrillHeader total={total} index={index} finished={finished} onClose={handleClose} />
 
@@ -470,7 +468,7 @@ export function TeacherExerciseDrill({
                       <Text style={styles.nextTopicEyebrow}>следующей темы</Text>
                     </View>
                     <View style={styles.nextTopicArrow}>
-                      <Ionicons name="arrow-forward" size={16} color={APP_THEME.color.textSoft} />
+                      <Ionicons name="arrow-forward" size={16} color={GAME_THEME.color.ink} />
                     </View>
                   </View>
                   <Text style={styles.nextTopicTitle}>{nextTopic.title}</Text>
@@ -497,13 +495,8 @@ export function TeacherExerciseDrill({
                 style={({ pressed }) => [styles.summaryCloseBtn, pressed && styles.pressed]}
                 accessibilityRole="button"
                 accessibilityLabel="Вернуться к уроку">
-                {Platform.OS === 'ios' ? (
-                  <BlurView intensity={48} tint="dark" style={StyleSheet.absoluteFillObject} />
-                ) : null}
-                <View style={styles.summaryCloseInner}>
-                  <Text style={styles.summaryCloseText}>Вернуться к уроку</Text>
-                  <Ionicons name="arrow-forward" size={17} color={APP_THEME.color.muted} />
-                </View>
+                <Text style={styles.summaryCloseText}>Вернуться к уроку</Text>
+                <Ionicons name="arrow-forward" size={17} color={GAME_THEME.color.ink} />
               </Pressable>
             </View>
           </>
@@ -514,66 +507,72 @@ export function TeacherExerciseDrill({
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}>
-            {!result ? <View style={styles.coach}><AnimatedMascot source={COACH_SRC} size={92} /></View> : null}
-            <View key={`${sessionKey}-${index}`} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <View style={styles.typeBadge}>
-                  <Ionicons
-                    name={EXERCISE_KIND_META[current.kind]?.icon ?? 'help-outline'}
-                    size={13}
-                    color={APP_THEME.color.textSoft}
-                  />
-                  <Text style={styles.typeBadgeText}>
-                    {EXERCISE_KIND_META[current.kind]?.label ?? 'Задание'}
+            <View style={styles.stage}>
+              {!result ? (
+                <View style={styles.coach}>
+                  <TearzThinking size={96} />
+                </View>
+              ) : null}
+              <View key={`${sessionKey}-${index}`} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.typeBadge}>
+                    <Ionicons
+                      name={EXERCISE_KIND_META[current.kind]?.icon ?? 'help-outline'}
+                      size={13}
+                      color={GAME_THEME.color.cream}
+                    />
+                    <Text style={styles.typeBadgeText}>
+                      {EXERCISE_KIND_META[current.kind]?.label ?? 'Задание'}
+                    </Text>
+                  </View>
+                  <Text style={styles.cardStep}>
+                    {index + 1}/{total}
                   </Text>
                 </View>
-                <Text style={styles.cardStep}>
-                  {index + 1}/{total}
-                </Text>
-              </View>
 
-              {current.instruction && current.kind !== 'choose_word_form' ? (
-                <Text style={styles.instruction}>{current.instruction}</Text>
-              ) : null}
+                {current.instruction && current.kind !== 'choose_word_form' ? (
+                  <Text style={styles.instruction}>{current.instruction}</Text>
+                ) : null}
 
-              {!result ? (
-                <TeacherExerciseTaskBody
-                  exercise={current}
-                  disabled={checking || Boolean(result)}
-                  state={answerState}
-                  onStateChange={patchAnswerState}
-                  blankRefs={blankRefs}
-                  onFocusBlank={focusBlank}
-                  activeBlankId={activeBlankId}
-                  VoiceBlock={DrillVoiceAnswer}
-                  voiceCapture={answerState.voiceCapture ?? null}
-                  onVoiceCapture={(next) => {
-                    patchAnswerState({ voiceCapture: next });
-                    setVoiceTranscript('');
-                  }}
-                />
-              ) : null}
+                {!result ? (
+                  <TeacherExerciseTaskBody
+                    exercise={current}
+                    disabled={checking || Boolean(result)}
+                    state={answerState}
+                    onStateChange={patchAnswerState}
+                    blankRefs={blankRefs}
+                    onFocusBlank={focusBlank}
+                    activeBlankId={activeBlankId}
+                    VoiceBlock={DrillVoiceAnswer}
+                    voiceCapture={answerState.voiceCapture ?? null}
+                    onVoiceCapture={(next) => {
+                      patchAnswerState({ voiceCapture: next });
+                      setVoiceTranscript('');
+                    }}
+                  />
+                ) : null}
 
-              {current.kind === 'multiple_choice' && current.choices && !result ? (
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>Варианты</Text>
-                  <View style={styles.choicesCol}>
-                    {current.choices.map((choice, ci) => (
-                      <ChoiceOption
-                        key={choice}
-                        label={choice}
-                        letter={CHOICE_LETTERS[ci] ?? String(ci + 1)}
-                        selected={answerState.selectedChoice === choice}
-                        disabled={Boolean(result)}
-                        onPress={() => {
-                          patchAnswerState({ selectedChoice: choice });
-                          void Haptics.selectionAsync();
-                        }}
-                      />
-                    ))}
+                {current.kind === 'multiple_choice' && current.choices && !result ? (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionLabel}>Варианты</Text>
+                    <View style={styles.choicesCol}>
+                      {current.choices.map((choice, ci) => (
+                        <ChoiceOption
+                          key={choice}
+                          label={choice}
+                          letter={CHOICE_LETTERS[ci] ?? String(ci + 1)}
+                          selected={answerState.selectedChoice === choice}
+                          disabled={Boolean(result)}
+                          onPress={() => {
+                            patchAnswerState({ selectedChoice: choice });
+                            void Haptics.selectionAsync();
+                          }}
+                        />
+                      ))}
+                    </View>
                   </View>
-                </View>
-              ) : null}
+                ) : null}
+              </View>
             </View>
           </ScrollView>
         ) : null}
@@ -585,36 +584,39 @@ export function TeacherExerciseDrill({
         {!finished && current ? (
           <View style={styles.footer}>
             {result ? (
-              <Pressable
+              <GameGoldButton
                 onPress={handleContinue}
-                style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-                accessibilityRole="button">
-                <Text style={styles.primaryBtnText}>{index + 1 >= total ? 'К итогам' : 'Дальше'}</Text>
-                <Ionicons name="arrow-forward" size={17} color="#000000" />
-              </Pressable>
+                size="lg"
+                accessibilityLabel={index + 1 >= total ? 'К итогам' : 'Дальше'}
+                style={styles.primaryBtn}>
+                <View style={styles.primaryBtnRow}>
+                  <Text style={styles.primaryBtnText}>{index + 1 >= total ? 'К итогам' : 'Дальше'}</Text>
+                  <Ionicons name="arrow-forward" size={17} color={GAME_THEME.color.ink} />
+                </View>
+              </GameGoldButton>
             ) : (
-              <Pressable
+              <GameGoldButton
                 onPress={() => void handleCheck()}
                 disabled={!canCheck || checking}
-                style={({ pressed }) => [
-                  styles.primaryBtn,
-                  (!canCheck || checking) && styles.primaryBtnDisabled,
-                  pressed && canCheck && !checking && styles.pressed,
-                ]}
-                accessibilityRole="button">
+                size="lg"
+                accessibilityLabel={
+                  current.kind === 'voice_recording' ? 'Проверить запись' : 'Проверить'
+                }
+                style={styles.primaryBtn}>
                 {checking ? (
-                  <ActivityIndicator color="#000000" size="small" />
+                  <ActivityIndicator color={GAME_THEME.color.ink} size="small" />
                 ) : (
                   <Text style={styles.primaryBtnText}>
                     {current.kind === 'voice_recording' ? 'Проверить запись' : 'Проверить'}
                   </Text>
                 )}
-              </Pressable>
+              </GameGoldButton>
             )}
           </View>
         ) : null}
         </WordDragProvider>
-      </Pressable>
+        </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -622,22 +624,33 @@ export function TeacherExerciseDrill({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: DRILL.canvas,
-    paddingHorizontal: 22,
+    backgroundColor: GAME_THEME.color.cream,
+  },
+  flex: {
+    flex: 1,
   },
   header: {
-    marginBottom: 20,
-    gap: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(26,26,26,0.12)',
+    backgroundColor: GAME_THEME.color.cream,
   },
-  headerRow: {
+  titleBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 48,
+    paddingHorizontal: 6,
   },
   headerSideBtn: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: 'rgba(26,26,26,0.05)',
+  },
+  headerSpacer: {
+    width: 40,
+    height: 40,
   },
   headerTitleWrap: {
     flex: 1,
@@ -645,35 +658,49 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   headerTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.12,
-    color: APP_THEME.color.textSoft,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: GAME_THEME.color.ink,
   },
   headerMeta: {
     fontSize: 12,
-    color: APP_THEME.color.mutedSoft,
+    color: 'rgba(26,26,26,0.42)',
     fontVariant: ['tabular-nums'],
-    letterSpacing: -0.04,
+    letterSpacing: 0.2,
+    fontWeight: '600',
   },
-  progressTrack: drillShellStyles.progressTrack,
-  progressFill: drillShellStyles.progressFill,
+  progressTrack: {
+    height: 4,
+    backgroundColor: 'rgba(26,26,26,0.08)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: GAME_THEME.color.phosphor,
+  },
   scroll: {
     flex: 1,
+    backgroundColor: GAME_THEME.color.cream,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingBottom: 12,
-    gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
+  },
+  stage: {
+    flexGrow: 1,
+    gap: 12,
   },
   coach: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   coachImg: {
-    width: 92,
-    height: 92,
+    width: 88,
+    height: 88,
   },
   card: drillShellStyles.card,
   cardHeader: {
@@ -690,9 +717,9 @@ const styles = StyleSheet.create({
   promptPlain: {
     fontSize: 21,
     lineHeight: 28,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: -0.4,
-    color: TEACHER_TITLE,
+    color: GAME_THEME.color.ink,
   },
   inlineRow: {
     flexDirection: 'row',
@@ -704,29 +731,31 @@ const styles = StyleSheet.create({
   promptText: {
     fontSize: 21,
     lineHeight: 30,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: -0.35,
-    color: TEACHER_TITLE,
+    color: GAME_THEME.color.ink,
   },
   blankShell: {
     minWidth: 80,
     minHeight: 40,
     maxWidth: '100%',
-    borderRadius: 12,
-    backgroundColor: APP_THEME.color.accentSoft,
-    borderWidth: 1,
-    borderColor: APP_THEME.color.border,
+    borderRadius: 6,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
     paddingHorizontal: 10,
     justifyContent: 'center',
     marginHorizontal: 2,
   },
   blankShellFocused: {
-    borderColor: 'rgba(94, 156, 255, 0.55)',
-    backgroundColor: 'rgba(94, 156, 255, 0.1)',
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.paperWarm,
   },
   blankShellFilled: {
-    borderColor: APP_THEME.color.borderStrong,
-    backgroundColor: APP_THEME.color.accentSoft,
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.paperWarm,
   },
   blankInput: {
     minWidth: 56,
@@ -734,9 +763,9 @@ const styles = StyleSheet.create({
     margin: 0,
     fontSize: 18,
     lineHeight: 24,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: -0.25,
-    color: APP_THEME.color.text,
+    color: GAME_THEME.color.ink,
     textAlign: 'center',
   },
   bankRow: {
@@ -746,20 +775,22 @@ const styles = StyleSheet.create({
   },
   bankChip: {
     paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: APP_THEME.radius.pill,
-    backgroundColor: APP_THEME.color.bg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
+    paddingVertical: 10,
+    borderRadius: 6,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
   },
   bankChipPressed: {
-    backgroundColor: 'rgba(94, 156, 255, 0.12)',
-    borderColor: 'rgba(94, 156, 255, 0.35)',
+    backgroundColor: GAME_THEME.color.paperWarm,
+    transform: [{ translateY: 1 }],
   },
   bankChipText: {
-    ...APP_THEME.type.label,
-    fontWeight: '500',
-    color: APP_THEME.color.textSoft,
+    fontSize: 14,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
   },
   choicesCol: drillShellStyles.choicesCol,
   choiceRow: drillShellStyles.choiceRow,
@@ -775,13 +806,14 @@ const styles = StyleSheet.create({
     minHeight: 120,
     paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: APP_THEME.radius.md,
-    backgroundColor: APP_THEME.color.bg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
+    borderRadius: 6,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
     fontSize: 16,
     lineHeight: 22,
-    color: TEACHER_TITLE,
+    fontWeight: '600',
+    color: GAME_THEME.color.ink,
     textAlignVertical: 'top',
   },
   voicePanel: {
@@ -792,34 +824,35 @@ const styles = StyleSheet.create({
   voiceMicOuter: {
     width: 96,
     height: 96,
-    borderRadius: 48,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.accentGlass,
-    backgroundColor: DRILL.chip,
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.paper,
   },
   voiceMicOuterActive: {
-    borderColor: APP_THEME.color.borderStrong,
-    backgroundColor: DRILL.chipActiveBg,
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.paperWarm,
   },
   voiceMicBtn: {
     width: 68,
     height: 68,
-    borderRadius: 34,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: DRILL.well,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DRILL.wellEdge,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   voiceMicBtnActive: {
-    backgroundColor: APP_THEME.color.text,
-    borderColor: APP_THEME.color.text,
+    backgroundColor: GAME_THEME.color.ink,
+    borderColor: GAME_THEME.color.ink,
   },
   voiceHint: {
-    ...APP_THEME.type.caption,
-    color: TEACHER_MUTED,
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.5)',
     textAlign: 'center',
   },
   voiceReadyRow: {
@@ -827,20 +860,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     alignSelf: 'stretch',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: DRILL.radiusControl,
+    borderRadius: 6,
     backgroundColor: DRILL.successBg,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DRILL.successEdge,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   voiceReadyIcon: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(48, 209, 88, 0.14)',
+    backgroundColor: GAME_THEME.color.phosphor,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   voiceReadyCopy: {
     flex: 1,
@@ -848,13 +883,14 @@ const styles = StyleSheet.create({
   },
   voiceReadyTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: -0.2,
-    color: TEACHER_TITLE,
+    color: GAME_THEME.color.ink,
   },
   voiceReadyMeta: {
-    ...APP_THEME.type.micro,
-    color: APP_THEME.color.mutedSoft,
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.45)',
     fontVariant: ['tabular-nums'],
   },
   voiceRetakeBtn: {
@@ -863,19 +899,21 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: APP_THEME.radius.pill,
-    backgroundColor: APP_THEME.color.elevatedSoft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
+    borderRadius: 6,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   voiceRetakeText: {
-    ...APP_THEME.type.label,
-    color: APP_THEME.color.textSoft,
-    fontWeight: '500',
+    fontSize: 13,
+    color: GAME_THEME.color.ink,
+    fontWeight: '800',
   },
   feedback: {
-    paddingTop: 14,
+    paddingHorizontal: 16,
+    paddingTop: 10,
     paddingBottom: 6,
+    backgroundColor: GAME_THEME.color.cream,
   },
   fbRow: {
     flexDirection: 'row',
@@ -887,17 +925,17 @@ const styles = StyleSheet.create({
     marginLeft: -6,
     marginBottom: 10,
     padding: 16,
-    borderRadius: DRILL.radiusWell,
-    backgroundColor: DRILL.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DRILL.cardEdge,
+    borderRadius: 6,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
     gap: 6,
   },
   fbBubbleOk: {
-    borderColor: DRILL.successEdge,
+    backgroundColor: DRILL.successBg,
   },
   fbBubbleWarn: {
-    borderColor: 'rgba(255, 159, 10, 0.34)',
+    backgroundColor: 'rgba(232,93,76,0.12)',
   },
   fbTail: {
     position: 'absolute',
@@ -910,70 +948,76 @@ const styles = StyleSheet.create({
     borderRightWidth: 9,
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
-    borderRightColor: DRILL.card,
+    borderRightColor: GAME_THEME.color.paper,
   },
   fbTailOk: {
-    borderRightColor: DRILL.card,
+    borderRightColor: DRILL.successBg,
   },
   fbTailWarn: {
-    borderRightColor: DRILL.card,
+    borderRightColor: 'rgba(232,93,76,0.12)',
   },
   fbTitle: {
-    fontSize: 16.5,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    color: APP_THEME.color.text,
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: -0.2,
+    color: GAME_THEME.color.ink,
   },
   fbText: {
-    fontSize: 14.5,
+    fontSize: 14,
     lineHeight: 20,
+    fontWeight: '600',
     letterSpacing: -0.1,
-    color: APP_THEME.color.muted,
+    color: 'rgba(26,26,26,0.62)',
   },
   fbAnswer: {
     marginTop: 6,
     paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: APP_THEME.color.accentSoft,
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(26,26,26,0.12)',
     gap: 3,
   },
   fbAnswerLabel: {
-    ...APP_THEME.type.micro,
-    color: APP_THEME.color.mutedSoft,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: 'rgba(26,26,26,0.45)',
   },
   fbAnswerText: {
     fontSize: 16,
     lineHeight: 22,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: -0.18,
-    color: APP_THEME.color.success,
+    color: GAME_THEME.color.ink,
   },
   fbMeta: {
     marginTop: 4,
     fontSize: 13,
     lineHeight: 18,
-    color: APP_THEME.color.mutedFaint,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.4)',
   },
   footer: {
     paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+    backgroundColor: GAME_THEME.color.cream,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(26,26,26,0.1)',
   },
   primaryBtn: {
-    minHeight: 56,
-    borderRadius: APP_THEME.radius.pill,
-    backgroundColor: APP_THEME.color.text,
+    alignSelf: 'stretch',
+  },
+  primaryBtnRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-  },
-  primaryBtnDisabled: {
-    opacity: 0.28,
   },
   primaryBtnText: {
     fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    color: '#000000',
+    fontWeight: '900',
+    letterSpacing: 0.2,
+    color: GAME_THEME.color.ink,
   },
   pressed: {
     opacity: 0.82,
@@ -981,15 +1025,17 @@ const styles = StyleSheet.create({
   summaryBody: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 20,
     gap: 10,
+    backgroundColor: GAME_THEME.color.cream,
   },
   summaryEyebrow: {
-    ...APP_THEME.type.micro,
-    color: APP_THEME.color.mutedSoft,
+    fontSize: 11,
+    fontWeight: '900',
+    color: 'rgba(26,26,26,0.45)',
     textAlign: 'center',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
   scoreRow: {
     flexDirection: 'row',
@@ -999,38 +1045,39 @@ const styles = StyleSheet.create({
   },
   summaryScore: {
     fontSize: 56,
-    fontWeight: '700',
+    fontWeight: '900',
     letterSpacing: -2,
-    color: APP_THEME.color.text,
+    color: GAME_THEME.color.ink,
     fontVariant: ['tabular-nums'],
   },
   scoreSlash: {
     fontSize: 24,
-    fontWeight: '500',
-    color: APP_THEME.color.mutedFaint,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.3)',
   },
   scoreTotal: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: -0.5,
-    color: APP_THEME.color.mutedSoft,
+    color: 'rgba(26,26,26,0.45)',
     fontVariant: ['tabular-nums'],
   },
   summarySub: {
-    ...APP_THEME.type.caption,
+    fontSize: 14,
     lineHeight: 22,
-    color: TEACHER_MUTED,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
     textAlign: 'center',
     maxWidth: 300,
     alignSelf: 'center',
   },
   nextTopicCard: {
     marginTop: 12,
-    padding: 20,
-    borderRadius: DRILL.radiusWell,
-    backgroundColor: DRILL.chip,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DRILL.chipEdge,
+    padding: 18,
+    borderRadius: 6,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
     gap: 10,
     maxWidth: 340,
     alignSelf: 'center',
@@ -1038,15 +1085,15 @@ const styles = StyleSheet.create({
   },
   nextTopicEyebrowAccent: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '800',
     letterSpacing: -0.06,
-    color: APP_THEME.color.textSoft,
+    color: GAME_THEME.color.ink,
   },
   nextTopicEyebrow: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '700',
     letterSpacing: -0.04,
-    color: APP_THEME.color.mutedSoft,
+    color: 'rgba(26,26,26,0.45)',
   },
   nextTopicHeader: {
     flexDirection: 'row',
@@ -1060,62 +1107,58 @@ const styles = StyleSheet.create({
   },
   nextTopicCardPressed: {
     opacity: 0.9,
-    backgroundColor: DRILL.chipActiveBg,
-    borderColor: DRILL.chipActiveEdge,
+    backgroundColor: GAME_THEME.color.paperWarm,
   },
   nextTopicArrow: {
     width: 30,
     height: 30,
-    borderRadius: 15,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: APP_THEME.color.accentSoft,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: DRILL.chipEdge,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
     marginTop: 2,
   },
   nextTopicTitle: {
     fontSize: 19,
-    fontWeight: '600',
+    fontWeight: '900',
     letterSpacing: -0.38,
-    color: TEACHER_TITLE,
+    color: GAME_THEME.color.ink,
     lineHeight: 26,
   },
   nextTopicLine: {
-    ...APP_THEME.type.caption,
+    fontSize: 13,
     lineHeight: 20,
-    color: TEACHER_MUTED,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
   },
   nextTopicLabel: {
-    color: APP_THEME.color.mutedSoft,
-    fontWeight: '600',
+    color: 'rgba(26,26,26,0.4)',
+    fontWeight: '800',
   },
   nextTopicTapHint: {
-    ...APP_THEME.type.micro,
-    color: APP_THEME.color.mutedFaint,
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.35)',
     marginTop: 2,
   },
   summaryCloseBtn: {
     minHeight: 52,
-    borderRadius: APP_THEME.radius.pill,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.borderStrong,
-    backgroundColor: Platform.OS === 'ios' ? 'transparent' : APP_THEME.color.elevated,
-  },
-  summaryCloseInner: {
-    flex: 1,
-    minHeight: 52,
+    borderRadius: GAME_THEME.radius.button,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingHorizontal: 20,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.cream,
   },
   summaryCloseText: {
     fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: -0.25,
-    color: APP_THEME.color.textSoft,
+    fontWeight: '800',
+    letterSpacing: 0.1,
+    color: GAME_THEME.color.ink,
   },
 });
