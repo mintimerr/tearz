@@ -76,7 +76,7 @@ npm run finish:testflight
 
 - [ ] `GET /health` отвечает 200
 - [ ] Регистрация: код приходит на почту
-- [ ] Privacy / Terms ссылки открываются (welcome + профиль)
+- [ ] Privacy / Terms открываются (`/privacy` и `/terms` на API; EAS env `EXPO_PUBLIC_PRIVACY_URL` / `EXPO_PUBLIC_TERMS_URL`)
 - [ ] Преподаватель: вопрос → ответ с блоками
 - [ ] Мини-тренировка · 5 → задания проходятся
 - [ ] Long-press слова в чате → добавление в словарь
