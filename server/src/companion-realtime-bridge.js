@@ -119,7 +119,11 @@ export function attachCompanionRealtimeBridge(wss, { buildSystemPrompt, getApiKe
         }
 
         const language =
-          msg.language === 'chinese' || msg.language === 'russian' || msg.language === 'english'
+          msg.language === 'chinese' ||
+          msg.language === 'russian' ||
+          msg.language === 'english' ||
+          msg.language === 'german' ||
+          msg.language === 'french'
             ? msg.language
             : 'english';
 

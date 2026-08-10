@@ -16,6 +16,7 @@ import { useAuth, type NativeLanguage } from '@/contexts/auth-context';
 type LocaleContextValue = {
   locale: AppLocale;
   setPreviewLocale: (locale: NativeLanguage | null) => void;
+  setAppLocale: (locale: NativeLanguage) => Promise<void>;
   t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 };
 
@@ -51,6 +52,12 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
   const locale: AppLocale = previewLocale ?? user?.nativeLanguage ?? storedLocale;
 
+  const setAppLocale = useCallback(async (next: NativeLanguage) => {
+    setPreviewLocale(null);
+    setStoredLocale(next);
+    await AsyncStorage.setItem(LOCALE_STORAGE_KEY, next);
+  }, []);
+
   const t = useCallback(
     (key: TranslationKey, params?: Record<string, string | number>) => translate(locale, key, params),
     [locale],
@@ -60,9 +67,10 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     () => ({
       locale,
       setPreviewLocale: (next: NativeLanguage | null) => setPreviewLocale(next),
+      setAppLocale,
       t,
     }),
-    [locale, t],
+    [locale, setAppLocale, t],
   );
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
@@ -75,6 +83,6 @@ export function useLocale() {
 }
 
 export function useTranslation() {
-  const { t, locale, setPreviewLocale } = useLocale();
-  return { t, locale, setPreviewLocale };
+  const { t, locale, setPreviewLocale, setAppLocale } = useLocale();
+  return { t, locale, setPreviewLocale, setAppLocale };
 }

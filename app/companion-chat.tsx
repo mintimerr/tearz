@@ -81,6 +81,7 @@ import { persistCompanionAttachment } from '@/utils/companion-attachment-storage
 import { prepareCompanionImageForApi } from '@/utils/companion-image-base64';
 import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
 import { normalizeTeacherExerciseSet } from '@/utils/teacher-exercise-normalize';
+import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
 import {
   evaluateMiniDrillAccess,
   getPriorExerciseTexts,
@@ -1051,12 +1052,17 @@ export default function CompanionChatScreen() {
       setExerciseLoadingId(source.id);
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const generationSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const lastUser = lastUserTextBefore(messagesRef.current, source.id);
+      const drillLanguage = inferTeacherLessonLanguage(
+        `${lastUser}\n${lessonTopicParam ?? ''}\n${explanation}`,
+        teacherSessionLang === 'russian' ? 'english' : teacherSessionLang,
+      );
       try {
         const { exercises: raw, nextTopic } = await postTeacherExerciseSet({
           explanation,
-          lastUserMessage: lastUserTextBefore(messagesRef.current, source.id),
+          lastUserMessage: lastUser,
           conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
-          language: teacherSessionLang,
+          language: drillLanguage,
           lessonTopic: lessonTopicParam,
           generationSeed,
           generationAttempt: access.generationsUsed + 1,

@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HubAttractStage } from '@/components/game/hub-attract-stage';
+import { HubLanguageSwitch } from '@/components/game/hub-language-switch';
 import { HubTearzWordmark } from '@/components/game/hub-tearz-wordmark';
 import { HubTriangleNav } from '@/components/game/hub-triangle-nav';
 import { GAME_THEME } from '@/constants/game-theme';
@@ -23,15 +24,7 @@ export function GameHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const {
-    hydrated,
-    coins,
-    dailyStreak,
-    dailyDoneCount,
-    dailyGoalTarget,
-    dailyTasks,
-    claimStarterPack,
-  } = useEngagement();
+  const { hydrated, claimStarterPack } = useEngagement();
 
   useEffect(() => {
     if (hydrated) claimStarterPack();
@@ -50,33 +43,13 @@ export function GameHubScreen() {
     <View style={styles.root}>
       <HubAttractStage />
 
-      <View style={[styles.hud, { paddingTop: insets.top + 10 }]} pointerEvents="box-none">
-        <View style={styles.stat}>
-          <Text style={styles.statLabel}>◉ {t('hub.coins')}</Text>
-          <Text style={styles.statValue}>{coins}</Text>
-        </View>
-        <View style={[styles.stat, styles.statCenter]}>
-          <Text style={styles.statLabel}>{t('hub.dailyGoal')}</Text>
-          <Text style={styles.statValue}>
-            {dailyDoneCount}/{dailyGoalTarget}
-          </Text>
-          <View style={styles.taskDots}>
-            <View style={[styles.taskDot, dailyTasks.lesson && styles.taskDotOn]} />
-            <View style={[styles.taskDot, dailyTasks.vocab && styles.taskDotOn]} />
-            <View style={[styles.taskDot, dailyTasks.drill && styles.taskDotOn]} />
-          </View>
-        </View>
-        <View style={[styles.stat, styles.statRight]}>
-          <Text style={styles.statLabel}>🔥 {t('hub.streak')}</Text>
-          <Text style={styles.statValue}>{dailyStreak}</Text>
-        </View>
-      </View>
+      <HubLanguageSwitch top={insets.top + 10} />
 
       <View
         style={[
           styles.foreground,
           {
-            paddingTop: insets.top + 56,
+            paddingTop: insets.top + 12,
             paddingBottom: Math.max(insets.bottom, 14) + 10,
           },
         ]}
@@ -110,63 +83,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: GAME_THEME.color.sky,
-  },
-  hud: {
-    position: 'absolute',
-    top: 0,
-    left: 14,
-    right: 14,
-    zIndex: 5,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  stat: {
-    minWidth: 72,
-  },
-  statCenter: {
-    alignItems: 'center',
-    minWidth: 88,
-  },
-  statRight: {
-    alignItems: 'flex-end',
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: GAME_THEME.color.cream,
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  statValue: {
-    marginTop: 2,
-    fontSize: 22,
-    fontWeight: '900',
-    color: GAME_THEME.color.cream,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-    fontVariant: ['tabular-nums'],
-  },
-  taskDots: {
-    flexDirection: 'row',
-    gap: 5,
-    marginTop: 5,
-  },
-  taskDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: GAME_THEME.color.cream,
-    backgroundColor: 'transparent',
-  },
-  taskDotOn: {
-    backgroundColor: GAME_THEME.color.gold,
-    borderColor: GAME_THEME.color.gold,
   },
   foreground: {
     flex: 1,

@@ -12,6 +12,9 @@ const TERMINAL_LAST_KEY = 'terminal-location-last';
 export type TerminalLocationId =
   | 'asia_arcade'
   | 'europe_atm'
+  | 'seoul_photo_booth'
+  | 'paris_metro_guimard'
+  | 'shanghai_metro_bund'
   | 'usa_bus_stop'
   | 'brazil_loterica'
   | 'japan_konbini'
@@ -19,7 +22,14 @@ export type TerminalLocationId =
   | 'uae_metro';
 
 /** Порядок чередования готовых локаций после START */
-const READY_TERMINAL_ORDER: TerminalLocationId[] = ['asia_arcade', 'europe_atm'];
+const READY_TERMINAL_ORDER: TerminalLocationId[] = [
+  'uk_phone_box',
+  'paris_metro_guimard',
+  'shanghai_metro_bund',
+  'asia_arcade',
+  'europe_atm',
+  'seoul_photo_booth',
+];
 
 export type TerminalNormRect = { left: number; top: number; width: number; height: number };
 
@@ -46,17 +56,28 @@ export type TerminalLocation = {
   /** Спрайты кнопок (вырезаны из сцены); индекс = buttons[i] */
   buttonSprites?: ImageSource[];
   suggestions?: string[];
+  /** Целевой язык урока с этой локации (L2). Родной — в профиле/UI. */
+  lessonLanguage?: 'english' | 'chinese' | 'german' | 'french';
   phosphor?: string;
   /**
    * Смещение камеры в idle (доли ширины/высоты экрана).
    * Отрицательный panX = смотрим правее (виден фасад / граффити).
    */
   cameraIdle?: { panX?: number; panY?: number; scale?: number };
+  /**
+   * Как зумим при тапе по экрану.
+   * `crt` — стекло на весь телефон (Seoul / Paris); `focus` — как аркада/Berlin.
+   */
+  zoomFill?: 'crt' | 'focus';
 };
 
 /** База без кнопок: лунки на панели. Кнопки — отдельные спрайты поверх. */
 const ASIA_ARCADE_SCENE = require('../assets/images/tearz-mario/tearz-arcade-alley-scene-v2-nobtns.png');
 const EUROPE_ATM_SCENE = require('../assets/images/tearz-mario/tearz-atm-mech-scene.png');
+const SEOUL_PHOTO_BOOTH_SCENE = require('../assets/images/tearz-mario/tearz-seoul-photo-booth-scene.png');
+const PARIS_METRO_SCENE = require('../assets/images/tearz-mario/tearz-paris-metro-scene.png');
+const SHANGHAI_METRO_SCENE = require('../assets/images/tearz-mario/tearz-shanghai-metro-scene.png');
+const LONDON_PHONE_BOX_SCENE = require('../assets/images/tearz-mario/tearz-london-phonebox-scene.png');
 
 /**
  * Только хитбокс + текст внутри чёрного стекла.
@@ -154,6 +175,89 @@ const EUROPE_ATM_KEY_SPRITES: ImageSource[] = [
   require('../assets/images/tearz-mario/tearz-atm-btn-14.png'),
 ];
 
+/**
+ * LCD / экран 인생네컷-будки — Hongik-ro night.
+ * Стекло арта ≈ 0.379×0.411 / 0.183×0.199; CRT чуть внутрь безеля.
+ * Зум считает fill по CRT — чёрное стекло на весь телефон, UI не вылезает.
+ */
+const SEOUL_BOOTH_CRT = {
+  left: 0.390,
+  top: 0.424,
+  width: 0.160,
+  height: 0.174,
+};
+const SEOUL_BOOTH_FOCUS = {
+  left: 0.382,
+  top: 0.416,
+  width: 0.176,
+  height: 0.190,
+};
+const SEOUL_BOOTH_NEON: TerminalNormRect[] = [
+  { left: 0.62, top: 0.12, width: 0.2, height: 0.18 },
+  { left: 0.72, top: 0.28, width: 0.16, height: 0.14 },
+  { left: 0.08, top: 0.2, width: 0.14, height: 0.12 },
+];
+
+/** LCD автомата Navigo · Quai de Grenelle / Bir-Hakeim — inset внутри безеля */
+const PARIS_METRO_CRT = {
+  left: 0.3535,
+  top: 0.418,
+  width: 0.3223,
+  height: 0.1764,
+};
+const PARIS_METRO_FOCUS = {
+  left: 0.33,
+  top: 0.395,
+  width: 0.37,
+  height: 0.225,
+};
+const PARIS_METRO_NEON: TerminalNormRect[] = [
+  { left: 0.55, top: 0.08, width: 0.28, height: 0.16 },
+  { left: 0.08, top: 0.12, width: 0.2, height: 0.14 },
+  { left: 0.7, top: 0.32, width: 0.18, height: 0.12 },
+];
+
+/**
+ * LCD автомата Shanghai Metro · Bund / East Nanjing Rd.
+ * Стекло арта ≈ 0.352×0.456 / 0.292×0.131; CRT inset внутри безеля.
+ */
+const SHANGHAI_METRO_CRT = {
+  left: 0.3623,
+  top: 0.4629,
+  width: 0.2705,
+  height: 0.1178,
+};
+const SHANGHAI_METRO_FOCUS = {
+  left: 0.34,
+  top: 0.44,
+  width: 0.315,
+  height: 0.165,
+};
+const SHANGHAI_METRO_NEON: TerminalNormRect[] = [
+  { left: 0.55, top: 0.06, width: 0.3, height: 0.16 },
+  { left: 0.08, top: 0.1, width: 0.2, height: 0.14 },
+  { left: 0.72, top: 0.28, width: 0.16, height: 0.12 },
+];
+
+/** LCD внутри красной будки · Parliament Street — маленький экран автомата */
+const LONDON_PHONE_CRT = {
+  left: 0.4863,
+  top: 0.4049,
+  width: 0.0996,
+  height: 0.0501,
+};
+const LONDON_PHONE_FOCUS = {
+  left: 0.4746,
+  top: 0.3945,
+  width: 0.123,
+  height: 0.071,
+};
+const LONDON_PHONE_NEON: TerminalNormRect[] = [
+  { left: 0.08, top: 0.1, width: 0.22, height: 0.18 },
+  { left: 0.7, top: 0.14, width: 0.2, height: 0.14 },
+  { left: 0.55, top: 0.3, width: 0.16, height: 0.1 },
+];
+
 export const TERMINAL_LOCATIONS: TerminalLocation[] = [
   {
     id: 'asia_arcade',
@@ -169,7 +273,8 @@ export const TERMINAL_LOCATIONS: TerminalLocation[] = [
     neon: ASIA_NEON,
     buttons: ASIA_BUTTONS,
     buttonSprites: ASIA_BUTTON_SPRITES,
-    suggestions: ['English for airport', '点餐 · заказать еду', '旅行の会話'],
+    suggestions: ['Airport English', '点餐 · еда', '旅行の会話'],
+    lessonLanguage: 'english',
     phosphor: 'transparent',
   },
   {
@@ -177,7 +282,7 @@ export const TERMINAL_LOCATIONS: TerminalLocation[] = [
     title: 'Kottbusser Tor ATM',
     region: 'Europe · Berlin',
     object: 'Geldautomat у входа в U-Bahn',
-    vibe: 'Pixel-art дневной U Kottbusser Tor, Geldautomat, tearz-граффити, наш маскот на постере',
+    vibe: 'Pixel-art дневной U Kottbusser Tor, Geldautomat, tearz-graffiti, наш маскот на постере',
     ready: true,
     theme: 'lcd',
     scene: EUROPE_ATM_SCENE,
@@ -186,10 +291,67 @@ export const TERMINAL_LOCATIONS: TerminalLocation[] = [
     neon: EUROPE_ATM_SUN,
     buttons: EUROPE_ATM_KEYPAD,
     buttonSprites: EUROPE_ATM_KEY_SPRITES,
-    suggestions: ['PIN eingeben', 'Geld abheben', 'English lesson'],
+    suggestions: ['PIN eingeben', 'Geld abheben', 'English'],
+    lessonLanguage: 'german',
     phosphor: 'transparent',
     // Без letterbox-рамок: полный cover + лёгкий сдвиг вправо к фасаду/tearz
     cameraIdle: { panX: -0.08, scale: 1 },
+  },
+  {
+    id: 'seoul_photo_booth',
+    title: 'Hongik-ro Photo Booth',
+    region: 'Asia · Seoul',
+    object: 'Уличная 인생네컷-фотобудка',
+    vibe: 'Hongdae night, Tearz на корпусе, столб в наклейках, Namsan',
+    ready: true,
+    theme: 'booth',
+    scene: SEOUL_PHOTO_BOOTH_SCENE,
+    crt: SEOUL_BOOTH_CRT,
+    focus: SEOUL_BOOTH_FOCUS,
+    neon: SEOUL_BOOTH_NEON,
+    suggestions: ['인생네컷', '카페', '길찾기'],
+    /** Пока в API нет korean — tourist English; Hangul в саджестах задаёт вайб. */
+    lessonLanguage: 'english',
+    phosphor: 'transparent',
+    zoomFill: 'crt',
+    /** По центру будки, без сдвига — зум ровно в стекло */
+    cameraIdle: { panX: 0, scale: 1 },
+  },
+  {
+    id: 'paris_metro_guimard',
+    title: 'Bir-Hakeim Navigo',
+    region: 'Europe · Paris',
+    object: 'Автомат Navigo на Quai de Grenelle',
+    vibe: 'День, линия 6, Tour Eiffel, Tearz-стикеры, transit UI',
+    ready: true,
+    theme: 'metro',
+    scene: PARIS_METRO_SCENE,
+    crt: PARIS_METRO_CRT,
+    focus: PARIS_METRO_FOCUS,
+    neon: PARIS_METRO_NEON,
+    suggestions: ['Billet t+', 'Navigo', 'Où est…?'],
+    lessonLanguage: 'french',
+    phosphor: 'transparent',
+    zoomFill: 'crt',
+    cameraIdle: { panX: 0, scale: 1 },
+  },
+  {
+    id: 'shanghai_metro_bund',
+    title: 'East Nanjing Rd Ticket',
+    region: 'Asia · Shanghai',
+    object: 'Автомат 上海地铁 на Bund / Nanjing Rd (E)',
+    vibe: 'День, Oriental Pearl, Tearz на боковине, transit LCD',
+    ready: true,
+    theme: 'shanghai',
+    scene: SHANGHAI_METRO_SCENE,
+    crt: SHANGHAI_METRO_CRT,
+    focus: SHANGHAI_METRO_FOCUS,
+    neon: SHANGHAI_METRO_NEON,
+    suggestions: ['单程票', '怎么走？', '点餐'],
+    lessonLanguage: 'chinese',
+    phosphor: 'transparent',
+    zoomFill: 'crt',
+    cameraIdle: { panX: 0, scale: 1 },
   },
   {
     id: 'usa_bus_stop',
@@ -197,7 +359,7 @@ export const TERMINAL_LOCATIONS: TerminalLocation[] = [
     region: 'USA · LA / Chicago',
     object: 'Инфотабло на автобусной остановке',
     vibe: 'Ночь, neon diner рядом, расписание рейсов как меню уроков',
-    /** v1 soft launch: не в ротации START (только asia_arcade + europe_atm). */
+    /** v1 soft launch: не в ротации START (arcade → atm → seoul → paris). */
     ready: false,
   },
   {
@@ -218,11 +380,21 @@ export const TERMINAL_LOCATIONS: TerminalLocation[] = [
   },
   {
     id: 'uk_phone_box',
-    title: 'Red Phone Box',
+    title: 'Parliament Street Box',
     region: 'UK · London',
-    object: 'Красная телефонная будка с экраном внутри',
-    vibe: 'Туман, Big Ben вдалеке, монеты / карточка',
-    ready: false,
+    object: 'Красная телефонная будка с LCD внутри',
+    vibe: 'День, Westminster, Big Ben, tearz на короне, мокрый асфальт',
+    ready: true,
+    theme: 'callbox',
+    scene: LONDON_PHONE_BOX_SCENE,
+    crt: LONDON_PHONE_CRT,
+    focus: LONDON_PHONE_FOCUS,
+    neon: LONDON_PHONE_NEON,
+    suggestions: ['Oyster', 'Tube map', 'Where is…?'],
+    lessonLanguage: 'english',
+    phosphor: 'transparent',
+    zoomFill: 'crt',
+    cameraIdle: { panX: 0, scale: 1 },
   },
   {
     id: 'uae_metro',
@@ -238,7 +410,7 @@ export function getTerminalLocation(id: TerminalLocationId): TerminalLocation {
   return TERMINAL_LOCATIONS.find((l) => l.id === id) ?? TERMINAL_LOCATIONS[0];
 }
 
-/** Следующая готовая локация — строго через раз (arcade → atm → arcade …). */
+/** Следующая готовая локация — строго по кругу (arcade → atm → seoul → paris → …). */
 export async function pickTerminalLocation(readyOnly = true): Promise<TerminalLocation> {
   const order = READY_TERMINAL_ORDER.filter((id) => {
     const loc = getTerminalLocation(id);

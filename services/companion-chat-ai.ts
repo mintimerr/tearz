@@ -219,7 +219,16 @@ export async function postCompanionProfile(body: CompanionProfileRequestBody): P
   const colorRaw = asTrimmedString(json.color, 12);
   const color = /^#[0-9A-Fa-f]{6}$/.test(colorRaw) ? colorRaw : '#3A3A52';
   const persona = asTrimmedString(json.persona, 6000) || (() => {
-    const langWord = body.language === 'chinese' ? 'Chinese' : body.language === 'russian' ? 'Russian' : 'English';
+    const langWord =
+      body.language === 'chinese'
+        ? 'Chinese'
+        : body.language === 'german'
+          ? 'German'
+          : body.language === 'french'
+            ? 'French'
+            : body.language === 'russian'
+              ? 'Russian'
+              : 'English';
     return `You are ${name}, a regular person in ${city}. You only read and write comfortably in ${langWord}. Other languages you basically don't get — ask people to repeat in ${langWord}. Not a tutor. Natural DMs.`;
   })();
   const openingLine = asTrimmedString(json.openingLine, 400) || defaultOpeningForLang(body.language);

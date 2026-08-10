@@ -7,8 +7,6 @@ import {
   Animated,
   Alert,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -65,6 +63,7 @@ import type {
 import type { CompanionMsg } from '@/types/companion-message';
 import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
 import { setTeacherLessonBootstrap } from '@/utils/teacher-lesson-bootstrap';
+import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
 import {
   evaluateMiniDrillAccess,
   getPriorExerciseTexts,
@@ -118,7 +117,7 @@ export function TeacherBoardChat({
   seedQuestion,
   initialMessages,
   seedAttachment,
-  language = 'russian',
+  language = 'english',
   gameChrome = true,
 }: Props) {
   const { t } = useTranslation();
@@ -130,7 +129,9 @@ export function TeacherBoardChat({
   const { markLessonCreated, addRecentLesson } = useTeacherJourney();
   const { recordActivity, hasPlusAccess } = useEngagement();
   const { ingestTeacherText } = useLexicon();
-  const { animatedStyle: composerInsetStyle, isOpen: keyboardOpen } = useKeyboardInset(insets.bottom + 8);
+  const { animatedStyle: composerInsetStyle, isOpen: keyboardOpen } = useKeyboardInset(
+    Math.max(insets.bottom, gameChrome ? 4 : 10) + (gameChrome ? 0 : 8),
+  );
   const miniDrillUserId = user?.id ?? '';
 
   const scrollRef = useRef<ScrollView>(null);
@@ -163,9 +164,29 @@ export function TeacherBoardChat({
     void loadMiniDrillUsage(miniDrillUserId).then(setMiniDrillUsage);
   }, [miniDrillUserId]);
 
-  const scrollToEnd = () => {
-    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+  const scrollToEnd = (animated = true) => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated });
+    });
   };
+
+  /** Один плавный уезд в конец — в такт выезду клавиатуры, без дёрганых повторов */
+  useEffect(() => {
+    if (!keyboardOpen) return;
+    const id = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 220);
+    return () => clearTimeout(id);
+  }, [keyboardOpen]);
+
+  useEffect(() => {
+    if (!keyboardOpen) return;
+    // Новые сообщения / typing — тоже мягко к низу, пока клавиатура открыта
+    const id = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 60);
+    return () => clearTimeout(id);
+  }, [keyboardOpen, messages.length, typing]);
 
   const ensureLesson = useCallback(
     (thread: CompanionMsg[], titleSource: string) => {
@@ -289,12 +310,6 @@ export function TeacherBoardChat({
     scrollToEnd();
   }, [ensureLesson, initialMessages, registerUserStudyText, requestReply, seedQuestion, t]);
 
-  useEffect(() => {
-    if (!keyboardOpen) return;
-    const id = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
-    return () => clearTimeout(id);
-  }, [keyboardOpen, messages.length, typing]);
-
   const send = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || sending) return;
@@ -340,12 +355,17 @@ export function TeacherBoardChat({
       setExerciseLoadingId(source.id);
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const generationSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const lastUser = lastUserTextBefore(messagesRef.current, source.id);
+      const drillLanguage = inferTeacherLessonLanguage(
+        `${lastUser}\n${lessonTopicRef.current}\n${explanation}`,
+        language,
+      );
       try {
         const { exercises: raw, nextTopic } = await postTeacherExerciseSet({
           explanation,
-          lastUserMessage: lastUserTextBefore(messagesRef.current, source.id),
+          lastUserMessage: lastUser,
           conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
-          language,
+          language: drillLanguage,
           lessonTopic: lessonTopicRef.current,
           generationSeed,
           generationAttempt: access.generationsUsed + 1,
@@ -491,10 +511,7 @@ export function TeacherBoardChat({
     <View style={[styles.root, gameChrome && styles.rootGame]}>
       {gameChrome ? null : <BoardChalkBackdrop style={StyleSheet.absoluteFill} />}
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}>
+      <View style={styles.flex}>
         <View
           style={[
             styles.header,
@@ -537,6 +554,7 @@ export function TeacherBoardChat({
           style={styles.flex}
           contentContainerStyle={[styles.thread, gameChrome && styles.threadGame]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
           {messages.map((m, idx) => {
@@ -580,7 +598,6 @@ export function TeacherBoardChat({
           style={[
             styles.composerWrap,
             gameChrome && styles.composerWrapGame,
-            { paddingBottom: Math.max(insets.bottom, gameChrome ? 6 : 14) },
             composerInsetStyle,
           ]}>
           {gameChrome ? null : <BlurView intensity={38} tint="light" style={styles.composerBlur} />}
@@ -595,6 +612,11 @@ export function TeacherBoardChat({
               maxLength={2000}
               editable={!sending}
               blurOnSubmit={false}
+              onFocus={() => {
+                setTimeout(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }, 220);
+              }}
             />
             <Pressable
               onPress={() => void send()}
@@ -625,7 +647,7 @@ export function TeacherBoardChat({
             </Pressable>
           </View>
         </Reanimated.View>
-      </KeyboardAvoidingView>
+      </View>
 
       <TeacherExerciseGenerating visible={Boolean(exerciseLoadingId) && !drillOpen} />
 
@@ -724,13 +746,14 @@ const styles = StyleSheet.create({
   thread: {
     paddingHorizontal: 14,
     paddingTop: 10,
-    paddingBottom: 24,
+    paddingBottom: 16,
     flexGrow: 1,
+    justifyContent: 'flex-end',
   },
   threadGame: {
     paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
     backgroundColor: GAME_THEME.color.cream,
   },
   teacherText: {

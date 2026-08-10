@@ -8,7 +8,6 @@ import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/auth-context';
 import { EngagementProvider } from '@/contexts/engagement-context';
-import { XpRewardOverlay } from '@/components/engagement/xp-reward-overlay';
 import { LocaleProvider } from '@/contexts/locale-context';
 import { CompanionChatsProvider } from '@/contexts/companion-chats-context';
 import { TeacherJourneyProvider } from '@/contexts/teacher-journey-context';
@@ -64,7 +63,6 @@ export default function RootLayout() {
                     <Stack.Screen name="vocab/[id]" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal', headerShown: true }} />
                   </Stack>
-                  <XpRewardOverlay />
                 <StatusBar style="light" />
                   </WordAddSheetProvider>
                   </LexiconProvider>

@@ -81,9 +81,15 @@ const IMAGE_DATA_URL_MAX = 1_800_000;
 const PRACTICAL_QUESTION_RE =
   /(?:^|[\s,.!?])(?:как\s+(?:заказать|сказать|спросить|попросить|объяснить|назвать|позвонить|договориться|оплатить|найти|добраться)|не\s+знаю\s+как|что\s+(?:говорить|сказать)|как\s+бы\s+сказать|how\s+(?:do\s+i|to)\s+(?:say|order|ask|tell|get|call)|what\s+(?:do\s+i|should\s+i)\s+say)(?:[\s,.!?]|$)/iu;
 
-const SITUATION_CHINA_RE = /кита|china|中国|пекин|beijing|shanghai|上海|北京|广州|成都/iu;
-const SITUATION_ENGLISH_RE = /англи|britain|london|usa|америк|нью-йорк|new\s+york/iu;
-const SITUATION_RUSSIA_RE = /росси|russia|москв|петербург|спб/iu;
+const SITUATION_CHINA_RE =
+  /кита|china|中国|пекин|beijing|shanghai|上海|北京|广州|成都|点餐|\bhsk\b|хск|汉语|医院|больниц|мандарин/iu;
+const SITUATION_ENGLISH_RE =
+  /англи|britain|london|usa|америк|нью-йорк|new\s+york|airport\s*english|english\s*(lesson|for)?/iu;
+const SITUATION_GERMAN_RE =
+  /pin\s*eingeben|geld\s*abheben|geldautomat|deutsch|german|\bberlin\b|[äöüß]|\b(bitte|danke)\b/iu;
+const SITUATION_FRENCH_RE =
+  /billet\s*t\+|navigo|métro|guimard|\bparis\b|français|francais|french|où\s*est|ou\s*est|\b(bonjour|merci)\b/iu;
+const SITUATION_RUSSIA_RE = /росси|russia|москв|петербург|спб|учить\s+русск|russian\s+as\s+a\s+foreign/iu;
 
 const CHINESE_PINYIN_CHAT_RULES =
   '\n\nPINYIN (拼音) — level-adaptive for this reply:\n' +
@@ -103,23 +109,49 @@ function isPracticalLanguageQuestion(message) {
   return PRACTICAL_QUESTION_RE.test(t);
 }
 
+/**
+ * Целевой L2. «russian» от клиента обычно = родной язык UI, не цель урока → english,
+ * если тема явно не «учить русский как иностранный».
+ */
+function resolveTeacherTargetLanguage(requested, message, lessonTopic) {
+  const blob = `${typeof message === 'string' ? message : ''} ${typeof lessonTopic === 'string' ? lessonTopic : ''}`;
+  if (/[\u4e00-\u9fff]/.test(blob) || SITUATION_CHINA_RE.test(blob)) return 'chinese';
+  if (SITUATION_GERMAN_RE.test(blob)) return 'german';
+  if (SITUATION_FRENCH_RE.test(blob)) return 'french';
+  if (SITUATION_ENGLISH_RE.test(blob)) return 'english';
+  if (SITUATION_RUSSIA_RE.test(blob) && /учить|foreign|как\s+иностран/iu.test(blob)) return 'russian';
+  if (
+    requested === 'english' ||
+    requested === 'chinese' ||
+    requested === 'german' ||
+    requested === 'french'
+  ) {
+    return requested;
+  }
+  return 'english';
+}
+
+function teacherTargetLabel(target) {
+  if (target === 'chinese') return 'китайский (中文; пиньинь — по уровню из диалога)';
+  if (target === 'german') return 'немецкий (Deutsch)';
+  if (target === 'french') return 'французский (français)';
+  if (target === 'english') return 'английский (English)';
+  return 'русский';
+}
+
 function inferSituationTargetLanguage(message, lessonLang) {
-  if (typeof message !== 'string') return lessonLang;
-  if (SITUATION_CHINA_RE.test(message)) return 'chinese';
-  if (SITUATION_ENGLISH_RE.test(message)) return 'english';
-  if (SITUATION_RUSSIA_RE.test(message)) return 'russian';
-  return lessonLang;
+  return resolveTeacherTargetLanguage(lessonLang, message, '');
 }
 
 function buildPracticalQuestionOverride(message, lessonLang) {
   const target = inferSituationTargetLanguage(message, lessonLang);
-  const targetLabel =
-    target === 'chinese' ? 'китайский (中文; пиньинь — по уровню из диалога)' : target === 'english' ? 'английский' : 'русский';
+  const targetLabel = teacherTargetLabel(target);
 
   return (
     '\n\n⚠️ ACTIVE REQUEST TYPE: PRACTICAL / SITUATIONAL — LANGUAGE LESSON ONLY\n' +
     'The learner\'s latest message is a "how do I… in real life" question. They are in Tearz to learn WHAT TO SAY, not how life works.\n' +
-    `Phrase examples and dialogue MUST be in: ${targetLabel}.\n` +
+    `Phrase examples and dialogue MUST be in: ${targetLabel}. Explanations in Russian.\n` +
+    'NEVER put Russian example phrases in «Фразы:» / «Диалог:» unless the target language is explicitly Russian-as-L2.\n' +
     'MANDATORY blocks: «Фразы:» then «Диалог:» then «Объясняю простым языком:».\n' +
     'FORBIDDEN in this reply: mobile apps (DiDi, Uber, 滴滴), «скачай/установи», payment setup, maps, VPN, SIM, visas, prices, which service to use, step-by-step logistics without language.\n' +
     'Start immediately with phrases — no travel overview, no app recommendations.' +
@@ -131,20 +163,28 @@ function buildTeacherSystemPrompt(language, lessonTopic) {
   let prompt = TEACHER_SYSTEM_PROMPT_BASE;
   if (language === 'chinese') {
     prompt +=
-      '\n\nLESSON TARGET LANGUAGE: Chinese (中文). Give examples in Chinese when teaching; explanations stay mostly in Russian unless the learner writes in Chinese.' +
+      '\n\nLESSON TARGET LANGUAGE (L2): Chinese (中文). «Фразы:» / examples / dialogue = Chinese. Explanations = Russian.' +
       CHINESE_PINYIN_CHAT_RULES;
+  } else if (language === 'german') {
+    prompt +=
+      '\n\nLESSON TARGET LANGUAGE (L2): German (Deutsch). «Фразы:» / examples / dialogue = German. Explanations = Russian. Useful for ATM, travel, everyday Berlin situations.';
+  } else if (language === 'french') {
+    prompt +=
+      '\n\nLESSON TARGET LANGUAGE (L2): French (français). «Фразы:» / examples / dialogue = French. Explanations = Russian. Useful for Métro, Navigo, café, everyday Paris situations.';
   } else if (language === 'english') {
     prompt +=
-      '\n\nLESSON TARGET LANGUAGE: English. Give examples in English when teaching; explanations stay mostly in Russian unless the learner writes in English.';
+      '\n\nLESSON TARGET LANGUAGE (L2): English. «Фразы:» / examples / dialogue = English. Explanations = Russian.';
   } else {
     prompt +=
-      '\n\nLESSON TARGET LANGUAGE: Russian. Focus on Russian grammar, style, and natural phrasing.';
+      '\n\nLESSON TARGET LANGUAGE (L2): Russian as a foreign language (rare). Only when the learner explicitly studies Russian as L2.';
   }
+  prompt +=
+    '\n\nHARD RULE: Do not teach the learner their native Russian as if it were L2. Native Russian → explain in Russian; teach the TARGET language above.';
   if (typeof lessonTopic === 'string' && lessonTopic.trim()) {
     prompt +=
       '\n\nCURRENT LESSON TOPIC (from the app): "' +
       lessonTopic.trim().slice(0, 240).replace(/"/g, "'") +
-      '". Keep answers aligned with this topic when relevant.';
+      '". Keep answers aligned with this topic when relevant. If the topic is a foreign phrase (e.g. PIN eingeben), teach THAT language.';
   }
   prompt +=
     '\n\nLEVEL & INTENT (apply silently on every message):\n' +
@@ -452,13 +492,20 @@ function buildTeacherExercisePrompt(language, lessonTopic) {
 
   if (language === 'chinese') {
     prompt +=
-      '\n\nLESSON TARGET LANGUAGE: Chinese (中文). The exercise may include Chinese examples, but instructions should stay in Russian.' +
+      '\n\nLESSON TARGET LANGUAGE (L2): Chinese (中文). Practice content MUST be Chinese (汉字). Never switch to English words (e.g. prescription, hospital). Instructions in Russian.' +
       CHINESE_PINYIN_EXERCISE_RULES;
+  } else if (language === 'german') {
+    prompt +=
+      '\n\nLESSON TARGET LANGUAGE (L2): German. Practice content MUST be German. Instructions in Russian.';
+  } else if (language === 'french') {
+    prompt +=
+      '\n\nLESSON TARGET LANGUAGE (L2): French. Practice content MUST be French. Instructions in Russian.';
   } else if (language === 'english') {
     prompt +=
-      '\n\nLESSON TARGET LANGUAGE: English. The exercise should make the learner produce English when relevant; instructions should stay in Russian.';
+      '\n\nLESSON TARGET LANGUAGE (L2): English. Practice content MUST be English. Instructions in Russian.';
   } else {
-    prompt += '\n\nLESSON TARGET LANGUAGE: Russian. Focus the exercise on Russian grammar, style, or natural phrasing.';
+    prompt +=
+      '\n\nLESSON TARGET LANGUAGE (L2): Russian-as-foreign (rare). Only when explicitly studying Russian as L2.';
   }
   if (typeof lessonTopic === 'string' && lessonTopic.trim()) {
     prompt +=
@@ -474,19 +521,31 @@ function buildTeacherExerciseSetPrompt(language, lessonTopic) {
 
   if (language === 'chinese') {
     prompt +=
-      '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА: китайский (中文). Примеры в заданиях — на китайском; формулировки заданий — на русском.' +
+      '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): китайский (中文).\n' +
+      'ЖЁСТКО: вся лексика в заданиях (selectWord, wordBank, blanks, passages, shuffledWords, pairs.left для L2) — только 汉字.\n' +
+      'ЗАПРЕЩЕНО подсовывать английские слова (prescription, hospital, doctor…). Для read_and_select selectWord = китайское слово/псевдослово иероглифами, связанное с темой объяснения (напр. больница).\n' +
+      'instruction / checkText / choices на русском.' +
       CHINESE_PINYIN_EXERCISE_RULES;
+  } else if (language === 'german') {
+    prompt +=
+      '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): немецкий. Лексика заданий — немецкая; формулировки — на русском. Для read_and_select — немецкое слово/псевдослово.';
+  } else if (language === 'french') {
+    prompt +=
+      '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): французский. Лексика заданий — французская; формулировки — на русском. Для read_and_select — французское слово/псевдослово.';
   } else if (language === 'english') {
     prompt +=
-      '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА: английский. Ученик должен производить английский там, где уместно; формулировки заданий — на русском.';
+      '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): английский. Лексика заданий — английская; формулировки — на русском.';
   } else {
-    prompt += '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА: русский. Фокус на грамматике, стиле и естественных формулировках русского.';
+    prompt +=
+      '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): русский как иностранный (редко). Только если ученик явно учит русский как L2.';
   }
+  prompt +=
+    '\n\nЯЗЫКОВОЙ ЗАМОК: не меняй L2 посередине набора. Если урок про HSK / китайский / больницу на китайском — ни одного латинского L2-слова в упражнениях.';
   if (typeof lessonTopic === 'string' && lessonTopic.trim()) {
     prompt +=
       '\n\nТЕМА УРОКА В ПРИЛОЖЕНИИ: "' +
       lessonTopic.trim().slice(0, 240).replace(/"/g, "'") +
-      '". Держи все 5 заданий в рамках этой темы.';
+      '". Держи все 5 заданий в рамках этой темы и лексики из объяснения преподавателя.';
   }
   return prompt;
 }
@@ -862,6 +921,28 @@ function normalizeExerciseSetFromModel(raw) {
   return out;
 }
 
+/** Китайский урок: latin-only L2 (типа prescription) = баг модели. */
+function isLatinOnlyToken(s) {
+  return typeof s === 'string' && /^[A-Za-z][A-Za-z'-]{1,40}$/.test(s.trim());
+}
+
+function exerciseSetViolatesChineseL2(exercises) {
+  for (const ex of exercises) {
+    if (ex.kind === 'read_and_select' && isLatinOnlyToken(ex.selectWord)) return true;
+    if (ex.kind === 'fill_partial_word' && isLatinOnlyToken(String(ex.maskedSentence || '').replace(/_/g, ''))) {
+      return true;
+    }
+    const banks = [
+      ...(Array.isArray(ex.wordBank) ? ex.wordBank : []),
+      ...(Array.isArray(ex.shuffledWords) ? ex.shuffledWords : []),
+      ...(Array.isArray(ex.correctOrder) ? ex.correctOrder : []),
+    ];
+    const latinCount = banks.filter((w) => isLatinOnlyToken(w)).length;
+    if (banks.length >= 3 && latinCount >= Math.ceil(banks.length * 0.6)) return true;
+  }
+  return false;
+}
+
 function parseJsonFromModelContent(content) {
   const trimmed = content.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -1174,8 +1255,15 @@ app.post('/api/teacher-chat', async (req, res) => {
   if (typeof message !== 'string' || (!message.trim() && !hasImage)) {
     return res.status(400).json({ error: 'message must be a non-empty string (or include imageBase64)' });
   }
-  const lang =
-    language === 'english' || language === 'chinese' || language === 'russian' ? language : 'russian';
+  const requestedLang =
+    language === 'english' ||
+    language === 'chinese' ||
+    language === 'russian' ||
+    language === 'german' ||
+    language === 'french'
+      ? language
+      : 'english';
+  const lang = resolveTeacherTargetLanguage(requestedLang, message, lessonTopic);
 
   const history = sanitizeHistory(conversationHistory);
   const userMessageText = typeof message === 'string' ? message.trim() : '';
@@ -1262,11 +1350,18 @@ app.post('/api/teacher-exercise', async (req, res) => {
   if (typeof explanation !== 'string' || !explanation.trim()) {
     return res.status(400).json({ error: 'explanation must be a non-empty string' });
   }
-  const lang =
-    language === 'english' || language === 'chinese' || language === 'russian' ? language : 'russian';
+  const teacherExplanation = explanation.trim().slice(0, 9000);
+  const requestedLang =
+    language === 'english' ||
+    language === 'chinese' ||
+    language === 'russian' ||
+    language === 'german' ||
+    language === 'french'
+      ? language
+      : 'english';
+  const lang = resolveTeacherTargetLanguage(requestedLang, teacherExplanation, lessonTopic);
 
   const history = sanitizeHistory(conversationHistory).slice(-16);
-  const teacherExplanation = explanation.trim().slice(0, 9000);
   const systemContent = buildTeacherExercisePrompt(lang, lessonTopic);
 
   const messages = [
@@ -1331,8 +1426,24 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
   if (typeof explanation !== 'string' || !explanation.trim()) {
     return res.status(400).json({ error: 'explanation must be a non-empty string' });
   }
-  const lang =
-    language === 'english' || language === 'chinese' || language === 'russian' ? language : 'russian';
+  const teacherExplanation = explanation.trim().slice(0, 9000);
+  const userRequest =
+    typeof lastUserMessage === 'string' && lastUserMessage.trim()
+      ? lastUserMessage.trim().slice(0, 4000)
+      : '';
+  const requestedLang =
+    language === 'english' ||
+    language === 'chinese' ||
+    language === 'russian' ||
+    language === 'german' ||
+    language === 'french'
+      ? language
+      : 'english';
+  const lang = resolveTeacherTargetLanguage(
+    requestedLang,
+    `${userRequest}\n${teacherExplanation}`,
+    lessonTopic,
+  );
   const seed =
     typeof generationSeed === 'string' && generationSeed.trim()
       ? generationSeed.trim().slice(0, 64)
@@ -1347,13 +1458,8 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
         .map((line) => line.trim().slice(0, 220))
         .slice(0, 18)
     : [];
-  const userRequest =
-    typeof lastUserMessage === 'string' && lastUserMessage.trim()
-      ? lastUserMessage.trim().slice(0, 4000)
-      : '';
 
   const history = sanitizeHistory(conversationHistory).slice(-16);
-  const teacherExplanation = explanation.trim().slice(0, 9000);
   const systemContent = buildTeacherExerciseSetPrompt(lang, lessonTopic);
 
   const variationBlock =
@@ -1370,63 +1476,78 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     `\n\nТипы заданий для этой мини-тренировки (строго 5, в этом порядке, от лёгкого к сложному):\n` +
     selectedKinds.map((k, i) => `${i + 1}. ${k}`).join('\n');
 
-  const messages = [
-    { role: 'system', content: systemContent },
-    ...history,
-    {
-      role: 'user',
-      content:
-        `Последний запрос пользователя:\n${userRequest || '(не указан — выведи из контекста диалога выше)'}\n\n` +
-        `Последний ответ AI:\n${teacherExplanation}\n\n` +
-        `Variation id: ${seed}.${variationBlock}${avoidBlock}${kindsBlock}\n\n` +
-        `Сгенерируй ровно 5 упражнений (kinds как выше) и nextTopic. Только JSON.`,
-    },
-  ];
+  const baseUserContent =
+    `Последний запрос пользователя:\n${userRequest || '(не указан — выведи из контекста диалога выше)'}\n\n` +
+    `Последний ответ AI:\n${teacherExplanation}\n\n` +
+    `Variation id: ${seed}.${variationBlock}${avoidBlock}${kindsBlock}\n\n` +
+    `Сгенерируй ровно 5 упражнений (kinds как выше) и nextTopic. Только JSON.`;
 
   try {
-    const openaiRes = await fetch(OPENAI_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: TEACHER_MODEL,
-        messages,
-        temperature: attempt > 1 ? 0.72 : 0.62,
-        max_tokens: 4000,
-        response_format: { type: 'json_object' },
-      }),
-    });
+    let exercises = [];
+    let parsed = null;
+    const maxGenAttempts = lang === 'chinese' ? 2 : 1;
 
-    const raw = await openaiRes.text();
-    let data;
-    try {
-      data = raw ? JSON.parse(raw) : {};
-    } catch {
-      return res.status(502).json({ error: 'Invalid response from OpenAI' });
-    }
+    for (let genAttempt = 1; genAttempt <= maxGenAttempts; genAttempt += 1) {
+      const userContent =
+        genAttempt === 1
+          ? baseUserContent
+          : `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый набор нарушил L2. Для китайского урока selectWord / wordBank / shuffledWords — ТОЛЬКО 汉字, никаких латинских слов вроде prescription. Перегенерируй весь набор.`;
 
-    if (!openaiRes.ok) {
-      const errMsg = data?.error?.message || data?.error || `OpenAI HTTP ${openaiRes.status}`;
-      return res.status(502).json({ error: typeof errMsg === 'string' ? errMsg : 'OpenAI request failed' });
-    }
+      const messages = [
+        { role: 'system', content: systemContent },
+        ...history,
+        { role: 'user', content: userContent },
+      ];
 
-    const content = data?.choices?.[0]?.message?.content;
-    if (typeof content !== 'string' || !content.trim()) {
-      return res.status(502).json({ error: 'Empty exercise set reply' });
-    }
+      const openaiRes = await fetch(OPENAI_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: TEACHER_MODEL,
+          messages,
+          temperature: attempt > 1 || genAttempt > 1 ? 0.72 : 0.62,
+          max_tokens: 4000,
+          response_format: { type: 'json_object' },
+        }),
+      });
 
-    let parsed;
-    try {
-      parsed = parseJsonFromModelContent(content);
-    } catch {
-      return res.status(502).json({ error: 'Invalid exercise set JSON' });
-    }
+      const raw = await openaiRes.text();
+      let data;
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        return res.status(502).json({ error: 'Invalid response from OpenAI' });
+      }
 
-    const exercises = normalizeExerciseSetFromModel(parsed);
-    if (exercises.length < 3) {
-      return res.status(502).json({ error: 'Exercise set too short' });
+      if (!openaiRes.ok) {
+        const errMsg = data?.error?.message || data?.error || `OpenAI HTTP ${openaiRes.status}`;
+        return res.status(502).json({ error: typeof errMsg === 'string' ? errMsg : 'OpenAI request failed' });
+      }
+
+      const content = data?.choices?.[0]?.message?.content;
+      if (typeof content !== 'string' || !content.trim()) {
+        return res.status(502).json({ error: 'Empty exercise set reply' });
+      }
+
+      try {
+        parsed = parseJsonFromModelContent(content);
+      } catch {
+        return res.status(502).json({ error: 'Invalid exercise set JSON' });
+      }
+
+      exercises = normalizeExerciseSetFromModel(parsed);
+      if (exercises.length < 3) {
+        return res.status(502).json({ error: 'Exercise set too short' });
+      }
+
+      if (lang === 'chinese' && exerciseSetViolatesChineseL2(exercises) && genAttempt < maxGenAttempts) {
+        console.warn('[teacher-exercise-set] Chinese L2 script violation — regenerating');
+        continue;
+      }
+      break;
     }
 
     const topicHint = typeof lessonTopic === 'string' ? lessonTopic : '';

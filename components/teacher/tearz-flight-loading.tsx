@@ -108,7 +108,7 @@ function buildSnakeClouds(): CloudSpec[] {
  */
 export function TearzLessonTransit({
   question,
-  language = 'russian',
+  language = 'english',
   onClose,
 }: Props) {
   const { width: W, height: H } = useWindowDimensions();
@@ -360,7 +360,11 @@ export function TearzLessonTransit({
 
       {showLesson && messages ? (
         <Animated.View style={[styles.lessonLayer, lessonStyle]}>
-          <TeacherLessonWindow initialMessages={messages} onClose={onClose} />
+          <TeacherLessonWindow
+            initialMessages={messages}
+            language={language}
+            onClose={onClose}
+          />
         </Animated.View>
       ) : null}
     </View>

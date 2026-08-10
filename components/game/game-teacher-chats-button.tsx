@@ -44,8 +44,8 @@ const styles = StyleSheet.create({
   btn: {
     position: 'absolute',
     right: 12,
-    zIndex: 80,
-    elevation: 80,
+    zIndex: 120,
+    elevation: 120,
     width: 40,
     height: 40,
     borderRadius: 20,

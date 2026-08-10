@@ -5,12 +5,18 @@ export function defaultStatusBio(lang: CompanionChatApiLanguage): string {
   if (lang === 'chinese') return '设计狗，靠咖啡续命。周末想出门但大概率躺平，随便聊聊也行。';
   if (lang === 'russian')
     return 'IT, кофе и сериалы до дыр. Ищу повод не смотреть в потолок по вечерам — напиши, если норм поболтать';
+  if (lang === 'french')
+    return 'Parisien, café trop cher, opinions sur le métro. Discutons si t’as cinq minutes.';
+  if (lang === 'german')
+    return 'Berliner Chaos, Kaffee und Bahn. Schreib, wenn du Bock auf Labern hast.';
   return 'Marketing by day, bad opinions about podcasts by night. Here for vibes and decent coffee.';
 }
 
 export function defaultOpeningForLang(lang: CompanionChatApiLanguage): string {
   if (lang === 'chinese') return '嗨，今天怎么样。有空的话聊聊。';
   if (lang === 'russian') return 'Привет. Как день. Если не занят — напиши пару строк.';
+  if (lang === 'french') return 'Salut. Ça va ? Écris si tu as une minute.';
+  if (lang === 'german') return 'Hey. Wie läuft’s? Schreib kurz, wenn du Zeit hast.';
   return 'Hey. How’s your day going.';
 }
 

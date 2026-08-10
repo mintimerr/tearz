@@ -179,6 +179,11 @@ const ru = {
     dialogs: 'Диалоги',
     profile: 'Профиль',
     asteroids: 'Мини-игра Asteroids',
+    langRestartTitle: 'Сменить язык?',
+    langRestartBody:
+      'Интерфейс переключится. Чтобы всё подтянулось, приложение перезайдёт на главный экран — как будто вы заново открыли Tearz.',
+    langRestartCancel: 'Отмена',
+    langRestartConfirm: 'Сменить',
   },
   plus: {
     fullWorkoutTitle: 'Полная тренировка',
@@ -387,6 +392,12 @@ const ru = {
     emptyFeaturePhrase: 'Проверка фразы',
     emptyFeatureAttach: 'Фото и файлы',
   },
+  terminal: {
+    /** Короткая приманка до зума */
+    idleTap: 'НАЖМИ',
+    /** Подсказка на активном экране автомата */
+    startHint: 'НАЖМИ ЧТОБЫ НАЧАТЬ',
+  },
 };
 
 export type TranslationMessages = typeof ru;
@@ -568,6 +579,11 @@ const en: TranslationMessages = {
     dialogs: 'Chats',
     profile: 'Profile',
     asteroids: 'Asteroids mini-game',
+    langRestartTitle: 'Change language?',
+    langRestartBody:
+      'The interface will switch. Tearz will reopen on the home screen so everything reloads cleanly.',
+    langRestartCancel: 'Cancel',
+    langRestartConfirm: 'Change',
   },
   plus: {
     fullWorkoutTitle: 'Full workout',
@@ -775,6 +791,10 @@ const en: TranslationMessages = {
     emptyFeaturePhrase: 'Phrase check',
     emptyFeatureAttach: 'Photos & files',
   },
+  terminal: {
+    idleTap: 'TAP',
+    startHint: 'TAP TO START',
+  },
 };
 
 const zh: TranslationMessages = {
@@ -954,6 +974,10 @@ const zh: TranslationMessages = {
     dialogs: '对话',
     profile: '个人资料',
     asteroids: '小游戏 Asteroids',
+    langRestartTitle: '更换语言？',
+    langRestartBody: '界面将切换。Tearz 会重新打开主页，以便完整加载新语言。',
+    langRestartCancel: '取消',
+    langRestartConfirm: '更换',
   },
   plus: {
     fullWorkoutTitle: '完整训练',
@@ -1160,6 +1184,10 @@ const zh: TranslationMessages = {
     emptyFeatureGrammar: '语法讲解',
     emptyFeaturePhrase: '检查句子',
     emptyFeatureAttach: '照片和文件',
+  },
+  terminal: {
+    idleTap: '点击',
+    startHint: '点击开始',
   },
 };
 

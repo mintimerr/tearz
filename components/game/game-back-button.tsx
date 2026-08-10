@@ -68,8 +68,8 @@ const styles = StyleSheet.create({
   btnAbsolute: {
     position: 'absolute',
     left: 12,
-    zIndex: 80,
-    elevation: 80,
+    zIndex: 120,
+    elevation: 120,
     width: 40,
     height: 40,
     borderRadius: 20,

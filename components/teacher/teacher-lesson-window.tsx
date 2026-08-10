@@ -2,9 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  TeacherBoardChat,
-} from '@/components/teacher/teacher-board-chat';
+import { TeacherBoardChat } from '@/components/teacher/teacher-board-chat';
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
 import { GAME_THEME } from '@/constants/game-theme';
 import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
@@ -27,7 +25,7 @@ export function TeacherLessonWindow({
   seedQuestion,
   initialMessages,
   seedAttachment,
-  language = 'russian',
+  language = 'english',
 }: Props) {
   const insets = useSafeAreaInsets();
 

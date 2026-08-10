@@ -35,7 +35,6 @@ import {
   dailyStreakXp,
   drillXpRewardCopy,
   milestoneXpForStreak,
-  starterRewardCopy,
   streakXpRewardCopy,
   DAILY_GOAL_BONUS_XP,
   DAILY_GOAL_TASK_COUNT,
@@ -453,9 +452,8 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     stateRef.current = next;
     setState(next);
     void persist(next);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    showXpReward(starterRewardCopy(user?.nativeLanguage ?? 'ru', starterCoins, next.dailyStreak));
-  }, [isAuthenticated, persist, showXpReward, user?.id, user?.nativeLanguage]);
+    // Reward-баннер временно скрыт — стартовый пак начисляем без оверлея
+  }, [isAuthenticated, persist, user?.id]);
 
   const grantCoins = useCallback(
     (amount: number) => {

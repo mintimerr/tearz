@@ -36,6 +36,8 @@ import {
   type TerminalNormRect,
 } from '@/constants/terminal-locations';
 import { useEngagement } from '@/contexts/engagement-context';
+import { useTranslation } from '@/contexts/locale-context';
+import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
 
 const SCENE_ASPECT = 1024 / 1536;
 const ZOOM_MS = 600;
@@ -44,6 +46,8 @@ const ZOOM_EASING = Easing.bezier(0.22, 1, 0.36, 1);
 function useCoverLayout(
   crt: TerminalNormRect,
   focus: TerminalNormRect,
+  /** booth: зум так, чтобы CRT целиком влез в экран (cover по стеклу) */
+  fillCrt = false,
 ) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -75,15 +79,29 @@ function useCoverLayout(
     });
 
     const crtBox = toBox(crt);
-    const focusCx = drawLeft + drawW * (focus.left + focus.width / 2);
-    const focusCy = drawTop + drawH * (focus.top + focus.height / 2);
+    const focusCx = fillCrt
+      ? crtBox.left + crtBox.width / 2
+      : drawLeft + drawW * (focus.left + focus.width / 2);
+    const focusCy = fillCrt
+      ? crtBox.top + crtBox.height / 2
+      : drawTop + drawH * (focus.top + focus.height / 2);
     const focusW = drawW * focus.width;
     const focusH = drawH * focus.height;
 
     const padTop = insets.top + 36;
     const padBottom = Math.max(insets.bottom, 10) + 8;
-    const fit = Math.min((screenW - 12) / focusW, (screenH - padTop - padBottom) / focusH, 2.8);
-    const zoomScale = Math.max(fit * 0.98, 1.7);
+    const safeW = screenW - 16;
+    const safeH = screenH - padTop - padBottom;
+    /**
+     * fillCrt: вписываем стекло в safe-area.
+     * Для крошечных LCD (London) не раздуваем x6 в «угол» — держим запас по безелю.
+     */
+    const crtFit = Math.min(safeW / crtBox.width, safeH / crtBox.height);
+    const fillPad = crtFit > 4.2 ? 0.82 : 0.94;
+    const fit = fillCrt
+      ? crtFit
+      : Math.min(safeW / focusW, safeH / focusH, 2.8);
+    const zoomScale = Math.max(fit * (fillCrt ? fillPad : 0.98), 1.7);
 
     return {
       screenW,
@@ -98,7 +116,7 @@ function useCoverLayout(
       zoomScale,
       toBox,
     };
-  }, [crt, focus, insets.bottom, insets.top, screenH, screenW]);
+  }, [crt, fillCrt, focus, insets.bottom, insets.top, screenH, screenW]);
 }
 
 function SunlightShimmer({
@@ -160,6 +178,80 @@ function LcdGlare() {
     <Animated.View style={[StyleSheet.absoluteFill, glareStyle]} pointerEvents="none">
       <View style={styles.lcdGlareBand} />
     </Animated.View>
+  );
+}
+
+function BoothGlow() {
+  const drift = useSharedValue(0);
+
+  useEffect(() => {
+    drift.value = withRepeat(
+      withTiming(1, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, [drift]);
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(drift.value, [0, 0.5, 1], [0.22, 0.4, 0.25]),
+  }));
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, glowStyle]} pointerEvents="none">
+      <View style={styles.boothGlowCore} />
+      <View style={styles.boothGlowRing} />
+    </Animated.View>
+  );
+}
+
+/** Стекло Navigo LCD: мягкий блик + виньетка, без неонового пульса */
+function MetroGlow() {
+  const drift = useSharedValue(0);
+
+  useEffect(() => {
+    drift.value = withRepeat(
+      withTiming(1, { duration: 5200, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, [drift]);
+
+  const glareStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(drift.value, [0, 0.5, 1], [0.1, 0.18, 0.12]),
+  }));
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={styles.metroGlassFill} />
+      <View style={styles.metroVignette} />
+      <Animated.View style={[styles.metroSpecular, glareStyle]} />
+    </View>
+  );
+}
+
+/** Стекло Shanghai Metro LCD — холодный тинт + тонкая красная кромка */
+function ShanghaiGlow() {
+  const drift = useSharedValue(0);
+
+  useEffect(() => {
+    drift.value = withRepeat(
+      withTiming(1, { duration: 4800, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, [drift]);
+
+  const glareStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(drift.value, [0, 0.5, 1], [0.08, 0.16, 0.1]),
+  }));
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <View style={styles.shanghaiGlassFill} />
+      <View style={styles.shanghaiVignette} />
+      <View style={styles.shanghaiRedEdge} />
+      <Animated.View style={[styles.shanghaiSpecular, glareStyle]} />
+    </View>
   );
 }
 
@@ -327,6 +419,19 @@ export function ArcadeCabinetScreen() {
   const location = getTerminalLocation((params.location as TerminalLocationId) || 'asia_arcade');
   const theme = getTerminalTheme(location.theme);
   const isLcd = theme.id === 'lcd';
+  const isBooth = theme.id === 'booth';
+  const isMetro = theme.id === 'metro';
+  const isShanghai = theme.id === 'shanghai';
+  const isCallbox = theme.id === 'callbox';
+  /** Компактный glass-UI (Paris / Shanghai / London phone LCD) */
+  const isGlassUi = isMetro || isShanghai || isCallbox;
+  /** Днём ATM/Paris/Shanghai/London не крутим; booth/аркада — лёгкий night sway */
+  const freezeCamera =
+    (isLcd && location.id === 'europe_atm') ||
+    (isMetro && location.id === 'paris_metro_guimard') ||
+    (isShanghai && location.id === 'shanghai_metro_bund') ||
+    (isCallbox && location.id === 'uk_phone_box');
+  const fillCrt = location.zoomFill === 'crt';
 
   const crt = location.crt ?? { left: 0.40039, top: 0.47461, width: 0.23145, height: 0.13216 };
   const focus = location.focus ?? { left: 0.34, top: 0.46, width: 0.34, height: 0.26 };
@@ -343,7 +448,9 @@ export function ArcadeCabinetScreen() {
 
   const { recordActivity } = useEngagement();
   const inputRef = useRef<TextInput>(null);
-  const layout = useCoverLayout(crt, focus);
+  /** true только при намеренном zoomOut — иначе возвращаем фокус после случайного blur */
+  const dismissKeyboardRef = useRef(false);
+  const layout = useCoverLayout(crt, focus, fillCrt);
 
   const [query, setQuery] = useState('');
   const [zoomed, setZoomed] = useState(false);
@@ -365,13 +472,6 @@ export function ArcadeCabinetScreen() {
   const showHints = !typing;
 
   useEffect(() => {
-    // Старт с idle-смещением (ATM: фасад + tearz справа)
-    panX.value = layout.screenW * idlePanXNorm;
-    panY.value = layout.screenH * idlePanYNorm;
-    zoom.value = idleScale;
-  }, [idlePanXNorm, idlePanYNorm, idleScale, layout.screenH, layout.screenW, panX, panY, zoom]);
-
-  useEffect(() => {
     sway.value = withRepeat(
       withTiming(1, { duration: 4800, easing: Easing.inOut(Easing.sin) }),
       -1,
@@ -391,18 +491,30 @@ export function ArcadeCabinetScreen() {
 
   const applyCamera = (inZoom: boolean) => {
     const scale = inZoom ? layout.zoomScale : idleScale;
-    const stageCx = layout.screenW / 2;
-    const stageCy = layout.screenH / 2;
-    const lookY = layout.focusCy + (inZoom ? layout.crtBox.height * 0.08 : 0);
     const idleX = layout.screenW * idlePanXNorm;
     const idleY = layout.screenH * idlePanYNorm;
-    const tx = inZoom ? -(layout.focusCx - stageCx) * (scale - 1) : idleX;
-    const ty = inZoom ? -(lookY - stageCy) * (scale - 1) : idleY;
+    /**
+     * Зум через transformOrigin на центре CRT (см. cameraStyle).
+     * pan в зуме почти 0 — только лёгкий подъём, чтобы LCD не уезжал под keyboard.
+     */
+    const tx = inZoom ? 0 : idleX;
+    const ty = inZoom && fillCrt ? -Math.min(layout.screenH * 0.04, 28) : idleY;
     zoomedSv.value = withTiming(inZoom ? 1 : 0, { duration: ZOOM_MS, easing: ZOOM_EASING });
     zoom.value = withTiming(scale, { duration: ZOOM_MS, easing: ZOOM_EASING });
     panX.value = withTiming(tx, { duration: ZOOM_MS, easing: ZOOM_EASING });
     panY.value = withTiming(ty, { duration: ZOOM_MS, easing: ZOOM_EASING });
   };
+
+  useEffect(() => {
+    if (zoomed) {
+      applyCamera(true);
+      return;
+    }
+    panX.value = layout.screenW * idlePanXNorm;
+    panY.value = layout.screenH * idlePanYNorm;
+    zoom.value = idleScale;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync camera to layout / zoom flag
+  }, [idlePanXNorm, idlePanYNorm, idleScale, layout.focusCx, layout.focusCy, layout.screenH, layout.screenW, layout.zoomScale, zoomed]);
 
   const openCrt = () => {
     if (zoomed) {
@@ -417,10 +529,14 @@ export function ArcadeCabinetScreen() {
   };
 
   const zoomOut = () => {
+    dismissKeyboardRef.current = true;
     Keyboard.dismiss();
     setFocused(false);
     setZoomed(false);
     applyCamera(false);
+    setTimeout(() => {
+      dismissKeyboardRef.current = false;
+    }, 320);
   };
 
   /** Тап в пустоту (не по CRT) — только отдалить, без кнопок. */
@@ -456,7 +572,7 @@ export function ArcadeCabinetScreen() {
 
   const cameraStyle = useAnimatedStyle(() => {
     const ambient = interpolate(zoomedSv.value, [0, 1], [1, 0.22]);
-    const swayAmt = isLcd ? 0.55 : 1;
+    const swayAmt = freezeCamera ? 0.55 : 1;
     const x =
       panX.value +
       (interpolate(sway.value, [0, 1], [-2.8, 2.8]) +
@@ -469,22 +585,33 @@ export function ArcadeCabinetScreen() {
         ambient *
         swayAmt;
     // На дневном ATM не крутим камеру — иначе UI «плывёт» относительно безеля
-    const rot = isLcd
+    const rot = freezeCamera
       ? 0
       : (interpolate(sway.value, [0, 1], [-0.35, 0.35]) +
           interpolate(drift.value, [0, 1], [-0.14, 0.14])) *
         ambient;
     const scale =
-      zoom.value * interpolate(breathe.value, [0, 1], [1.02, 1.038]);
+      zoom.value *
+      interpolate(breathe.value, [0, 1], [1.02, freezeCamera || fillCrt ? 1.02 : 1.038]);
+    /** Idle: центр экрана; zoom: центр CRT — иначе мелкий LCD улетает в небо */
+    const originX = interpolate(zoomedSv.value, [0, 1], [layout.screenW / 2, layout.focusCx]);
+    const originY = interpolate(zoomedSv.value, [0, 1], [layout.screenH / 2, layout.focusCy]);
     return {
+      transformOrigin: [originX, originY],
       transform: [{ scale }, { translateX: x }, { translateY: y }, { rotate: `${rot}deg` }],
     };
   });
 
+  const chromeTone = theme.chromeDark ? 'dark' : 'light';
+
   return (
     <View style={[styles.root, { backgroundColor: theme.rootBg }]}>
       <Animated.View
-        style={[styles.cameraLayer, { width: layout.screenW, height: layout.screenH }, cameraStyle]}
+        style={[
+          styles.cameraLayer,
+          { width: layout.screenW, height: layout.screenH, zIndex: 1 },
+          cameraStyle,
+        ]}
         pointerEvents="box-none">
         {/* Пустота сцены — тап/даблтап отдаляет */}
         <Pressable style={StyleSheet.absoluteFill} onPress={onBlankTap} />
@@ -506,7 +633,7 @@ export function ArcadeCabinetScreen() {
 
         {neonZones.map((zone, i) => {
           const box = layout.toBox(zone);
-          const Ambient = isLcd ? SunlightShimmer : NeonFlicker;
+          const Ambient = freezeCamera ? SunlightShimmer : NeonFlicker;
           return (
             <Ambient
               key={`ambient-${i}`}
@@ -541,6 +668,8 @@ export function ArcadeCabinetScreen() {
         <View
           style={[
             styles.crtGlass,
+            isBooth && styles.crtGlassBooth,
+            isGlassUi && styles.crtGlassMetro,
             {
               left: layout.crtBox.left,
               top: layout.crtBox.top,
@@ -549,25 +678,66 @@ export function ArcadeCabinetScreen() {
               backgroundColor: phosphor,
             },
           ]}>
-          {isLcd ? null : <CrtScanlines />}
-          <Pressable
-            style={styles.crtHit}
-            onPress={openCrt}
-          >
-            <TerminalFace
-              theme={theme}
-              query={query}
-              setQuery={setQuery}
-              inputRef={inputRef}
-              showHints={showHints}
-              suggestions={suggestions}
-              active={zoomed}
-              onOpen={openCrt}
-              onPick={pickSuggestion}
-              onSubmit={submit}
-              setFocused={setFocused}
-            />
-          </Pressable>
+          {theme.scanlines ? (
+            <CrtScanlines />
+          ) : isBooth ? (
+            <BoothGlow />
+          ) : isShanghai ? (
+            <ShanghaiGlow />
+          ) : isGlassUi ? (
+            <MetroGlow />
+          ) : null}
+          {/* Pressable вокруг TextInput на iOS срывает клавиатуру при ререндере — после зума только View */}
+          {zoomed ? (
+            <View
+              style={[
+                styles.crtHit,
+                isLcd && styles.crtHitLcd,
+                isBooth && styles.crtHitBooth,
+                isGlassUi && styles.crtHitMetro,
+              ]}>
+              <TerminalFace
+                theme={theme}
+                query={query}
+                setQuery={setQuery}
+                inputRef={inputRef}
+                showHints={showHints}
+                suggestions={suggestions}
+                active
+                keepKeyboard
+                dismissKeyboardRef={dismissKeyboardRef}
+                onOpen={openCrt}
+                onPick={pickSuggestion}
+                onSubmit={submit}
+                setFocused={setFocused}
+              />
+            </View>
+          ) : (
+            <Pressable
+              style={[
+                styles.crtHit,
+                isLcd && styles.crtHitLcd,
+                isBooth && styles.crtHitBooth,
+                isGlassUi && styles.crtHitMetro,
+              ]}
+              onPress={openCrt}>
+              <TerminalFace
+                theme={theme}
+                query={query}
+                setQuery={setQuery}
+                inputRef={inputRef}
+                showHints={showHints}
+                suggestions={suggestions}
+                active={false}
+                keepKeyboard={false}
+                dismissKeyboardRef={dismissKeyboardRef}
+                onOpen={openCrt}
+                onPick={pickSuggestion}
+                onSubmit={submit}
+                setFocused={setFocused}
+              />
+            </Pressable>
+          )}
         </View>
 
         {/* Панель автомата тоже открывает CRT */}
@@ -585,10 +755,15 @@ export function ArcadeCabinetScreen() {
         />
       </Animated.View>
 
-      {/* Chrome поверх сцены — иначе absoluteFill камеры перекрывает */}
-      {gate !== 'transit' ? <GameBackButton tone="dark" /> : null}
+      {/*
+        Chrome выше камеры по zIndex: при fillCrt-зуме (Seoul/Paris/London)
+        transform на cameraLayer иначе рисуется поверх кнопок.
+      */}
       {gate !== 'transit' ? (
-        <GameTeacherChatsButton tone="dark" onPress={() => setChatsOpen(true)} />
+        <View style={styles.chrome} pointerEvents="box-none">
+          <GameBackButton tone={chromeTone} />
+          <GameTeacherChatsButton tone={chromeTone} onPress={() => setChatsOpen(true)} />
+        </View>
       ) : null}
 
       <TeacherChatsSheet visible={chatsOpen} onClose={() => setChatsOpen(false)} />
@@ -599,7 +774,11 @@ export function ArcadeCabinetScreen() {
           animationType="none"
           presentationStyle="fullScreen"
           onRequestClose={closeChat}>
-          <TearzLessonTransit question={seed} onClose={closeChat} />
+          <TearzLessonTransit
+            question={seed}
+            language={inferTeacherLessonLanguage(seed, location.lessonLanguage ?? 'english')}
+            onClose={closeChat}
+          />
         </Modal>
       ) : null}
     </View>
@@ -615,6 +794,8 @@ type FaceProps = {
   suggestions: string[];
   /** true после полного зума — тогда UI заполняет весь CRT */
   active: boolean;
+  keepKeyboard: boolean;
+  dismissKeyboardRef: React.RefObject<boolean>;
   onOpen: () => void;
   onPick: (s: string) => void;
   onSubmit: () => void;
@@ -629,11 +810,14 @@ function TerminalFace({
   showHints,
   suggestions,
   active,
+  keepKeyboard,
+  dismissKeyboardRef,
   onOpen,
   onPick,
   onSubmit,
   setFocused,
 }: FaceProps) {
+  const { t } = useTranslation();
   const blink = useSharedValue(1);
   const pulse = useSharedValue(0.55);
 
@@ -661,35 +845,145 @@ function TerminalFace({
     return (
       <View style={styles.terminalIdle}>
         <Animated.Text style={[styles.idleHint, { color: theme.hot }, hintStyle]}>
-          {theme.idleLabel}
+          {t('terminal.idleTap')}
         </Animated.Text>
       </View>
     );
   }
 
-  const startHint = theme.id === 'lcd' ? 'TIPPEN · START' : 'НАЖМИТЕ\nЧТОБЫ НАЧАТЬ';
+  const startHint = t('terminal.startHint');
   const lcd = theme.id === 'lcd';
+  const booth = theme.id === 'booth';
+  const metro = theme.id === 'metro';
+  const shanghai = theme.id === 'shanghai';
+  const callbox = theme.id === 'callbox';
+  const glass = metro || shanghai || callbox;
 
   return (
-    <View style={[styles.terminal, lcd && styles.terminalLcd]}>
-      {showHints ? (
+    <View
+      style={[
+        styles.terminal,
+        styles.terminalMenu,
+        lcd && styles.terminalMenuLcd,
+        booth && styles.terminalMenuBooth,
+        glass && styles.terminalMenuMetro,
+        shanghai && styles.terminalMenuShanghai,
+      ]}>
+      {/* Меню — только opacity; поле ввода всегда в одном и том же слое */}
+      <View
+        style={[
+          styles.menuLayer,
+          booth && styles.menuLayerBooth,
+          glass && styles.menuLayerMetro,
+          !showHints && styles.menuLayerHidden,
+        ]}
+        pointerEvents={showHints ? 'box-none' : 'none'}>
+        {glass ? (
+          <View style={[styles.metroHairline, shanghai && styles.shanghaiHairline]} />
+        ) : null}
         <Animated.Text
-          style={[styles.tapHint, lcd && styles.tapHintLcd, { color: theme.hot }, hintStyle]}>
+          style={[
+            styles.tapHint,
+            lcd && styles.tapHintLcd,
+            booth && styles.tapHintBooth,
+            glass && styles.tapHintMetro,
+            shanghai && styles.tapHintShanghai,
+            { color: shanghai ? theme.hot : glass ? theme.dim : theme.hot },
+            hintStyle,
+          ]}>
           {startHint}
         </Animated.Text>
-      ) : null}
+        <View
+          style={[
+            styles.menuCol,
+            lcd && styles.menuColLcd,
+            booth && styles.menuColBooth,
+            glass && styles.menuColMetro,
+          ]}>
+          {suggestions.map((s, i) => (
+            <Pressable
+              key={s}
+              onPress={() => onPick(s)}
+              style={({ pressed }) => [
+                styles.menuItem,
+                lcd && styles.menuItemLcd,
+                booth && styles.menuItemBooth,
+                glass && styles.menuItemMetro,
+                callbox && styles.menuItemCallbox,
+                shanghai && styles.menuItemShanghai,
+                pressed && (glass ? styles.menuItemMetroOn : styles.menuItemOn),
+                pressed && shanghai && styles.menuItemShanghaiOn,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={s}>
+              <Text
+                style={[
+                  styles.menuIndex,
+                  lcd && styles.menuIndexLcd,
+                  booth && styles.menuIndexBooth,
+                  glass && styles.menuIndexMetro,
+                  { color: shanghai ? theme.hot : glass ? theme.dim : theme.hot },
+                ]}>
+                {booth ? '✦' : glass ? String(i + 1).padStart(2, '0') : i + 1}
+              </Text>
+              <Text
+                style={[
+                  styles.menuText,
+                  lcd && styles.menuTextLcd,
+                  booth && styles.menuTextBooth,
+                  glass && styles.menuTextMetro,
+                  { color: theme.fg },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.72}>
+                {s}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
 
-      {!showHints || !lcd ? (
-        <View style={[styles.cmdBlock, !showHints && styles.cmdBlockGrow]}>
-          <Text style={[styles.prompt, { color: theme.hot }]}>{'>'}</Text>
-          <View style={[styles.inputCol, !showHints && styles.inputColGrow]}>
+      <View
+        style={[styles.inputLayer, showHints && styles.inputLayerHidden]}
+        pointerEvents={showHints ? 'none' : 'auto'}>
+        <View
+          style={[
+            styles.cmdBlock,
+            styles.cmdBlockGrow,
+            booth && styles.cmdBlockBooth,
+            glass && styles.cmdBlockMetro,
+          ]}>
+          <Text
+            style={[
+              styles.prompt,
+              booth && styles.promptBooth,
+              glass && styles.promptMetro,
+              { color: shanghai ? theme.hot : glass ? theme.dim : theme.hot },
+            ]}>
+            {theme.prompt}
+          </Text>
+          <View
+            style={[
+              styles.inputCol,
+              styles.inputColGrow,
+              glass && styles.inputColMetro,
+              shanghai && styles.inputColShanghai,
+            ]}>
             <TextInput
               ref={inputRef}
               value={query}
               onChangeText={setQuery}
               placeholder=""
               placeholderTextColor={theme.dim}
-              style={[styles.input, lcd && styles.inputLcd, { color: theme.fg }, !showHints && styles.inputFill]}
+              style={[
+                styles.input,
+                lcd && styles.inputLcd,
+                booth && styles.inputBooth,
+                glass && styles.inputMetro,
+                { color: theme.fg },
+                styles.inputFill,
+              ]}
               maxLength={100}
               multiline
               returnKeyType="go"
@@ -699,46 +993,32 @@ function TerminalFace({
                 setFocused(true);
                 onOpen();
               }}
-              onBlur={() => setFocused(false)}
+              onBlur={() => {
+                setFocused(false);
+                if (keepKeyboard && !dismissKeyboardRef.current) {
+                  requestAnimationFrame(() => inputRef.current?.focus());
+                }
+              }}
               onSubmitEditing={onSubmit}
-              selectionColor={
-                theme.id === 'lcd' ? 'rgba(142, 197, 240, 0.35)' : 'rgba(138, 255, 168, 0.35)'
-              }
+              selectionColor={theme.selection}
               cursorColor={theme.fg}
               caretHidden
             />
             {!query ? (
-              <Animated.Text style={[styles.underscore, { color: theme.fg }, cursorStyle]}>
-                _
+              <Animated.Text
+                style={[
+                  styles.underscore,
+                  booth && styles.underscoreBooth,
+                  glass && styles.underscoreMetro,
+                  { color: shanghai ? theme.hot : glass ? theme.dim : theme.fg },
+                  cursorStyle,
+                ]}>
+                {booth ? '▌' : '_'}
               </Animated.Text>
             ) : null}
           </View>
         </View>
-      ) : null}
-
-      {showHints ? (
-        <View style={[styles.menuCol, lcd && styles.menuColLcd]}>
-          {suggestions.map((s, i) => (
-            <Pressable
-              key={s}
-              onPress={() => onPick(s)}
-              style={({ pressed }) => [
-                styles.menuItem,
-                lcd && styles.menuItemLcd,
-                pressed && styles.menuItemOn,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={s}>
-              <Text style={[styles.menuIndex, lcd && styles.menuIndexLcd, { color: theme.hot }]}>
-                {i + 1}
-              </Text>
-              <Text style={[styles.menuText, lcd && styles.menuTextLcd, { color: theme.fg }]} numberOfLines={1}>
-                {s}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
+      </View>
     </View>
   );
 }
@@ -750,6 +1030,11 @@ const styles = StyleSheet.create({
   },
   cameraLayer: {
     ...StyleSheet.absoluteFillObject,
+  },
+  chrome: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    elevation: 100,
   },
   scene: {
     position: 'absolute',
@@ -783,18 +1068,130 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.55)',
   },
+  boothGlowCore: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 80, 170, 0.12)',
+  },
+  boothGlowRing: {
+    position: 'absolute',
+    left: '6%',
+    right: '6%',
+    top: '8%',
+    bottom: '10%',
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 150, 210, 0.35)',
+    backgroundColor: 'rgba(120, 60, 160, 0.08)',
+  },
+  metroGlassFill: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 14, 28, 0.22)',
+  },
+  metroVignette: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: 'transparent',
+    shadowColor: '#000',
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  metroSpecular: {
+    position: 'absolute',
+    left: '6%',
+    right: '18%',
+    top: '6%',
+    height: '34%',
+    borderRadius: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+  },
+  shanghaiGlassFill: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(6, 14, 26, 0.28)',
+  },
+  shanghaiVignette: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.035)',
+    backgroundColor: 'transparent',
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  shanghaiRedEdge: {
+    position: 'absolute',
+    left: '10%',
+    right: '10%',
+    top: 0,
+    height: 2,
+    backgroundColor: 'rgba(227, 28, 35, 0.72)',
+  },
+  shanghaiSpecular: {
+    position: 'absolute',
+    left: '8%',
+    right: '22%',
+    top: '8%',
+    height: '30%',
+    borderRadius: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  metroHairline: {
+    alignSelf: 'center',
+    width: '42%',
+    height: StyleSheet.hairlineWidth,
+    marginBottom: 5,
+    backgroundColor: 'rgba(210, 218, 235, 0.28)',
+  },
+  shanghaiHairline: {
+    width: '36%',
+    height: 1.5,
+    backgroundColor: 'rgba(227, 28, 35, 0.55)',
+  },
   crtGlass: {
     position: 'absolute',
     overflow: 'hidden',
     backgroundColor: 'transparent',
     zIndex: 6,
   },
+  crtGlassBooth: {
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  crtGlassMetro: {
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
   crtHit: {
     flex: 1,
-    paddingHorizontal: '8%',
-    paddingTop: '10%',
-    paddingBottom: '10%',
+    paddingHorizontal: '7%',
+    paddingTop: '8%',
+    paddingBottom: '8%',
     zIndex: 2,
+  },
+  crtHitLcd: {
+    paddingHorizontal: '6%',
+    paddingTop: '6%',
+    paddingBottom: '7%',
+  },
+  crtHitBooth: {
+    paddingHorizontal: '7%',
+    paddingTop: '8%',
+    paddingBottom: '8%',
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'stretch',
+  },
+  crtHitMetro: {
+    paddingHorizontal: '8%',
+    paddingTop: '9%',
+    paddingBottom: '9%',
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'stretch',
   },
   crtVignette: {
     ...StyleSheet.absoluteFillObject,
@@ -826,28 +1223,106 @@ const styles = StyleSheet.create({
   },
   terminal: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+  },
+  terminalMenu: {
+    justifyContent: 'center',
+    gap: 10,
+  },
+  terminalMenuLcd: {
+    gap: 6,
+    paddingTop: 0,
+  },
+  terminalMenuBooth: {
+    gap: 8,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
+    alignItems: 'stretch',
+  },
+  terminalMenuMetro: {
+    gap: 7,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
+    alignItems: 'stretch',
+  },
+  terminalMenuShanghai: {
+    gap: 6,
   },
   terminalLcd: {
     justifyContent: 'flex-start',
     gap: 8,
     paddingTop: 2,
   },
-  tapHint: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    lineHeight: 12,
-    marginBottom: 6,
-    textAlign: 'left',
+  menuLayer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    gap: 10,
+    zIndex: 2,
   },
-  tapHintLcd: {
-    fontSize: 11,
-    letterSpacing: 1,
-    lineHeight: 14,
-    marginBottom: 2,
+  menuLayerBooth: {
+    gap: 3,
+    overflow: 'hidden',
+    paddingHorizontal: 0,
+  },
+  menuLayerMetro: {
+    gap: 6,
+    overflow: 'hidden',
+    paddingHorizontal: 1,
+    justifyContent: 'center',
+  },
+  menuLayerHidden: {
+    opacity: 0,
+  },
+  inputLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
+  inputLayerHidden: {
+    opacity: 0,
+  },
+  tapHint: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    lineHeight: 12,
+    marginBottom: 0,
     textAlign: 'center',
     alignSelf: 'stretch',
+  },
+  tapHintLcd: {
+    fontSize: 9,
+    letterSpacing: 0.7,
+    lineHeight: 11,
+    marginBottom: 0,
+    textAlign: 'center',
+    alignSelf: 'stretch',
+  },
+  tapHintBooth: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    lineHeight: 11,
+    marginBottom: 4,
+    paddingHorizontal: 2,
+  },
+  tapHintMetro: {
+    fontSize: 8,
+    fontWeight: '500',
+    letterSpacing: 1.6,
+    lineHeight: 11,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  tapHintShanghai: {
+    fontSize: 9,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    lineHeight: 12,
+    marginBottom: 5,
+    textTransform: 'none',
   },
   cmdBlock: {
     flexDirection: 'row',
@@ -859,11 +1334,32 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
   },
+  cmdBlockBooth: {
+    gap: 5,
+    paddingHorizontal: 2,
+  },
+  cmdBlockMetro: {
+    gap: 7,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
+    alignItems: 'flex-start',
+  },
   prompt: {
     fontSize: 12,
     fontWeight: '800',
     lineHeight: 16,
     marginTop: 1,
+  },
+  promptBooth: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  promptMetro: {
+    fontSize: 12,
+    fontWeight: '300',
+    marginTop: 1,
+    letterSpacing: 0,
+    opacity: 0.85,
   },
   inputCol: {
     flex: 1,
@@ -888,6 +1384,26 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontVariant: ['tabular-nums'],
   },
+  inputBooth: {
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 15,
+    letterSpacing: 0.2,
+  },
+  inputMetro: {
+    fontSize: 12,
+    fontWeight: '400',
+    lineHeight: 16,
+    letterSpacing: 0.2,
+  },
+  inputColMetro: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(210, 218, 235, 0.28)',
+    paddingBottom: 3,
+  },
+  inputColShanghai: {
+    borderBottomColor: 'rgba(227, 28, 35, 0.35)',
+  },
   inputFill: {
     flex: 1,
     alignSelf: 'stretch',
@@ -900,54 +1416,170 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 16,
   },
+  underscoreBooth: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  underscoreMetro: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '300',
+  },
   menuCol: {
-    flex: 1,
-    justifyContent: 'space-evenly',
-    paddingTop: 4,
+    flexGrow: 0,
+    flexShrink: 1,
+    justifyContent: 'center',
+    gap: 6,
     minHeight: 0,
+    alignSelf: 'stretch',
   },
   menuColLcd: {
-    flex: 0,
-    justifyContent: 'flex-start',
-    gap: 5,
-    paddingTop: 6,
+    flexGrow: 0,
+    flexShrink: 1,
+    justifyContent: 'center',
+    gap: 4,
+    paddingTop: 0,
+  },
+  menuColBooth: {
+    gap: 6,
+    minWidth: 0,
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+  },
+  menuColMetro: {
+    gap: 4,
+    minWidth: 0,
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 5,
-    paddingVertical: 2,
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 1,
+    minHeight: 16,
   },
   menuItemLcd: {
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 3,
+    gap: 6,
+    paddingVertical: 0,
+    minHeight: 14,
+  },
+  menuItemBooth: {
+    gap: 4,
     minHeight: 18,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 90, 170, 0.16)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 160, 210, 0.35)',
+    minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    alignSelf: 'stretch',
+    flexShrink: 1,
+  },
+  /** Билет-ряд Navigo: стекло / тонкая линия, без неонового «гейм-UI» */
+  menuItemMetro: {
+    gap: 8,
+    minHeight: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.045)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(220, 226, 238, 0.16)',
+    borderLeftWidth: 1.5,
+    borderLeftColor: 'rgba(117, 73, 150, 0.72)',
+    minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    alignSelf: 'stretch',
+    flexShrink: 1,
+  },
+  menuItemShanghai: {
+    borderLeftColor: 'rgba(227, 28, 35, 0.85)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: 'rgba(227, 28, 35, 0.18)',
+  },
+  menuItemCallbox: {
+    borderLeftColor: 'rgba(200, 90, 80, 0.75)',
+    borderColor: 'rgba(230, 210, 200, 0.16)',
   },
   menuItemOn: {
     opacity: 0.55,
   },
+  menuItemMetroOn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.09)',
+    borderColor: 'rgba(220, 226, 238, 0.28)',
+  },
+  menuItemShanghaiOn: {
+    backgroundColor: 'rgba(227, 28, 35, 0.14)',
+    borderColor: 'rgba(227, 28, 35, 0.4)',
+  },
   menuIndex: {
     fontSize: 11,
     fontWeight: '800',
-    lineHeight: 15,
+    lineHeight: 14,
     minWidth: 12,
-  },
-  menuIndexLcd: {
-    minWidth: 14,
     textAlign: 'right',
     fontVariant: ['tabular-nums'],
-    lineHeight: 15,
+  },
+  menuIndexLcd: {
+    fontSize: 10,
+    minWidth: 12,
+    textAlign: 'right',
+    fontVariant: ['tabular-nums'],
+    lineHeight: 13,
+  },
+  menuIndexBooth: {
+    fontSize: 10,
+    minWidth: 12,
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  menuIndexMetro: {
+    fontSize: 9,
+    fontWeight: '500',
+    minWidth: 16,
+    textAlign: 'left',
+    lineHeight: 13,
+    letterSpacing: 0.4,
+    fontVariant: ['tabular-nums'],
   },
   menuText: {
     flex: 1,
     fontSize: 11,
     fontWeight: '600',
-    lineHeight: 15,
+    lineHeight: 14,
   },
   menuTextLcd: {
+    fontSize: 10,
     fontWeight: '600',
+    lineHeight: 13,
+  },
+  menuTextBooth: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    fontSize: 12,
+    fontWeight: '700',
     lineHeight: 15,
+    letterSpacing: 0,
+  },
+  menuTextMetro: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    fontSize: 11,
+    fontWeight: '500',
+    lineHeight: 14,
+    letterSpacing: 0.15,
   },
   panelHit: {
     position: 'absolute',
