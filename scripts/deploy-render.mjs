@@ -113,6 +113,36 @@ let serviceUrl =
   existing?.service?.serviceDetails?.url ||
   existing?.dashboardUrl;
 
+async function putEnvVars(serviceId) {
+  const cfg = readFileSync(`${process.env.HOME}/.render/cli.yaml`, 'utf8');
+  const token = cfg.match(/^\s*key:\s*(\S+)/m)?.[1];
+  if (!token) {
+    throw new Error('No Render API key in ~/.render/cli.yaml — run render login');
+  }
+  const pairs = [
+    ['NODE_ENV', 'production'],
+    ['OPENAI_API_KEY', env.OPENAI_API_KEY],
+    ['RESEND_API_KEY', env.RESEND_API_KEY],
+    ['AUTH_FROM_EMAIL', env.AUTH_FROM_EMAIL],
+    ['TEACHER_MODEL', 'gpt-4.1'],
+    ['TEACHER_FAST_MODEL', 'gpt-4.1-mini'],
+    ['COMPANION_MODEL', 'gpt-4.1'],
+  ];
+  const res = await fetch(`https://api.render.com/v1/services/${serviceId}/env-vars`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(pairs.map(([key, value]) => ({ key, value }))),
+  });
+  if (!res.ok) {
+    throw new Error(`env-vars PUT failed: ${res.status} ${await res.text()}`);
+  }
+  console.log('Env vars updated');
+}
+
 if (!serviceId) {
   console.log(`Creating ${serviceName}…`);
   const created = run([
@@ -142,18 +172,6 @@ if (!serviceId) {
     'oregon',
     '--env-var',
     'NODE_ENV=production',
-    '--env-var',
-    `OPENAI_API_KEY=${env.OPENAI_API_KEY}`,
-    '--env-var',
-    `RESEND_API_KEY=${env.RESEND_API_KEY}`,
-    '--env-var',
-    `AUTH_FROM_EMAIL=${env.AUTH_FROM_EMAIL}`,
-    '--env-var',
-    'TEACHER_MODEL=gpt-4.1',
-    '--env-var',
-    'TEACHER_FAST_MODEL=gpt-4.1-mini',
-    '--env-var',
-    'COMPANION_MODEL=gpt-4.1',
     '--auto-deploy',
     '--confirm',
     '-o',
@@ -165,31 +183,16 @@ if (!serviceId) {
     body?.service?.serviceDetails?.url ||
     body?.serviceUrl ||
     (serviceId ? `https://${serviceName}.onrender.com` : null);
-  console.log('Created:', serviceId || created.stdout.slice(0, 400));
+  console.log('Created:', serviceId || redact(created.stdout.slice(0, 400)));
 } else {
   console.log(`Service exists: ${serviceId}`);
-  // Refresh secrets / models
-  run(
-    [
-      'services',
-      'update',
-      serviceId,
-      '--env-var',
-      `OPENAI_API_KEY=${env.OPENAI_API_KEY}`,
-      '--env-var',
-      `RESEND_API_KEY=${env.RESEND_API_KEY}`,
-      '--env-var',
-      `AUTH_FROM_EMAIL=${env.AUTH_FROM_EMAIL}`,
-      '--confirm',
-      '-o',
-      'text',
-    ],
-    { allowFail: true },
-  );
-  run(
-    ['deploys', 'create', serviceId, '--wait', '--confirm', '-o', 'text'],
-    { allowFail: true },
-  );
+}
+
+if (serviceId) {
+  await putEnvVars(serviceId);
+  run(['deploys', 'create', serviceId, '--wait', '--confirm', '-o', 'text'], {
+    allowFail: true,
+  });
 }
 
 if (!serviceUrl && serviceId) {
