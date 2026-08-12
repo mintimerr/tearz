@@ -1030,6 +1030,28 @@ app.get(['/terms', '/terms.html'], (_req, res) => {
   res.type('html').sendFile(path.join(LEGAL_DIR, 'terms.html'));
 });
 
+/** Web-демо (expo export) — та же ссылка / QR, что и API host */
+const WEB_APP_DIR = path.join(__dirname, '../public/app');
+const webIndex = path.join(WEB_APP_DIR, 'index.html');
+if (fs.existsSync(webIndex)) {
+  app.use(express.static(WEB_APP_DIR, { index: false, maxAge: '1h' }));
+  app.get(/^(?!\/api(?:\/|$)|\/health$|\/privacy(?:\.html)?$|\/terms(?:\.html)?$|\/ws\/).*/, (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    const rel = req.path === '/' ? 'index.html' : req.path.replace(/^\//, '');
+    const filePath = path.join(WEB_APP_DIR, rel);
+    const htmlPath = path.join(WEB_APP_DIR, `${rel}.html`);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      return res.sendFile(filePath);
+    }
+    if (fs.existsSync(htmlPath)) {
+      return res.sendFile(htmlPath);
+    }
+    // SPA / expo-router client nav
+    return res.sendFile(webIndex);
+  });
+  console.log(`[web] serving demo from ${WEB_APP_DIR}`);
+}
+
 function profileRegionHint(language) {
   if (language === 'chinese') {
     return 'They live in a Chinese-speaking city (mainland China, Taiwan, Singapore, etc.). openingLine must be in natural modern Chinese (中文).';

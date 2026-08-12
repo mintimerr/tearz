@@ -1,12 +1,10 @@
-# Render Blueprint — деплой backend Tearz (https://render.com)
-# Dashboard → New → Blueprint → подключить репозиторий с этим файлом
-# Или: render deploy через API (scripts/deploy-render.mjs)
-
+# Render Blueprint — backend + web-демо на одном URL
 services:
   - type: web
     name: tearz-chat-api
     runtime: node
     rootDir: server
+    # Web кладётся в public/app локально (`npm run build:web`) и едет с репо.
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
@@ -14,7 +12,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # PORT задаёт сам Render — не фиксируем 8787
       - key: OPENAI_API_KEY
         sync: false
       - key: RESEND_API_KEY

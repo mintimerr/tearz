@@ -1,14 +1,18 @@
 /** Публичный URL бэкенда Tearz (без trailing slash). Задаётся через EXPO_PUBLIC_COMPANION_CHAT_API_URL. */
 export function getCompanionChatApiBaseUrl(): string {
   const u = process.env.EXPO_PUBLIC_COMPANION_CHAT_API_URL?.trim();
-  if (!u) {
-    throw new Error(
-      __DEV__
-        ? 'Не задан EXPO_PUBLIC_COMPANION_CHAT_API_URL. Добавьте в .env адрес server (см. docs/PUBLIC_RELEASE.md).'
-        : 'Сервер недоступен: приложение собрано без адреса API. Обновите сборку.',
-    );
+  if (u) return u.replace(/\/$/, '');
+
+  // Web-демо на том же хосте, что и API (Render)
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin.replace(/\/$/, '');
   }
-  return u.replace(/\/$/, '');
+
+  throw new Error(
+    __DEV__
+      ? 'Не задан EXPO_PUBLIC_COMPANION_CHAT_API_URL. Добавьте в .env адрес server (см. docs/PUBLIC_RELEASE.md).'
+      : 'Сервер недоступен: приложение собрано без адреса API. Обновите сборку.',
+  );
 }
 
 /** Заголовки для fetch к API (ngrok free tier требует skip-browser-warning). */
