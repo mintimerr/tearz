@@ -6,7 +6,7 @@ import {
   useAudioRecorderState,
 } from 'expo-audio';
 import { useCallback, useRef } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert } from 'react-native';
 
 const MIN_MS = 450;
 const MAX_MS = 60_000;
@@ -28,10 +28,6 @@ export function useCompanionVoiceRecorder() {
   }, []);
 
   const ensureMicPermission = useCallback(async (): Promise<boolean> => {
-    if (Platform.OS === 'web') {
-      Alert.alert('Голосовые', 'Запись голоса доступна в приложении на iOS или Android.');
-      return false;
-    }
     const cur = await AudioModule.getRecordingPermissionsAsync();
     if (cur.granted) return true;
     const req = await AudioModule.requestRecordingPermissionsAsync();
@@ -44,7 +40,6 @@ export function useCompanionVoiceRecorder() {
 
   const startRecording = useCallback(
     async (onAutoStop?: () => void) => {
-      if (Platform.OS === 'web') return false;
       const ok = await ensureMicPermission();
       if (!ok) return false;
       onMaxDuration.current = onAutoStop ?? null;

@@ -31,9 +31,9 @@ npm run server
 npm run deploy:render
 ```
 
-## Ограничения веб-демо
+## Веб vs native
 
-- Rive → спрайты
-- Голос / звонки — заглушки
-- Пуши — нет
-- Остальное (хаб, автоматы, чат текстом) — работает
+- Rive (маскот / board) — canvas runtime (`@rive-app/react-canvas`)
+- Голосовые сообщения — `expo-audio` в браузере
+- Звонки — WebSocket + getUserMedia / Web Audio
+- Пуши — нет (только native)
