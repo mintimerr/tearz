@@ -1002,8 +1002,8 @@ function buildVisionUserContent({
       : 'image/jpeg';
   const textPart = userMessage || emptyImageFallback;
   const visionDetail = detail === 'low' || detail === 'auto' ? detail : 'high';
+  // Image first — models attend more carefully to pixels before answering.
   return [
-    { type: 'text', text: textPart },
     {
       type: 'image_url',
       image_url: {
@@ -1011,7 +1011,69 @@ function buildVisionUserContent({
         detail: visionDetail,
       },
     },
+    { type: 'text', text: textPart },
   ];
+}
+
+/**
+ * Dedicated high-detail transcription pass — quote characters before teaching.
+ * @returns {Promise<string>}
+ */
+async function extractTextFromImage(apiKey, imageBase64, imageMimeType) {
+  if (!hasImagePayload(imageBase64)) return '';
+  const mime =
+    typeof imageMimeType === 'string' && imageMimeType.startsWith('image/')
+      ? imageMimeType.trim().slice(0, 40)
+      : 'image/jpeg';
+  try {
+    const openaiRes = await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: TEACHER_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are a precise OCR engine for language-learning photos (textbooks, homework, screenshots, handwriting, signs, menus). Transcribe EVERY readable character exactly as written. Keep original language and scripts. Preserve line breaks and spatial order (top→bottom, left→right, or columns if clearly columnar). Do NOT translate, correct spelling, normalize, or summarize. If a fragment is unreadable, write [unclear]. Output ONLY the transcription text.',
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mime};base64,${imageBase64.trim().slice(0, 12_000_000)}`,
+                  detail: 'high',
+                },
+              },
+              {
+                type: 'text',
+                text: 'Transcribe all visible text from this photo exactly.',
+              },
+            ],
+          },
+        ],
+        temperature: 0,
+        max_tokens: 4000,
+      }),
+    });
+    const raw = await openaiRes.text();
+    let data;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      return '';
+    }
+    if (!openaiRes.ok) return '';
+    const content = data?.choices?.[0]?.message?.content;
+    return typeof content === 'string' ? content.trim().slice(0, 12000) : '';
+  } catch {
+    return '';
+  }
 }
 
 const WHISPER_URL = 'https://api.openai.com/v1/audio/transcriptions';
@@ -1301,14 +1363,28 @@ app.post('/api/teacher-chat', async (req, res) => {
   const userMessageText = typeof message === 'string' ? message.trim() : '';
 
   try {
-    const intent = await classifyTeacherIntent(
-      apiKey,
-      userMessageText || (hasImage ? 'фото к уроку' : ''),
-      history,
-    );
-    if (intent === 'cheat' || intent === 'jailbreak' || intent === 'off_topic') {
-      return res.json({ reply: TEACHER_INTENT_REPLIES[intent] });
+    // Photo-only / caption-only homework: always teach — don't gate OCR on a blind intent guess.
+    let intent = 'teach';
+    if (!hasImage) {
+      intent = await classifyTeacherIntent(apiKey, userMessageText, history);
+      if (intent === 'cheat' || intent === 'jailbreak' || intent === 'off_topic') {
+        return res.json({ reply: TEACHER_INTENT_REPLIES[intent] });
+      }
+    } else if (userMessageText && !/^(📷\s*)?фото/i.test(userMessageText)) {
+      intent = await classifyTeacherIntent(
+        apiKey,
+        `${userMessageText}\n\n[Learner also attached a homework/photo — treat as language study.]`,
+        history,
+      );
+      if (intent === 'cheat' || intent === 'jailbreak') {
+        return res.json({ reply: TEACHER_INTENT_REPLIES[intent] });
+      }
+      if (intent === 'off_topic') intent = 'teach';
     }
+
+    const photoTranscript = hasImage
+      ? await extractTextFromImage(apiKey, imageBase64, imageMimeType)
+      : '';
 
     let systemContent = buildTeacherSystemPrompt(lang, lessonTopic);
     if (intent === 'practical' || isPracticalLanguageQuestion(userMessageText)) {
@@ -1316,15 +1392,37 @@ app.post('/api/teacher-chat', async (req, res) => {
     }
     if (hasImage) {
       systemContent +=
-        '\n\nPHOTOS: The learner attached a photo — you can see it. Carefully read ALL visible text (print, handwriting, screenshots, UI labels). Quote the actual characters you see; do not invent, autocorrect, or swap with earlier messages in the thread. If text is blurry, say what you can read and what is unclear. Use the photo for homework help, mistakes, signs, menus, etc. Do not say you cannot see the image.';
+        '\n\nPHOTOS / OCR:\n' +
+        '- You receive the photo AND a separate exact transcription pass.\n' +
+        '- Treat the transcription as the primary source of characters on the page.\n' +
+        '- Still look at the image for layout, handwriting, circling, arrows, and blurry spots.\n' +
+        '- Quote text as written; do not invent, autocorrect, or pull wording from earlier chat that is not on this photo.\n' +
+        '- If transcription says [unclear], say what is unclear; do not guess characters.\n' +
+        '- Never claim you cannot see the image.';
+      if (photoTranscript) {
+        systemContent +=
+          '\n\nEXACT TEXT FROM PHOTO (OCR pass — prefer this for characters):\n' + photoTranscript;
+      }
     }
 
+    const visionInstruction = photoTranscript
+      ? [
+          userMessageText || 'Ученик отправил фото к уроку.',
+          '',
+          'Ниже — точная расшифровка текста с фото. Отвечай по ней и по изображению; символы бери из расшифровки, не выдумывай.',
+          '',
+          '--- OCR ---',
+          photoTranscript,
+          '--- /OCR ---',
+        ].join('\n')
+      : userMessageText ||
+        'Ученик отправил фото. Внимательно прочитай весь видимый текст на изображении и ответь по нему.';
+
     const userContent = buildVisionUserContent({
-      message,
+      message: visionInstruction,
       imageBase64,
       imageMimeType,
-      emptyImageFallback:
-        'Ученик отправил фото. Внимательно прочитай весь видимый текст на изображении и ответь по нему.',
+      emptyImageFallback: visionInstruction,
       detail: 'high',
     });
 
@@ -1343,8 +1441,11 @@ app.post('/api/teacher-chat', async (req, res) => {
       body: JSON.stringify({
         model: TEACHER_MODEL,
         messages,
-        temperature:
-          intent === 'practical' || isPracticalLanguageQuestion(userMessageText) ? 0.32 : 0.42,
+        temperature: hasImage
+          ? 0.12
+          : intent === 'practical' || isPracticalLanguageQuestion(userMessageText)
+            ? 0.32
+            : 0.42,
         max_tokens: 2200,
       }),
     });

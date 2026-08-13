@@ -2,9 +2,12 @@ import { readAsStringAsync, EncodingType } from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Image, Platform } from 'react-native';
 
-/** High enough for OpenAI vision `detail: high` + readable homework text. */
+/**
+ * OpenAI vision high-detail tiles up to ~2048 on the long edge.
+ * Prefer high JPEG quality — text/homework must stay sharp for OCR.
+ */
 const MAX_IMAGE_EDGE = 2048;
-const JPEG_QUALITY = 0.9;
+const JPEG_QUALITY = 0.95;
 
 function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
@@ -28,6 +31,8 @@ async function prepareCompanionImageWeb(fileUri: string): Promise<{ base64: stri
   canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Не удалось обработать изображение');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
   const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
