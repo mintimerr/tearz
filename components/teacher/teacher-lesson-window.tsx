@@ -11,8 +11,10 @@ import type { CompanionMsg } from '@/types/companion-message';
 type Props = {
   onClose: () => void;
   seedQuestion?: string;
-  /** Готовый тред после полёта — диалог без «думаю». */
+  /** Готовый тред после полёта / повторное открытие — диалог без «думаю». */
   initialMessages?: CompanionMsg[];
+  lessonId?: string;
+  lessonTopic?: string;
   seedAttachment?: TeacherComposerAttachment | null;
   language?: CompanionChatApiLanguage;
 };
@@ -24,6 +26,8 @@ export function TeacherLessonWindow({
   onClose,
   seedQuestion,
   initialMessages,
+  lessonId,
+  lessonTopic,
   seedAttachment,
   language = 'english',
 }: Props) {
@@ -38,6 +42,8 @@ export function TeacherLessonWindow({
           onClose={onClose}
           seedQuestion={seedQuestion}
           initialMessages={initialMessages}
+          lessonId={lessonId}
+          lessonTopic={lessonTopic}
           seedAttachment={seedAttachment}
           language={language}
           gameChrome

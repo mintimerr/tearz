@@ -3,6 +3,7 @@ import {
   documentDirectory,
   makeDirectoryAsync,
 } from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 
 const SUBDIR = 'companion-attachments/';
 
@@ -21,8 +22,8 @@ export async function persistCompanionAttachment(
   fileName?: string,
 ): Promise<string> {
   const root = documentDirectory;
-  if (!root) {
-    throw new Error('Нет доступа к файловой системе устройства');
+  if (!root || Platform.OS === 'web') {
+    return tempUri;
   }
   const dir = `${root}${SUBDIR}`;
   await makeDirectoryAsync(dir, { intermediates: true });

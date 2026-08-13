@@ -23,7 +23,9 @@ import {
   BoardStudentText,
 } from '@/components/teacher/board-lesson-bubble';
 import { BoardChalkBackdrop } from '@/components/teacher/board-chalk-backdrop';
+import { ImageMessageBubble } from '@/components/companion/image-message-bubble';
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
+import { TeacherAttachGallery } from '@/components/teacher/teacher-attach-gallery';
 import { TeacherExerciseActions } from '@/components/teacher/teacher-exercise-actions';
 import { TeacherExerciseDrill } from '@/components/teacher/teacher-exercise-drill';
 import { TeacherExerciseGenerating } from '@/components/teacher/teacher-exercise-generating';
@@ -60,8 +62,11 @@ import type {
   TeacherExerciseItem,
   TeacherNextTopicRecommendation,
 } from '@/types/companion-chat-api';
-import type { CompanionMsg } from '@/types/companion-message';
+import { isImageMsg, type CompanionMsg } from '@/types/companion-message';
+import { persistCompanionAttachment } from '@/utils/companion-attachment-storage';
+import { prepareCompanionImageForApi } from '@/utils/companion-image-base64';
 import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
+import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
 import { setTeacherLessonBootstrap } from '@/utils/teacher-lesson-bootstrap';
 import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
 import {
@@ -104,8 +109,11 @@ type Props = {
   onClose: () => void;
   /** Первый вопрос с доски — сразу уходит в обработку. */
   seedQuestion?: string;
-  /** Готовый тред (после полёта с автомата) — без «думаю». */
+  /** Готовый тред (после полёта с автомата / повторное открытие) — без «думаю». */
   initialMessages?: CompanionMsg[];
+  /** Уже существующий урок — не создавать новый tl-* при открытии из списка. */
+  lessonId?: string;
+  lessonTopic?: string;
   seedAttachment?: TeacherComposerAttachment | null;
   language?: CompanionChatApiLanguage;
   /** Игровой chrome (cream/ink/gold) вместо iOS glass. */
@@ -116,6 +124,8 @@ export function TeacherBoardChat({
   onClose,
   seedQuestion,
   initialMessages,
+  lessonId,
+  lessonTopic,
   seedAttachment,
   language = 'english',
   gameChrome = true,
@@ -135,14 +145,15 @@ export function TeacherBoardChat({
   const miniDrillUserId = user?.id ?? '';
 
   const scrollRef = useRef<ScrollView>(null);
-  const lessonIdRef = useRef<string | null>(null);
-  const lessonTopicRef = useRef<string>(t('teacher.lessonDefault'));
+  const lessonIdRef = useRef<string | null>(lessonId ?? null);
+  const lessonTopicRef = useRef<string>(lessonTopic?.trim() || t('teacher.lessonDefault'));
   const seededRef = useRef(false);
   const sendScale = useRef(new Animated.Value(1)).current;
   const messagesRef = useRef<CompanionMsg[]>([]);
 
   const [messages, setMessages] = useState<CompanionMsg[]>([]);
   const [input, setInput] = useState('');
+  const [attachOpen, setAttachOpen] = useState(false);
   const [typing, setTyping] = useState(false);
   const [sending, setSending] = useState(false);
   const [exerciseLoadingId, setExerciseLoadingId] = useState<string | null>(null);
@@ -234,14 +245,19 @@ export function TeacherBoardChat({
   );
 
   const requestReply = useCallback(
-    async (userText: string, historyBefore: CompanionMsg[]) => {
+    async (
+      userText: string,
+      historyBefore: CompanionMsg[],
+      image?: { base64: string; mimeType: string },
+    ) => {
       setTyping(true);
       try {
         const reply = await postTeacherChatReply({
-          message: userText.trim(),
+          message: userText.trim() || (image ? 'Ученик отправил фото.' : ''),
           conversationHistory: messagesToCompanionApiHistory(historyBefore),
           language,
           lessonTopic: lessonTopicRef.current,
+          ...(image?.base64 ? { imageBase64: image.base64, imageMimeType: image.mimeType } : {}),
         });
         ingestTeacherText(reply);
         const replyTime = formatChatTime();
@@ -279,15 +295,33 @@ export function TeacherBoardChat({
   useEffect(() => {
     if (seededRef.current) return;
 
+    if (lessonId) {
+      lessonIdRef.current = lessonId;
+    }
+    if (lessonTopic?.trim()) {
+      lessonTopicRef.current = lessonTopic.trim();
+    }
+
     if (initialMessages && initialMessages.length > 0) {
       seededRef.current = true;
       const titleSrc =
+        lessonTopic?.trim() ||
         initialMessages.find((m) => m.from === 'me' && typeof m.text === 'string')?.text?.trim() ||
         t('teacher.lessonDefault');
       if (titleSrc) registerUserStudyText(titleSrc);
       setMessages(initialMessages);
-      ensureLesson(initialMessages, titleSrc);
+      if (!lessonId) {
+        ensureLesson(initialMessages, titleSrc);
+      } else {
+        lessonTopicRef.current = titleSrc;
+      }
       scrollToEnd();
+      return;
+    }
+
+    if (lessonId) {
+      seededRef.current = true;
+      setMessages([]);
       return;
     }
 
@@ -308,7 +342,16 @@ export function TeacherBoardChat({
     ensureLesson([userMsg], q);
     void requestReply(q, [userMsg]);
     scrollToEnd();
-  }, [ensureLesson, initialMessages, registerUserStudyText, requestReply, seedQuestion, t]);
+  }, [
+    ensureLesson,
+    initialMessages,
+    lessonId,
+    lessonTopic,
+    registerUserStudyText,
+    requestReply,
+    seedQuestion,
+    t,
+  ]);
 
   const send = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
@@ -339,6 +382,68 @@ export function TeacherBoardChat({
 
     await requestReply(text, nextThread);
   }, [ensureLesson, input, messages, registerUserStudyText, requestReply, saveCompanionThread, sending]);
+
+  const sendImageFromUri = useCallback(
+    async (uri: string, pickedName?: string) => {
+      if (sending || typing) return;
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Keyboard.dismiss();
+      setAttachOpen(false);
+      setSending(true);
+
+      const caption = input.trim();
+      const msgId = `img-${Date.now()}`;
+      const time = formatChatTime();
+      const userMsg: CompanionMsg = {
+        id: msgId,
+        from: 'me',
+        kind: 'image',
+        imageUri: uri,
+        text: caption || '📷 Фото',
+        time,
+        read: 'sent',
+      };
+
+      const nextThread = [...messagesRef.current, userMsg];
+      setMessages(nextThread);
+      if (caption) {
+        setInput('');
+        registerUserStudyText(caption);
+      }
+      ensureLesson(nextThread, caption || 'Фото');
+      if (lessonIdRef.current) {
+        saveCompanionThread(lessonIdRef.current, nextThread);
+      }
+      scrollToEnd();
+
+      try {
+        const storedUri = await persistCompanionAttachment(uri, msgId, pickedName);
+        setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, imageUri: storedUri } : m)));
+        const image = await prepareCompanionImageForApi(storedUri);
+        await requestReply(caption, [...messagesRef.current.filter((m) => m.id !== msgId), { ...userMsg, imageUri: storedUri }], image);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Не удалось отправить фото';
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, text: `📷 ${msg}`, read: 'read' } : m)),
+        );
+        setSending(false);
+        setTyping(false);
+      }
+    },
+    [ensureLesson, input, registerUserStudyText, requestReply, saveCompanionThread, sending, typing],
+  );
+
+  const handleAttachToggle = useCallback(() => {
+    if (sending || typing) return;
+    void Haptics.selectionAsync();
+    setAttachOpen((open) => !open);
+  }, [sending, typing]);
+
+  const handlePickGallery = useCallback(() => {
+    void pickCompanionPhoto().then((picked) => {
+      if (picked) void sendImageFromUri(picked.uri, picked.name);
+    });
+  }, [sendImageFromUri]);
 
   const generateExerciseForMessage = useCallback(
     async (source: CompanionMsg) => {
@@ -560,16 +665,30 @@ export function TeacherBoardChat({
           {messages.map((m, idx) => {
             const isMe = m.from === 'me';
             const bubbleVariant = gameChrome ? 'game' : 'default';
+            const photo = isImageMsg(m) && Boolean(m.imageUri);
+            const caption = m.text.trim();
+            const showCaption = caption.length > 0 && caption !== '📷 Фото' && !caption.startsWith('📷 ');
             return (
               <FadeInView key={m.id} delay={idx * 60} offsetY={10} duration={380}>
                 <BoardLessonBubble
                   side={isMe ? 'student' : 'teacher'}
-                  compact={m.text.length < 56}
+                  compact={!photo && m.text.length < 56}
                   variant={bubbleVariant}>
                   {isMe ? (
-                    <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
-                      {m.text}
-                    </BoardStudentText>
+                    photo && m.imageUri ? (
+                      <View style={styles.photoBody}>
+                        <ImageMessageBubble uri={m.imageUri} outgoing />
+                        {showCaption ? (
+                          <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
+                            {caption}
+                          </BoardStudentText>
+                        ) : null}
+                      </View>
+                    ) : (
+                      <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
+                        {m.text}
+                      </BoardStudentText>
+                    )
                   ) : (
                     <TeacherMessageBody
                       text={m.text}
@@ -601,7 +720,57 @@ export function TeacherBoardChat({
             composerInsetStyle,
           ]}>
           {gameChrome ? null : <BlurView intensity={38} tint="light" style={styles.composerBlur} />}
+
+          {attachOpen ? (
+            <View style={styles.attachPanel}>
+              <TeacherAttachGallery
+                visible={attachOpen}
+                onPhotoSelected={(uri) => void sendImageFromUri(uri)}
+              />
+              <Pressable
+                onPress={handlePickGallery}
+                style={({ pressed }) => [
+                  styles.attachGalleryBtn,
+                  gameChrome && styles.attachGalleryBtnGame,
+                  pressed && styles.attachGalleryBtnPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Выбрать фото из галереи">
+                <Ionicons name="images-outline" size={18} color={gameChrome ? GAME_THEME.color.ink : APP_THEME.color.textSoft} />
+                <Text style={[styles.attachGalleryLabel, gameChrome && styles.attachGalleryLabelGame]}>
+                  Галерея
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           <View style={[styles.composerShell, gameChrome ? styles.composerShellGame : styles.composerShellIos]}>
+            <Pressable
+              onPress={handleAttachToggle}
+              disabled={sending || typing}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={attachOpen ? 'Закрыть вложения' : 'Прикрепить фото'}
+              style={({ pressed }) => [
+                styles.attachBtn,
+                gameChrome && styles.attachBtnGame,
+                attachOpen && (gameChrome ? styles.attachBtnGameOn : styles.attachBtnOn),
+                pressed && styles.attachBtnPressed,
+                (sending || typing) && styles.attachBtnOff,
+              ]}>
+              <Ionicons
+                name={attachOpen ? 'close' : 'add'}
+                size={24}
+                color={
+                  gameChrome
+                    ? attachOpen
+                      ? GAME_THEME.color.ink
+                      : 'rgba(26,26,26,0.55)'
+                    : APP_THEME.color.textSoft
+                }
+              />
+            </Pressable>
+
             <TextInput
               value={input}
               onChangeText={setInput}
@@ -613,6 +782,7 @@ export function TeacherBoardChat({
               editable={!sending}
               blurOnSubmit={false}
               onFocus={() => {
+                setAttachOpen(false);
                 setTimeout(() => {
                   scrollRef.current?.scrollToEnd({ animated: true });
                 }, 220);
@@ -804,9 +974,75 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     backgroundColor: GAME_THEME.color.cream,
     borderWidth: 0,
-    paddingLeft: 14,
+    paddingLeft: 10,
     paddingRight: 10,
     paddingVertical: 10,
+  },
+  attachPanel: {
+    width: '100%',
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    gap: 8,
+    zIndex: 2,
+  },
+  attachGalleryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: APP_THEME.radius.md,
+    backgroundColor: APP_THEME.color.elevated,
+  },
+  attachGalleryBtnGame: {
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderRadius: GAME_THEME.radius.button,
+  },
+  attachGalleryBtnPressed: {
+    opacity: 0.85,
+  },
+  attachGalleryLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: APP_THEME.color.textSoft,
+  },
+  attachGalleryLabelGame: {
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
+  },
+  attachBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+    backgroundColor: APP_THEME.color.accentSoft,
+  },
+  attachBtnGame: {
+    borderRadius: 14,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 3,
+    borderBottomColor: GAME_THEME.color.goldLip,
+  },
+  attachBtnOn: {
+    backgroundColor: APP_THEME.color.accentGlass,
+  },
+  attachBtnGameOn: {
+    backgroundColor: GAME_THEME.color.cream,
+  },
+  attachBtnPressed: {
+    opacity: 0.85,
+  },
+  attachBtnOff: {
+    opacity: 0.4,
+  },
+  photoBody: {
+    gap: 8,
   },
   composerInput: {
     flex: 1,

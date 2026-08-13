@@ -114,7 +114,7 @@ export function TeacherPremiumScreen() {
   const { t, locale } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { addChat, removeChat, saveCompanionThread } = useCompanionChats();
+  const { chats, addChat, removeChat, saveCompanionThread, getCompanionThread } = useCompanionChats();
   const {
     ready,
     markLessonCreated,
@@ -129,9 +129,32 @@ export function TeacherPremiumScreen() {
   const [chatsOpen, setChatsOpen] = useState(false);
   const [boardChatOpen, setBoardChatOpen] = useState(false);
   const [boardSeed, setBoardSeed] = useState('');
+  const [boardLessonId, setBoardLessonId] = useState<string | undefined>();
+  const [boardLessonTopic, setBoardLessonTopic] = useState<string | undefined>();
+  const [boardInitialMessages, setBoardInitialMessages] = useState<CompanionMsg[] | undefined>();
   const [composerFocused, setComposerFocused] = useState(false);
   const topBarFade = useRef(new Animated.Value(1)).current;
   const chatFade = useRef(new Animated.Value(0)).current;
+
+  /** Все чаты с учителем: уроки + любые tl-* из хранилища чатов. */
+  const teacherChatRows = useMemo(() => {
+    const byId = new Map<string, TeacherRecentLesson>();
+    for (const lesson of lessons) {
+      byId.set(lesson.id, lesson);
+    }
+    for (const c of chats) {
+      if (!c.id.startsWith('tl-') && c.presence !== 'урок') continue;
+      if (byId.has(c.id)) continue;
+      byId.set(c.id, {
+        id: c.id,
+        title: c.profileMetaLine?.trim() || c.preview?.trim() || 'Урок',
+        subtitle: 'Преподаватель',
+        createdAt: Date.now(),
+        spentSecondsTotal: 0,
+      });
+    }
+    return Array.from(byId.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [chats, lessons]);
 
   // ── Typewriter «Что тебе объяснить?» ─────────────────────────────────────
   const prompts = useMemo(
@@ -265,6 +288,9 @@ export function TeacherPremiumScreen() {
   const handleBoardSubmit = (question: string, _attachment?: TeacherComposerAttachment | null) => {
     const q = question.trim();
     if (!q) return;
+    setBoardLessonId(undefined);
+    setBoardLessonTopic(undefined);
+    setBoardInitialMessages(undefined);
     setBoardSeed(q);
     setBoardChatOpen(true);
   };
@@ -272,6 +298,9 @@ export function TeacherPremiumScreen() {
   const closeBoardChat = () => {
     setBoardChatOpen(false);
     setBoardSeed('');
+    setBoardLessonId(undefined);
+    setBoardLessonTopic(undefined);
+    setBoardInitialMessages(undefined);
     composerRef.current?.clear();
   };
 
@@ -426,18 +455,11 @@ export function TeacherPremiumScreen() {
   const openTeacherLessonChat = (lesson: TeacherRecentLesson) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setChatsOpen(false);
-    router.push({
-      pathname: '/companion-chat',
-      params: {
-        id: lesson.id,
-        name: 'Преподаватель',
-        online: '1',
-        letter: 'T',
-        color: teacherLessonColor(lesson.id),
-        mode: 'teacher',
-        lessonTopic: encodeURIComponent(lesson.title),
-      },
-    });
+    setBoardSeed('');
+    setBoardLessonId(lesson.id);
+    setBoardLessonTopic(lesson.title);
+    setBoardInitialMessages(getCompanionThread(lesson.id) ?? []);
+    setBoardChatOpen(true);
   };
 
   const beginRenameLesson = useCallback((lesson: TeacherRecentLesson) => {
@@ -518,7 +540,7 @@ export function TeacherPremiumScreen() {
           title={lesson.title}
           meta={meta}
           accentColor={teacherLessonColor(lesson.id)}
-          showSeparator={index < lessons.length - 1}
+          showSeparator={index < teacherChatRows.length - 1}
           renameLabel={t('common.rename')}
           deleteLabel={t('common.delete')}
           onOpen={() => openTeacherLessonChat(lesson)}
@@ -527,7 +549,7 @@ export function TeacherPremiumScreen() {
         />
       );
     },
-    [beginRenameLesson, confirmDeleteLesson, lessons.length, locale, t],
+    [beginRenameLesson, confirmDeleteLesson, locale, t, teacherChatRows.length],
   );
 
   const openChats = useCallback(() => {
@@ -564,9 +586,11 @@ export function TeacherPremiumScreen() {
           accessibilityLabel={t('teacher.chatsTitle')}
           style={({ pressed }) => [styles.chatsBtnLight, pressed && styles.chatsBtnPressed]}>
           <Ionicons name="chatbubbles-outline" size={20} color={GAME_THEME.color.ink} />
-          {lessons.length > 0 ? (
+          {teacherChatRows.length > 0 ? (
             <View style={styles.chatsCount}>
-              <Text style={styles.chatsCountText}>{lessons.length > 99 ? '99+' : lessons.length}</Text>
+              <Text style={styles.chatsCountText}>
+                {teacherChatRows.length > 99 ? '99+' : teacherChatRows.length}
+              </Text>
             </View>
           ) : null}
         </Pressable>
@@ -594,7 +618,14 @@ export function TeacherPremiumScreen() {
       {boardChatOpen ? (
         <Modal visible animationType="fade" presentationStyle="fullScreen" onRequestClose={closeBoardChat}>
           <Animated.View style={[styles.boardChatLayer, { opacity: chatFade }]}>
-            <TeacherLessonWindow seedQuestion={boardSeed} onClose={closeBoardChat} />
+            <TeacherLessonWindow
+              key={boardLessonId ?? (boardSeed || 'new-lesson')}
+              seedQuestion={boardSeed || undefined}
+              initialMessages={boardInitialMessages}
+              lessonId={boardLessonId}
+              lessonTopic={boardLessonTopic}
+              onClose={closeBoardChat}
+            />
           </Animated.View>
         </Modal>
       ) : null}
@@ -621,13 +652,13 @@ export function TeacherPremiumScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('common.cancel')}
                 style={({ pressed }) => [styles.chatsClose, pressed && styles.chatsBtnPressed]}>
-                <Ionicons name="close" size={20} color={TEACHER_MUTED} />
+                <Ionicons name="close" size={20} color={GAME_THEME.color.ink} />
               </Pressable>
             </View>
 
-            {lessons.length > 0 ? (
+            {teacherChatRows.length > 0 ? (
               <FlatList
-                data={lessons}
+                data={teacherChatRows}
                 keyExtractor={(lesson) => lesson.id}
                 renderItem={renderLessonRow}
                 ItemSeparatorComponent={LessonSeparator}
@@ -824,7 +855,7 @@ const styles = StyleSheet.create({
   lessonSeparator: {
     height: 10,
   },
-  // chats sheet
+  // chats sheet — game chrome (как список диалогов)
   chatsRoot: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
@@ -834,11 +865,11 @@ const styles = StyleSheet.create({
   },
   chatsSheet: {
     flex: 1,
-    backgroundColor: APP_THEME.color.bgSoft,
-    borderTopLeftRadius: APP_THEME.radius.sheet,
-    borderTopRightRadius: APP_THEME.radius.sheet,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: APP_THEME.color.border,
+    backgroundColor: GAME_THEME.color.cream,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderTopWidth: 3,
+    borderColor: GAME_THEME.color.ink,
     overflow: 'hidden',
   },
   chatsHandle: {
@@ -847,21 +878,25 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     marginTop: 10,
-    backgroundColor: APP_THEME.color.mutedFaint,
+    backgroundColor: 'rgba(26,26,26,0.2)',
   },
   chatsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.gold,
   },
   chatsTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    color: TEACHER_TITLE,
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: GAME_THEME.color.ink,
   },
   chatsClose: {
     width: 34,
@@ -869,10 +904,13 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: APP_THEME.color.elevated,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   chatsListContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 14,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   emptyWrap: {
@@ -888,16 +926,16 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: -0.3,
-    color: TEACHER_TITLE,
+    color: GAME_THEME.color.ink,
     textAlign: 'center',
   },
   emptySub: {
     fontSize: 14.5,
-    fontWeight: '400',
+    fontWeight: '600',
     letterSpacing: -0.18,
-    color: TEACHER_MUTED,
+    color: 'rgba(26,26,26,0.55)',
     textAlign: 'center',
     lineHeight: 20,
   },

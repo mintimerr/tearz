@@ -94,14 +94,15 @@ function useCoverLayout(
     const safeH = screenH - padTop - padBottom;
     /**
      * fillCrt: вписываем стекло в safe-area.
-     * Для крошечных LCD (London) не раздуваем x6 в «угол» — держим запас по безелю.
+     * London (панель аппарата ~3–4×) — cover ~78%; крошечный LCD — сильнее запас.
      */
     const crtFit = Math.min(safeW / crtBox.width, safeH / crtBox.height);
-    const fillPad = crtFit > 4.2 ? 0.82 : 0.94;
+    const fillPad = crtFit > 5 ? 0.7 : crtFit > 3.2 ? 0.78 : 0.88;
     const fit = fillCrt
       ? crtFit
-      : Math.min(safeW / focusW, safeH / focusH, 2.8);
-    const zoomScale = Math.max(fit * (fillCrt ? fillPad : 0.98), 1.7);
+      : Math.min(safeW / focusW, safeH / focusH, 2.55);
+    /** focus: чуть плотнее среднего плана (не улица, не «в упор») */
+    const zoomScale = Math.max(fit * (fillCrt ? fillPad : 0.9), 1.45);
 
     return {
       screenW,
@@ -229,27 +230,25 @@ function MetroGlow() {
   );
 }
 
-/** Стекло Shanghai Metro LCD — холодный тинт + тонкая красная кромка */
+/** Shanghai LCD: как Navigo — лёгкий тинт стекла, без непрозрачного «квадрата» поверх арта */
 function ShanghaiGlow() {
   const drift = useSharedValue(0);
 
   useEffect(() => {
     drift.value = withRepeat(
-      withTiming(1, { duration: 4800, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1, { duration: 5600, easing: Easing.inOut(Easing.sin) }),
       -1,
       true,
     );
   }, [drift]);
 
   const glareStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(drift.value, [0, 0.5, 1], [0.08, 0.16, 0.1]),
+    opacity: interpolate(drift.value, [0, 0.5, 1], [0.06, 0.12, 0.07]),
   }));
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <View style={styles.shanghaiGlassFill} />
-      <View style={styles.shanghaiVignette} />
-      <View style={styles.shanghaiRedEdge} />
       <Animated.View style={[styles.shanghaiSpecular, glareStyle]} />
     </View>
   );
@@ -430,8 +429,11 @@ export function ArcadeCabinetScreen() {
     (isLcd && location.id === 'europe_atm') ||
     (isMetro && location.id === 'paris_metro_guimard') ||
     (isShanghai && location.id === 'shanghai_metro_bund') ||
-    (isCallbox && location.id === 'uk_phone_box');
+    (isCallbox && location.id === 'uk_phone_box') ||
+    (isBooth && location.id === 'seoul_photo_booth');
   const fillCrt = location.zoomFill === 'crt';
+  /** UI всегда на CRT/LCD локации — без нижней плашки */
+  const floatTerminalUi = false;
 
   const crt = location.crt ?? { left: 0.40039, top: 0.47461, width: 0.23145, height: 0.13216 };
   const focus = location.focus ?? { left: 0.34, top: 0.46, width: 0.34, height: 0.26 };
@@ -469,7 +471,9 @@ export function ArcadeCabinetScreen() {
   const zoomedSv = useSharedValue(0);
 
   const typing = query.trim().length > 0;
-  const showHints = !typing;
+  /** Shanghai / Seoul: только TAP → тап → строка ввода; остальным — подсказки пока пусто */
+  const tapOnlyUi = isShanghai || isBooth;
+  const showHints = tapOnlyUi ? !focused && !typing : !typing;
 
   useEffect(() => {
     sway.value = withRepeat(
@@ -524,8 +528,10 @@ export function ArcadeCabinetScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setZoomed(true);
     applyCamera(true);
-    // Фокус только когда зум доехал и CRT занял экран
-    setTimeout(() => inputRef.current?.focus(), ZOOM_MS + 40);
+    // Shanghai / Seoul: сначала TAP на LCD; клавиатура — вторым тапом
+    if (!isShanghai && !isBooth) {
+      setTimeout(() => inputRef.current?.focus(), ZOOM_MS + 40);
+    }
   };
 
   const zoomOut = () => {
@@ -670,14 +676,17 @@ export function ArcadeCabinetScreen() {
             styles.crtGlass,
             isBooth && styles.crtGlassBooth,
             isGlassUi && styles.crtGlassMetro,
+            isShanghai && styles.crtGlassShanghai,
             {
               left: layout.crtBox.left,
               top: layout.crtBox.top,
               width: layout.crtBox.width,
               height: layout.crtBox.height,
               backgroundColor: phosphor,
+              opacity: floatTerminalUi && zoomed ? 0.22 : 1,
             },
-          ]}>
+          ]}
+          pointerEvents={floatTerminalUi && zoomed ? 'none' : 'auto'}>
           {theme.scanlines ? (
             <CrtScanlines />
           ) : isBooth ? (
@@ -688,56 +697,60 @@ export function ArcadeCabinetScreen() {
             <MetroGlow />
           ) : null}
           {/* Pressable вокруг TextInput на iOS срывает клавиатуру при ререндере — после зума только View */}
-          {zoomed ? (
-            <View
-              style={[
-                styles.crtHit,
-                isLcd && styles.crtHitLcd,
-                isBooth && styles.crtHitBooth,
-                isGlassUi && styles.crtHitMetro,
-              ]}>
-              <TerminalFace
-                theme={theme}
-                query={query}
-                setQuery={setQuery}
-                inputRef={inputRef}
-                showHints={showHints}
-                suggestions={suggestions}
-                active
-                keepKeyboard
-                dismissKeyboardRef={dismissKeyboardRef}
-                onOpen={openCrt}
-                onPick={pickSuggestion}
-                onSubmit={submit}
-                setFocused={setFocused}
-              />
-            </View>
-          ) : (
-            <Pressable
-              style={[
-                styles.crtHit,
-                isLcd && styles.crtHitLcd,
-                isBooth && styles.crtHitBooth,
-                isGlassUi && styles.crtHitMetro,
-              ]}
-              onPress={openCrt}>
-              <TerminalFace
-                theme={theme}
-                query={query}
-                setQuery={setQuery}
-                inputRef={inputRef}
-                showHints={showHints}
-                suggestions={suggestions}
-                active={false}
-                keepKeyboard={false}
-                dismissKeyboardRef={dismissKeyboardRef}
-                onOpen={openCrt}
-                onPick={pickSuggestion}
-                onSubmit={submit}
-                setFocused={setFocused}
-              />
-            </Pressable>
-          )}
+          {!(floatTerminalUi && zoomed) ? (
+            zoomed ? (
+              <View
+                style={[
+                  styles.crtHit,
+                  isLcd && styles.crtHitLcd,
+                  isBooth && styles.crtHitBooth,
+                  isGlassUi && styles.crtHitMetro,
+                  isShanghai && styles.crtHitShanghai,
+                ]}>
+                <TerminalFace
+                  theme={theme}
+                  query={query}
+                  setQuery={setQuery}
+                  inputRef={inputRef}
+                  showHints={showHints}
+                  suggestions={suggestions}
+                  active
+                  keepKeyboard
+                  dismissKeyboardRef={dismissKeyboardRef}
+                  onOpen={openCrt}
+                  onPick={pickSuggestion}
+                  onSubmit={submit}
+                  setFocused={setFocused}
+                />
+              </View>
+            ) : (
+              <Pressable
+                style={[
+                  styles.crtHit,
+                  isLcd && styles.crtHitLcd,
+                  isBooth && styles.crtHitBooth,
+                  isGlassUi && styles.crtHitMetro,
+                  isShanghai && styles.crtHitShanghai,
+                ]}
+                onPress={openCrt}>
+                <TerminalFace
+                  theme={theme}
+                  query={query}
+                  setQuery={setQuery}
+                  inputRef={inputRef}
+                  showHints={showHints}
+                  suggestions={suggestions}
+                  active={false}
+                  keepKeyboard={false}
+                  dismissKeyboardRef={dismissKeyboardRef}
+                  onOpen={openCrt}
+                  onPick={pickSuggestion}
+                  onSubmit={submit}
+                  setFocused={setFocused}
+                />
+              </Pressable>
+            )
+          ) : null}
         </View>
 
         {/* Панель автомата тоже открывает CRT */}
@@ -763,6 +776,28 @@ export function ArcadeCabinetScreen() {
         <View style={styles.chrome} pointerEvents="box-none">
           <GameBackButton tone={chromeTone} />
           <GameTeacherChatsButton tone={chromeTone} onPress={() => setChatsOpen(true)} />
+        </View>
+      ) : null}
+
+      {floatTerminalUi && zoomed ? (
+        <View style={[styles.callboxOverlay, isBooth && styles.boothOverlay]} pointerEvents="box-none">
+          <View style={[styles.callboxPanel, isBooth && styles.boothPanel]}>
+            <TerminalFace
+              theme={theme}
+              query={query}
+              setQuery={setQuery}
+              inputRef={inputRef}
+              showHints={showHints}
+              suggestions={suggestions}
+              active
+              keepKeyboard
+              dismissKeyboardRef={dismissKeyboardRef}
+              onOpen={openCrt}
+              onPick={pickSuggestion}
+              onSubmit={submit}
+              setFocused={setFocused}
+            />
+          </View>
         </View>
       ) : null}
 
@@ -851,13 +886,14 @@ function TerminalFace({
     );
   }
 
-  const startHint = t('terminal.startHint');
   const lcd = theme.id === 'lcd';
   const booth = theme.id === 'booth';
   const metro = theme.id === 'metro';
   const shanghai = theme.id === 'shanghai';
   const callbox = theme.id === 'callbox';
   const glass = metro || shanghai || callbox;
+  const tapOnly = shanghai || booth;
+  const startHint = tapOnly ? t('terminal.idleTap') : t('terminal.startHint');
 
   return (
     <View
@@ -868,6 +904,7 @@ function TerminalFace({
         booth && styles.terminalMenuBooth,
         glass && styles.terminalMenuMetro,
         shanghai && styles.terminalMenuShanghai,
+        booth && styles.terminalMenuTapOnly,
       ]}>
       {/* Меню — только opacity; поле ввода всегда в одном и том же слое */}
       <View
@@ -875,77 +912,98 @@ function TerminalFace({
           styles.menuLayer,
           booth && styles.menuLayerBooth,
           glass && styles.menuLayerMetro,
+          tapOnly && styles.menuLayerTapOnly,
           !showHints && styles.menuLayerHidden,
         ]}
         pointerEvents={showHints ? 'box-none' : 'none'}>
-        {glass ? (
-          <View style={[styles.metroHairline, shanghai && styles.shanghaiHairline]} />
-        ) : null}
-        <Animated.Text
-          style={[
-            styles.tapHint,
-            lcd && styles.tapHintLcd,
-            booth && styles.tapHintBooth,
-            glass && styles.tapHintMetro,
-            shanghai && styles.tapHintShanghai,
-            { color: shanghai ? theme.hot : glass ? theme.dim : theme.hot },
-            hintStyle,
-          ]}>
-          {startHint}
-        </Animated.Text>
-        <View
-          style={[
-            styles.menuCol,
-            lcd && styles.menuColLcd,
-            booth && styles.menuColBooth,
-            glass && styles.menuColMetro,
-          ]}>
-          {suggestions.map((s, i) => (
-            <Pressable
-              key={s}
-              onPress={() => onPick(s)}
-              style={({ pressed }) => [
-                styles.menuItem,
-                lcd && styles.menuItemLcd,
-                booth && styles.menuItemBooth,
-                glass && styles.menuItemMetro,
-                callbox && styles.menuItemCallbox,
-                shanghai && styles.menuItemShanghai,
-                pressed && (glass ? styles.menuItemMetroOn : styles.menuItemOn),
-                pressed && shanghai && styles.menuItemShanghaiOn,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={s}>
-              <Text
-                style={[
-                  styles.menuIndex,
-                  lcd && styles.menuIndexLcd,
-                  booth && styles.menuIndexBooth,
-                  glass && styles.menuIndexMetro,
-                  { color: shanghai ? theme.hot : glass ? theme.dim : theme.hot },
-                ]}>
-                {booth ? '✦' : glass ? String(i + 1).padStart(2, '0') : i + 1}
-              </Text>
-              <Text
-                style={[
-                  styles.menuText,
-                  lcd && styles.menuTextLcd,
-                  booth && styles.menuTextBooth,
-                  glass && styles.menuTextMetro,
-                  { color: theme.fg },
-                ]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.72}>
-                {s}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {tapOnly ? (
+          <Pressable
+            onPress={onOpen}
+            style={styles.tapOnlyHit}
+            accessibilityRole="button"
+            accessibilityLabel={startHint}>
+            <Animated.Text
+              style={[
+                styles.tapHint,
+                shanghai && styles.tapHintShanghai,
+                booth && styles.tapHintBoothTap,
+                { color: theme.hot },
+                hintStyle,
+              ]}>
+              {startHint}
+            </Animated.Text>
+          </Pressable>
+        ) : (
+          <>
+            {glass ? <View style={styles.metroHairline} /> : null}
+            <Animated.Text
+              style={[
+                styles.tapHint,
+                lcd && styles.tapHintLcd,
+                booth && styles.tapHintBooth,
+                glass && styles.tapHintMetro,
+                { color: glass ? theme.dim : theme.hot },
+                hintStyle,
+              ]}>
+              {startHint}
+            </Animated.Text>
+            <View
+              style={[
+                styles.menuCol,
+                lcd && styles.menuColLcd,
+                booth && styles.menuColBooth,
+                glass && styles.menuColMetro,
+              ]}>
+              {suggestions.map((s, i) => (
+                <Pressable
+                  key={s}
+                  onPress={() => onPick(s)}
+                  style={({ pressed }) => [
+                    styles.menuItem,
+                    lcd && styles.menuItemLcd,
+                    booth && styles.menuItemBooth,
+                    glass && styles.menuItemMetro,
+                    callbox && styles.menuItemCallbox,
+                    pressed && (glass ? styles.menuItemMetroOn : styles.menuItemOn),
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={s}>
+                  <Text
+                    style={[
+                      styles.menuIndex,
+                      lcd && styles.menuIndexLcd,
+                      booth && styles.menuIndexBooth,
+                      glass && styles.menuIndexMetro,
+                      { color: glass ? theme.dim : theme.hot },
+                    ]}>
+                    {booth ? '✦' : glass ? String(i + 1).padStart(2, '0') : i + 1}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.menuText,
+                      lcd && styles.menuTextLcd,
+                      booth && styles.menuTextBooth,
+                      glass && styles.menuTextMetro,
+                      { color: theme.fg },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.72}>
+                    {s}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
       </View>
 
       <View
-        style={[styles.inputLayer, showHints && styles.inputLayerHidden]}
+        style={[
+          styles.inputLayer,
+          tapOnly && styles.inputLayerTapOnly,
+          showHints && styles.inputLayerHidden,
+        ]}
         pointerEvents={showHints ? 'none' : 'auto'}>
         <View
           style={[
@@ -953,22 +1011,28 @@ function TerminalFace({
             styles.cmdBlockGrow,
             booth && styles.cmdBlockBooth,
             glass && styles.cmdBlockMetro,
+            tapOnly && styles.cmdBlockTapOnly,
+            shanghai && styles.cmdBlockShanghaiType,
           ]}>
-          <Text
-            style={[
-              styles.prompt,
-              booth && styles.promptBooth,
-              glass && styles.promptMetro,
-              { color: shanghai ? theme.hot : glass ? theme.dim : theme.hot },
-            ]}>
-            {theme.prompt}
-          </Text>
+          {!tapOnly && theme.prompt ? (
+            <Text
+              style={[
+                styles.prompt,
+                booth && styles.promptBooth,
+                glass && styles.promptMetro,
+                { color: glass ? theme.dim : theme.hot },
+              ]}>
+              {theme.prompt}
+            </Text>
+          ) : null}
           <View
             style={[
               styles.inputCol,
               styles.inputColGrow,
               glass && styles.inputColMetro,
               shanghai && styles.inputColShanghai,
+              booth && styles.inputColBoothTap,
+              shanghai && styles.inputColShanghaiType,
             ]}>
             <TextInput
               ref={inputRef}
@@ -981,11 +1045,17 @@ function TerminalFace({
                 lcd && styles.inputLcd,
                 booth && styles.inputBooth,
                 glass && styles.inputMetro,
-                { color: theme.fg },
+                shanghai && styles.inputShanghai,
+                booth && styles.inputBoothTap,
+                (callbox || booth) && !tapOnly && styles.inputCallbox,
+                shanghai && styles.inputShanghaiType,
+                { color: tapOnly ? theme.hot : theme.fg },
                 styles.inputFill,
+                shanghai && styles.inputFillShanghai,
               ]}
               maxLength={100}
-              multiline
+              multiline={shanghai || !tapOnly}
+              textAlignVertical={shanghai ? 'top' : 'center'}
               returnKeyType="go"
               blurOnSubmit
               underlineColorAndroid="transparent"
@@ -1001,8 +1071,8 @@ function TerminalFace({
               }}
               onSubmitEditing={onSubmit}
               selectionColor={theme.selection}
-              cursorColor={theme.fg}
-              caretHidden
+              cursorColor={tapOnly ? theme.hot : theme.fg}
+              caretHidden={!shanghai}
             />
             {!query ? (
               <Animated.Text
@@ -1010,10 +1080,12 @@ function TerminalFace({
                   styles.underscore,
                   booth && styles.underscoreBooth,
                   glass && styles.underscoreMetro,
-                  { color: shanghai ? theme.hot : glass ? theme.dim : theme.fg },
+                  tapOnly && styles.underscoreTapOnly,
+                  shanghai && styles.underscoreShanghaiType,
+                  { color: tapOnly ? theme.hot : glass ? theme.dim : theme.fg },
                   cursorStyle,
                 ]}>
-                {booth ? '▌' : '_'}
+                {booth && !tapOnly ? '▌' : '_'}
               </Animated.Text>
             ) : null}
           </View>
@@ -1108,34 +1180,25 @@ const styles = StyleSheet.create({
   },
   shanghaiGlassFill: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(6, 14, 26, 0.28)',
+    /** Плотнее — край читается по контуру LCD при подгонке */
+    backgroundColor: 'rgba(4, 8, 16, 0.55)',
   },
   shanghaiVignette: {
     ...StyleSheet.absoluteFillObject,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.035)',
+    borderWidth: 0,
     backgroundColor: 'transparent',
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
   },
   shanghaiRedEdge: {
-    position: 'absolute',
-    left: '10%',
-    right: '10%',
-    top: 0,
-    height: 2,
-    backgroundColor: 'rgba(227, 28, 35, 0.72)',
+    height: 0,
   },
   shanghaiSpecular: {
     position: 'absolute',
     left: '8%',
-    right: '22%',
-    top: '8%',
-    height: '30%',
-    borderRadius: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    right: '24%',
+    top: '10%',
+    height: '28%',
+    borderRadius: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.045)',
   },
   metroHairline: {
     alignSelf: 'center',
@@ -1145,9 +1208,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(210, 218, 235, 0.28)',
   },
   shanghaiHairline: {
-    width: '36%',
-    height: 1.5,
-    backgroundColor: 'rgba(227, 28, 35, 0.55)',
+    height: 0,
   },
   crtGlass: {
     position: 'absolute',
@@ -1160,8 +1221,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   crtGlassMetro: {
-    borderRadius: 2,
+    borderRadius: 0,
     overflow: 'hidden',
+  },
+  crtGlassShanghai: {
+    borderRadius: 0,
+    overflow: 'hidden',
+    borderWidth: 0,
   },
   crtHit: {
     flex: 1,
@@ -1176,13 +1242,14 @@ const styles = StyleSheet.create({
     paddingBottom: '7%',
   },
   crtHitBooth: {
-    paddingHorizontal: '7%',
-    paddingTop: '8%',
-    paddingBottom: '8%',
+    paddingHorizontal: '6%',
+    paddingTop: '7%',
+    paddingBottom: '7%',
     overflow: 'hidden',
     width: '100%',
     maxWidth: '100%',
     alignItems: 'stretch',
+    justifyContent: 'flex-start',
   },
   crtHitMetro: {
     paddingHorizontal: '8%',
@@ -1192,6 +1259,43 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: '100%',
     alignItems: 'stretch',
+  },
+  crtHitShanghai: {
+    paddingHorizontal: '4%',
+    paddingTop: '4%',
+    paddingBottom: '4%',
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  /** London: UI не раздуваем вместе с LCD — карточка поверх среднего плана будки */
+  callboxOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 28,
+    zIndex: 24,
+  },
+  callboxPanel: {
+    maxHeight: '46%',
+    minHeight: 210,
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 220, 210, 0.28)',
+    backgroundColor: 'rgba(18, 8, 10, 0.78)',
+  },
+  boothOverlay: {
+    paddingBottom: 24,
+  },
+  boothPanel: {
+    maxHeight: '44%',
+    minHeight: 200,
+    borderRadius: 20,
+    borderWidth: 0,
+    backgroundColor: 'rgba(12, 6, 18, 0.82)',
   },
   crtVignette: {
     ...StyleSheet.absoluteFillObject,
@@ -1248,7 +1352,74 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   terminalMenuShanghai: {
-    gap: 6,
+    flex: 1,
+    gap: 0,
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+  },
+  terminalMenuTapOnly: {
+    gap: 0,
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+  },
+  tapHintShanghai: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 3.2,
+    lineHeight: 18,
+    marginBottom: 0,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  tapHintBoothTap: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 2.8,
+    lineHeight: 16,
+    marginBottom: 0,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  tapOnlyHit: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuLayerTapOnly: {
+    gap: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuLayerShanghai: {
+    gap: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shanghaiTapHit: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuItemShanghai: {
+    gap: 8,
+    minHeight: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.045)',
+    borderWidth: 0,
+    borderLeftWidth: 1.5,
+    borderLeftColor: 'rgba(227, 28, 35, 0.78)',
+    borderColor: 'transparent',
+    minWidth: 0,
+    maxWidth: '100%',
+    overflow: 'hidden',
+    alignSelf: 'stretch',
+    flexShrink: 1,
+  },
+  menuItemShanghaiOn: {
+    backgroundColor: 'rgba(227, 28, 35, 0.12)',
+    borderColor: 'transparent',
   },
   terminalLcd: {
     justifyContent: 'flex-start',
@@ -1269,7 +1440,7 @@ const styles = StyleSheet.create({
   menuLayerMetro: {
     gap: 6,
     overflow: 'hidden',
-    paddingHorizontal: 1,
+    paddingHorizontal: 0,
     justifyContent: 'center',
   },
   menuLayerHidden: {
@@ -1281,6 +1452,18 @@ const styles = StyleSheet.create({
   },
   inputLayerHidden: {
     opacity: 0,
+  },
+  inputLayerTapOnly: {
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
+  inputLayerShanghai: {
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 0,
+    paddingTop: 0,
   },
   tapHint: {
     fontSize: 9,
@@ -1315,14 +1498,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: 'uppercase',
     textAlign: 'center',
-  },
-  tapHintShanghai: {
-    fontSize: 9,
-    fontWeight: '600',
-    letterSpacing: 0.8,
-    lineHeight: 12,
-    marginBottom: 5,
-    textTransform: 'none',
   },
   cmdBlock: {
     flexDirection: 'row',
@@ -1396,17 +1571,89 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     letterSpacing: 0.2,
   },
+  cmdBlockTapOnly: {
+    gap: 0,
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+  },
+  cmdBlockShanghai: {
+    gap: 0,
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+  },
+  cmdBlockShanghaiType: {
+    flexDirection: 'column',
+    flex: 1,
+    width: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  inputShanghai: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textAlign: 'left',
+    minWidth: '100%',
+  },
+  inputShanghaiType: {
+    width: '100%',
+    textAlign: 'left',
+    textAlignVertical: 'top',
+    includeFontPadding: false,
+  },
+  inputBoothTap: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textAlign: 'left',
+    minWidth: '100%',
+  },
+  /** ≥16pt — иначе iOS зумит страницу при фокусе клавиатуры */
+  inputCallbox: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '500',
+  },
   inputColMetro: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(210, 218, 235, 0.28)',
     paddingBottom: 3,
   },
   inputColShanghai: {
-    borderBottomColor: 'rgba(227, 28, 35, 0.35)',
+    borderBottomWidth: 0,
+    paddingBottom: 0,
+    width: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  inputColShanghaiType: {
+    flex: 1,
+    width: '100%',
+    minHeight: 0,
+    alignSelf: 'stretch',
+  },
+  inputColBoothTap: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 110, 199, 0.55)',
+    paddingBottom: 4,
+    width: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
   },
   inputFill: {
     flex: 1,
     alignSelf: 'stretch',
+  },
+  inputFillShanghai: {
+    width: '100%',
+    height: '100%',
+    minHeight: 48,
   },
   underscore: {
     position: 'absolute',
@@ -1424,6 +1671,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '300',
+  },
+  underscoreTapOnly: {
+    left: 0,
+    textAlign: 'left',
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+    letterSpacing: 1.4,
+  },
+  underscoreShanghaiType: {
+    left: 0,
+    top: 0,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+  underscoreShanghai: {
+    left: 0,
+    right: undefined,
+    textAlign: 'left',
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+    letterSpacing: 1.4,
   },
   menuCol: {
     flexGrow: 0,
@@ -1470,14 +1741,15 @@ const styles = StyleSheet.create({
     minHeight: 14,
   },
   menuItemBooth: {
-    gap: 4,
-    minHeight: 18,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 90, 170, 0.16)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 160, 210, 0.35)',
+    gap: 8,
+    minHeight: 22,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 0,
+    borderLeftWidth: 2,
+    borderLeftColor: 'rgba(255, 120, 190, 0.75)',
     minWidth: 0,
     maxWidth: '100%',
     overflow: 'hidden',
@@ -1502,11 +1774,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     flexShrink: 1,
   },
-  menuItemShanghai: {
-    borderLeftColor: 'rgba(227, 28, 35, 0.85)',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderColor: 'rgba(227, 28, 35, 0.18)',
-  },
   menuItemCallbox: {
     borderLeftColor: 'rgba(200, 90, 80, 0.75)',
     borderColor: 'rgba(230, 210, 200, 0.16)',
@@ -1517,10 +1784,6 @@ const styles = StyleSheet.create({
   menuItemMetroOn: {
     backgroundColor: 'rgba(255, 255, 255, 0.09)',
     borderColor: 'rgba(220, 226, 238, 0.28)',
-  },
-  menuItemShanghaiOn: {
-    backgroundColor: 'rgba(227, 28, 35, 0.14)',
-    borderColor: 'rgba(227, 28, 35, 0.4)',
   },
   menuIndex: {
     fontSize: 11,

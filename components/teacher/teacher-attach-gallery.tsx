@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { APP_THEME } from '@/constants/theme';
+import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
 
 const THUMB = 72;
 const THUMB_GAP = 8;
@@ -63,7 +64,8 @@ export function TeacherAttachGallery({ visible, onPhotoSelected }: Props) {
   const pickAsset = async (asset: MediaLibrary.Asset) => {
     let uri = asset.uri;
     try {
-      const info = await MediaLibrary.getAssetInfoAsync(asset, { shouldDownloadFromNetwork: false });
+      // Full local file (may download from iCloud) — not the strip thumbnail.
+      const info = await MediaLibrary.getAssetInfoAsync(asset, { shouldDownloadFromNetwork: true });
       uri = info.localUri ?? info.uri ?? uri;
     } catch {
       /* use asset.uri */
@@ -92,12 +94,14 @@ export function TeacherAttachGallery({ visible, onPhotoSelected }: Props) {
   if (denied || assets.length === 0) {
     return (
       <View style={styles.rail}>
-        <View style={styles.emptyRow}>
-          <Ionicons name="images-outline" size={18} color={APP_THEME.color.mutedSoft} />
-          <Text style={styles.emptyText}>
-            {denied ? 'Нет доступа к галерее' : 'Нет недавних фото'}
-          </Text>
-        </View>
+        <Pressable
+          onPress={() => void pickCompanionPhoto().then((picked) => picked && onPhotoSelected(picked.uri))}
+          style={({ pressed }) => [styles.pickBtn, pressed && styles.pickBtnPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Выбрать фото">
+          <Ionicons name="image-outline" size={18} color={APP_THEME.color.textSoft} />
+          <Text style={styles.pickBtnText}>Выбрать фото</Text>
+        </Pressable>
       </View>
     );
   }
@@ -181,18 +185,22 @@ const styles = StyleSheet.create({
     borderRadius: APP_THEME.radius.md,
     backgroundColor: APP_THEME.color.surfaceStrong,
   },
-  emptyRow: {
+  pickBtn: {
     minHeight: THUMB,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    borderRadius: APP_THEME.radius.md,
+    backgroundColor: APP_THEME.color.surfaceStrong,
   },
-  emptyText: {
+  pickBtnPressed: {
+    opacity: 0.85,
+  },
+  pickBtnText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: APP_THEME.color.muted,
-    letterSpacing: -0.2,
+    fontWeight: '600',
+    color: APP_THEME.color.textSoft,
   },
 });

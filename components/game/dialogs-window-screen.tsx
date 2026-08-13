@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -19,9 +19,11 @@ import { GameGoldButton } from '@/components/game/game-gold-button';
 import { GameListRow } from '@/components/game/game-list-row';
 import { GameWindowShell } from '@/components/game/game-window-shell';
 import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
+import { teacherLessonColor } from '@/components/teacher/teacher-tokens';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useCompanionChats, type CompanionChatRow } from '@/contexts/companion-chats-context';
 import { useTranslation } from '@/contexts/locale-context';
+import { useTeacherJourney } from '@/contexts/teacher-journey-context';
 
 const ONLINE = GAME_THEME.color.ok;
 const SWIPE_BTN_WIDTH = 72;
@@ -66,10 +68,33 @@ function GameFilterChip({
 export function DialogsWindowScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { chats, companionChatsHydrated, removeChat, toggleFavorite, isFavorite } = useCompanionChats();
+  const { chats, companionChatsHydrated, removeChat, toggleFavorite, isFavorite, addChat } =
+    useCompanionChats();
+  const { lessons, removeRecentLesson } = useTeacherJourney();
   const [filter, setFilter] = useState<FilterId>('all');
   const [findSheetOpen, setFindSheetOpen] = useState(false);
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
+
+  /** Уроки учителя раньше скрывались из диалогов — подтягиваем их в общий список. */
+  useEffect(() => {
+    if (!companionChatsHydrated) return;
+    for (const lesson of lessons) {
+      const created = new Date(lesson.createdAt || Date.now());
+      const time = `${String(created.getHours()).padStart(2, '0')}:${String(created.getMinutes()).padStart(2, '0')}`;
+      addChat({
+        id: lesson.id,
+        name: 'Преподаватель',
+        preview: lesson.title || 'Урок',
+        time,
+        unread: 0,
+        online: true,
+        letter: 'T',
+        color: teacherLessonColor(lesson.id),
+        presence: 'урок',
+        profileMetaLine: lesson.title || undefined,
+      });
+    }
+  }, [addChat, companionChatsHydrated, lessons]);
 
   const filters = useMemo(
     () => [
@@ -82,7 +107,7 @@ export function DialogsWindowScreen() {
   const rows = useMemo(
     () =>
       chats.filter((c) => {
-        if (c.id.startsWith('tl-')) return false;
+        if (c.id.startsWith('tl-') || c.presence === 'урок') return false;
         if (filter === 'favorites') return isFavorite(c.id);
         return true;
       }),
@@ -93,6 +118,9 @@ export function DialogsWindowScreen() {
 
   const openChat = useCallback(
     (c: CompanionChatRow) => {
+      const isTeacher = c.id.startsWith('tl-') || c.presence === 'урок';
+      const lesson = isTeacher ? lessons.find((l) => l.id === c.id) : undefined;
+      const lessonTopic = lesson?.title || c.profileMetaLine || c.preview;
       router.push({
         pathname: '/companion-chat',
         params: {
@@ -101,13 +129,32 @@ export function DialogsWindowScreen() {
           online: c.online ? '1' : '0',
           letter: c.letter,
           color: c.color,
-          ...(c.companionLang ? { companionLang: c.companionLang } : {}),
-          ...(c.companionOpeningLine ? { openingLine: encodeURIComponent(c.companionOpeningLine) } : {}),
-          ...(c.profileMetaLine ? { profileMetaLine: encodeURIComponent(c.profileMetaLine) } : {}),
+          ...(isTeacher
+            ? {
+                mode: 'teacher',
+                ...(lessonTopic ? { lessonTopic: encodeURIComponent(lessonTopic) } : {}),
+              }
+            : {
+                ...(c.companionLang ? { companionLang: c.companionLang } : {}),
+                ...(c.companionOpeningLine
+                  ? { openingLine: encodeURIComponent(c.companionOpeningLine) }
+                  : {}),
+                ...(c.profileMetaLine ? { profileMetaLine: encodeURIComponent(c.profileMetaLine) } : {}),
+              }),
         },
       });
     },
-    [router],
+    [lessons, router],
+  );
+
+  const handleRemoveChat = useCallback(
+    (id: string) => {
+      removeChat(id);
+      if (id.startsWith('tl-')) {
+        void removeRecentLesson(id);
+      }
+    },
+    [removeChat, removeRecentLesson],
   );
 
   const renderRightActions = useCallback(
@@ -127,17 +174,29 @@ export function DialogsWindowScreen() {
           <TouchableOpacity
             style={[styles.swipeBtn, styles.swipeDel]}
             activeOpacity={0.85}
-            onPress={() => removeChat(c.id)}>
+            onPress={() => handleRemoveChat(c.id)}>
             <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       );
     },
-    [isFavorite, removeChat, toggleFavorite],
+    [handleRemoveChat, isFavorite, toggleFavorite],
   );
 
   const renderItem = useCallback(
-    ({ item: c }: ListRenderItemInfo<CompanionChatRow>) => (
+    ({ item: c }: ListRenderItemInfo<CompanionChatRow>) => {
+      const isTeacher = c.id.startsWith('tl-') || c.presence === 'урок';
+      const lesson = isTeacher ? lessons.find((l) => l.id === c.id) : undefined;
+      const title = isTeacher
+        ? lesson?.title || c.profileMetaLine || c.preview || c.name
+        : c.name;
+      const subtitle = isTeacher
+        ? c.preview && c.preview !== title
+          ? c.preview
+          : 'Преподаватель'
+        : c.preview;
+
+      return (
       <Swipeable
         ref={(el) => {
           if (el) swipeRefs.current.set(c.id, el);
@@ -150,8 +209,8 @@ export function DialogsWindowScreen() {
         failOffsetY={[-8, 8]}
         renderRightActions={() => renderRightActions(c)}>
         <GameListRow
-          title={c.name}
-          subtitle={c.preview}
+          title={title}
+          subtitle={subtitle}
           selected={c.unread > 0}
           leading={<Avatar letter={c.letter} color={c.color} online={c.online} />}
           trailing={
@@ -169,8 +228,9 @@ export function DialogsWindowScreen() {
           onPress={() => openChat(c)}
         />
       </Swipeable>
-    ),
-    [isFavorite, openChat, renderRightActions],
+      );
+    },
+    [isFavorite, lessons, openChat, renderRightActions],
   );
 
   const listHeader = useMemo(

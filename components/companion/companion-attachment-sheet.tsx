@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { GAME_THEME } from '@/constants/game-theme';
+import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
 
 const THUMB = 76;
 const THUMB_GAP = 8;
@@ -74,7 +75,7 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
       const resolved = await Promise.all(
         page.assets.map(async (asset) => {
           try {
-            const info = await MediaLibrary.getAssetInfoAsync(asset, { shouldDownloadFromNetwork: false });
+            const info = await MediaLibrary.getAssetInfoAsync(asset, { shouldDownloadFromNetwork: true });
             return { id: asset.id, uri: info.localUri ?? info.uri ?? asset.uri };
           } catch {
             return { id: asset.id, uri: asset.uri };
@@ -115,6 +116,12 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
     onBrowseFiles();
   }, [onBrowseFiles]);
 
+  const openPhotoPicker = useCallback(async () => {
+    const picked = await pickCompanionPhoto();
+    if (!picked) return;
+    pickPhoto(picked.uri);
+  }, [pickPhoto]);
+
   return (
     <Animated.View style={[styles.shell, shellStyle]} pointerEvents={visible ? 'auto' : 'none'}>
       <View style={styles.panel}>
@@ -133,10 +140,14 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
           </View>
         ) : denied || photos.length === 0 ? (
           <Animated.View entering={FadeIn.duration(240)} style={styles.emptyRow}>
-            <Ionicons name="images-outline" size={22} color="rgba(26,26,26,0.4)" />
-            <Text style={styles.emptyText}>
-              {denied ? 'Нет доступа к галерее' : 'Нет недавних фото'}
-            </Text>
+            <Pressable
+              onPress={() => void openPhotoPicker()}
+              style={({ pressed }) => [styles.pickPhotoBtn, pressed && styles.pickPhotoBtnPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Выбрать фото">
+              <Ionicons name="image-outline" size={22} color={GAME_THEME.color.ink} />
+              <Text style={styles.pickPhotoLabel}>Выбрать фото</Text>
+            </Pressable>
           </Animated.View>
         ) : (
           <ScrollView
@@ -164,14 +175,25 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
 
         <Animated.View entering={FadeIn.delay(120).duration(300)}>
           <Pressable
-            onPress={openBrowse}
+            onPress={() => void openPhotoPicker()}
             style={({ pressed }) => [styles.browsePill, pressed && styles.browsePillPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Выбрать фото из галереи">
+            <View style={styles.browseIconWrap}>
+              <Ionicons name="images-outline" size={20} color={GAME_THEME.color.ink} />
+            </View>
+            <Text style={styles.browseLabel}>Галерея</Text>
+            <Ionicons name="chevron-forward" size={18} color="rgba(26,26,26,0.4)" />
+          </Pressable>
+          <Pressable
+            onPress={openBrowse}
+            style={({ pressed }) => [styles.browsePill, styles.browsePillSecondary, pressed && styles.browsePillPressed]}
             accessibilityRole="button"
             accessibilityLabel="Добавить файлы">
             <View style={styles.browseIconWrap}>
               <Ionicons name="folder-open-outline" size={20} color={GAME_THEME.color.ink} />
             </View>
-            <Text style={styles.browseLabel}>Добавить файлы</Text>
+            <Text style={styles.browseLabel}>Файлы</Text>
             <Ionicons name="chevron-forward" size={18} color="rgba(26,26,26,0.4)" />
           </Pressable>
         </Animated.View>
@@ -236,17 +258,29 @@ const styles = StyleSheet.create({
   },
   emptyRow: {
     minHeight: THUMB,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  pickPhotoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: GAME_THEME.radius.button,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
-  emptyText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: 'rgba(26,26,26,0.5)',
-    letterSpacing: -0.2,
+  pickPhotoBtnPressed: {
+    backgroundColor: GAME_THEME.color.gold,
+  },
+  pickPhotoLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
   },
   browsePill: {
     flexDirection: 'row',
@@ -260,6 +294,9 @@ const styles = StyleSheet.create({
     borderColor: GAME_THEME.color.ink,
     borderBottomWidth: 3,
     borderBottomColor: GAME_THEME.color.goldLip,
+  },
+  browsePillSecondary: {
+    marginTop: 8,
   },
   browsePillPressed: {
     backgroundColor: GAME_THEME.color.sky,

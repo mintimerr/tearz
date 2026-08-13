@@ -987,7 +987,13 @@ function hasImagePayload(imageBase64) {
   return typeof imageBase64 === 'string' && imageBase64.trim().length > 0;
 }
 
-function buildVisionUserContent({ message, imageBase64, imageMimeType, emptyImageFallback }) {
+function buildVisionUserContent({
+  message,
+  imageBase64,
+  imageMimeType,
+  emptyImageFallback,
+  detail = 'high',
+}) {
   const userMessage = typeof message === 'string' ? message.trim().slice(0, 12000) : '';
   if (!hasImagePayload(imageBase64)) return userMessage;
   const mime =
@@ -995,11 +1001,15 @@ function buildVisionUserContent({ message, imageBase64, imageMimeType, emptyImag
       ? imageMimeType.trim().slice(0, 40)
       : 'image/jpeg';
   const textPart = userMessage || emptyImageFallback;
+  const visionDetail = detail === 'low' || detail === 'auto' ? detail : 'high';
   return [
     { type: 'text', text: textPart },
     {
       type: 'image_url',
-      image_url: { url: `data:${mime};base64,${imageBase64.trim().slice(0, 12_000_000)}`, detail: 'low' },
+      image_url: {
+        url: `data:${mime};base64,${imageBase64.trim().slice(0, 12_000_000)}`,
+        detail: visionDetail,
+      },
     },
   ];
 }
@@ -1306,14 +1316,16 @@ app.post('/api/teacher-chat', async (req, res) => {
     }
     if (hasImage) {
       systemContent +=
-        '\n\nPHOTOS: The learner attached a photo — you can see it. Comment on visible text, mistakes, handwriting, screenshots of homework, signs, menus, etc. Tie your answer to the lesson. Do not say you cannot see the image.';
+        '\n\nPHOTOS: The learner attached a photo — you can see it. Carefully read ALL visible text (print, handwriting, screenshots, UI labels). Quote the actual characters you see; do not invent, autocorrect, or swap with earlier messages in the thread. If text is blurry, say what you can read and what is unclear. Use the photo for homework help, mistakes, signs, menus, etc. Do not say you cannot see the image.';
     }
 
     const userContent = buildVisionUserContent({
       message,
       imageBase64,
       imageMimeType,
-      emptyImageFallback: 'Ученик отправил фото.',
+      emptyImageFallback:
+        'Ученик отправил фото. Внимательно прочитай весь видимый текст на изображении и ответь по нему.',
+      detail: 'high',
     });
 
     const messages = [
@@ -1819,14 +1831,15 @@ app.post('/api/chat', async (req, res) => {
   }
   if (hasImage) {
     systemContent +=
-      '\n\nPHOTOS: When the user sends a photo, you can see it. React like a real person in a chat — comment on what is actually in the image (people, place, food, meme, screenshot, etc.). Do not say you cannot see photos.';
+      '\n\nPHOTOS: When the user sends a photo, you can see it. React like a real person in a chat — comment on what is actually in the image (people, place, food, meme, screenshot, text, etc.). If there is readable text, quote it accurately; do not invent or swap with earlier chat. Do not say you cannot see photos.';
   }
 
   const userContent = buildVisionUserContent({
     message,
     imageBase64,
     imageMimeType,
-    emptyImageFallback: 'The user shared a photo.',
+    emptyImageFallback: 'The user shared a photo. Look carefully at what is actually in the image.',
+    detail: 'high',
   });
 
   const messages = [

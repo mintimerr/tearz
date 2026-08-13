@@ -92,6 +92,7 @@ import {
 } from '@/utils/teacher-mini-drill-usage';
 import { takeTeacherLessonBootstrap } from '@/utils/teacher-lesson-bootstrap';
 import { persistCompanionVoice } from '@/utils/companion-voice-storage';
+import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
 
 function formatChatTime(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -1011,7 +1012,8 @@ export default function CompanionChatScreen() {
   const handleBrowseFiles = useCallback(async () => {
     setAttachOpen(false);
     if (Platform.OS === 'web') {
-      Alert.alert('Файлы', 'Выбор файлов доступен в приложении на iOS или Android.');
+      const picked = await pickCompanionPhoto();
+      if (picked) await sendImageFromUri(picked.uri, picked.name);
       return;
     }
     try {

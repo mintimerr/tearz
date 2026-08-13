@@ -23,6 +23,7 @@ import {
 import { TeacherAttachGallery } from '@/components/teacher/teacher-attach-gallery';
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
 import { GAME_THEME } from '@/constants/game-theme';
+import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
 import {
   TEACHER_MUTED,
   TEACHER_TITLE,
@@ -93,7 +94,10 @@ export function TeacherChatComposer({
     if (disabled) return;
     setAttachOpen(false);
     if (Platform.OS === 'web') {
-      Alert.alert('Файлы', 'Выбор файлов доступен в приложении на iOS или Android.');
+      const picked = await pickCompanionPhoto();
+      if (!picked) return;
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setPendingAttachment({ kind: 'image', uri: picked.uri, name: picked.name });
       return;
     }
     try {
@@ -159,14 +163,18 @@ export function TeacherChatComposer({
               setAttachOpen((open) => !open);
             }}
             disabled={disabled}
-            hitSlop={8}
+            hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={attachOpen ? 'Закрыть меню вложений' : 'Прикрепить фото или файл'}
-            style={({ pressed }) => [styles.attachBtn, pressed && styles.attachBtnPressed]}>
+            style={({ pressed }) => [
+              styles.attachBtn,
+              attachOpen && styles.attachBtnOn,
+              pressed && styles.attachBtnPressed,
+            ]}>
             <Ionicons
-              name={attachOpen ? 'close' : 'attach-outline'}
-              size={21}
-              color={GAME_THEME.color.ink}
+              name={attachOpen ? 'close' : 'add'}
+              size={22}
+              color={attachOpen ? GAME_THEME.color.ink : 'rgba(26,26,26,0.45)'}
             />
           </Pressable>
 
@@ -307,13 +315,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
-    backgroundColor: GAME_THEME.color.cream,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
+    backgroundColor: 'transparent',
+  },
+  attachBtnOn: {
+    backgroundColor: 'rgba(26,26,26,0.08)',
   },
   attachBtnPressed: {
-    opacity: 0.85,
-    backgroundColor: GAME_THEME.color.gold,
+    opacity: 0.7,
   },
   inputCol: {
     flex: 1,

@@ -352,6 +352,17 @@ export function CardsWindowScreen() {
             trailing={
               <View style={styles.folderTrailing}>
                 <Text style={styles.cardCount}>{folder.cardCount}</Text>
+                <Pressable
+                  style={({ pressed }) => [styles.shareBtn, pressed && styles.shareBtnPressed]}
+                  hitSlop={8}
+                  onPress={() => {
+                    setOpenFolderId(folder.id);
+                    openAddCard();
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('vocabulary.addWord')}>
+                  <Ionicons name="add" size={20} color={GAME_THEME.color.ink} />
+                </Pressable>
                 {folder.cardCount > 0 ? (
                   <Pressable
                     style={({ pressed }) => [styles.shareBtn, pressed && styles.shareBtnPressed]}
@@ -433,6 +444,7 @@ export function CardsWindowScreen() {
           frontLabel={frontLabel}
           backLabel={backLabel}
           onClose={() => setOpenFolderId(null)}
+          onAddWord={openAddCard}
         />
       ) : null}
 
@@ -607,8 +619,8 @@ const styles = StyleSheet.create({
   folderTrailing: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    minWidth: 52,
+    gap: 4,
+    minWidth: 72,
     justifyContent: 'flex-end',
   },
   cardCount: {
@@ -619,8 +631,8 @@ const styles = StyleSheet.create({
     color: 'rgba(26,26,26,0.55)',
   },
   shareBtn: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

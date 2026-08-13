@@ -385,17 +385,22 @@ export function CompanionVoiceComposer({
                 onPress={onAttachPress}
                 activeOpacity={0.75}
                 disabled={typing || disabled}
-                hitSlop={8}
+                hitSlop={10}
                 accessibilityRole="button"
-                accessibilityLabel={attachOpen ? 'Закрыть вложения' : 'Прикрепить вложение'}>
+                accessibilityLabel={attachOpen ? 'Закрыть вложения' : 'Прикрепить фото'}
+                style={styles.attachHit}>
                 <Animated.View
                   style={[
                     styles.attachBtn,
-                    attachOpen && styles.attachBtnActive,
+                    attachOpen ? styles.attachBtnActive : styles.attachBtnIdle,
                     attachIconStyle,
                     (typing || disabled) && styles.attachBtnOff,
                   ]}>
-                  <Ionicons name="add" size={26} color={GAME_THEME.color.ink} />
+                  <Ionicons
+                    name={attachOpen ? 'close' : 'add'}
+                    size={26}
+                    color={attachOpen ? GAME_THEME.color.ink : 'rgba(26,26,26,0.55)'}
+                  />
                 </Animated.View>
               </TouchableOpacity>
             ) : null}
@@ -581,21 +586,25 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: MIC_SIZE,
   },
+  attachHit: {
+    marginBottom: 2,
+  },
   attachBtn: {
     width: ATTACH_SIZE,
     height: ATTACH_SIZE,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 3,
-    backgroundColor: GAME_THEME.color.cream,
     borderWidth: 2,
     borderColor: GAME_THEME.color.ink,
     borderBottomWidth: 3,
     borderBottomColor: GAME_THEME.color.goldLip,
   },
+  attachBtnIdle: {
+    backgroundColor: GAME_THEME.color.paper,
+  },
   attachBtnActive: {
-    backgroundColor: GAME_THEME.color.gold,
+    backgroundColor: GAME_THEME.color.cream,
   },
   attachBtnOff: {
     opacity: 0.4,

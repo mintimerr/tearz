@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -14,13 +13,16 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GameListRow } from '@/components/game/game-list-row';
+import { TeacherLessonWindow } from '@/components/teacher/teacher-lesson-window';
 import { teacherLessonColor } from '@/components/teacher/teacher-tokens';
 import { GAME_THEME } from '@/constants/game-theme';
+import { useCompanionChats } from '@/contexts/companion-chats-context';
 import { useLocale, useTranslation } from '@/contexts/locale-context';
 import {
   useTeacherJourney,
   type TeacherRecentLesson,
 } from '@/contexts/teacher-journey-context';
+import type { CompanionMsg } from '@/types/companion-message';
 
 type Props = {
   visible: boolean;
@@ -42,33 +44,54 @@ function formatLessonTime(ts: number, locale: string): string {
   }
 }
 
-/** Шторка истории уроков с преподом — с экрана автомата. */
+type OpenLessonState = {
+  id: string;
+  title: string;
+  messages: CompanionMsg[];
+};
+
+/** Шторка истории уроков с преподом — с экрана автомата / учителя. */
 export function TeacherChatsSheet({ visible, onClose }: Props) {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { t } = useTranslation();
   const { locale } = useLocale();
   const { lessons } = useTeacherJourney();
+  const { chats, getCompanionThread } = useCompanionChats();
+  const [openLesson, setOpenLesson] = useState<OpenLessonState | null>(null);
 
-  const openLesson = useCallback(
+  const teacherChatRows = useMemo(() => {
+    const byId = new Map<string, TeacherRecentLesson>();
+    for (const lesson of lessons) {
+      byId.set(lesson.id, lesson);
+    }
+    for (const c of chats) {
+      if (!c.id.startsWith('tl-') && c.presence !== 'урок') continue;
+      if (byId.has(c.id)) continue;
+      byId.set(c.id, {
+        id: c.id,
+        title: c.profileMetaLine?.trim() || c.preview?.trim() || 'Урок',
+        subtitle: 'Преподаватель',
+        createdAt: Date.now(),
+        spentSecondsTotal: 0,
+      });
+    }
+    return Array.from(byId.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [chats, lessons]);
+
+  const openLessonChat = useCallback(
     (lesson: TeacherRecentLesson) => {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onClose();
-      router.push({
-        pathname: '/companion-chat',
-        params: {
-          id: lesson.id,
-          name: 'Преподаватель',
-          online: '1',
-          letter: 'T',
-          color: teacherLessonColor(lesson.id),
-          mode: 'teacher',
-          lessonTopic: encodeURIComponent(lesson.title),
-        },
+      setOpenLesson({
+        id: lesson.id,
+        title: lesson.title,
+        messages: getCompanionThread(lesson.id) ?? [],
       });
     },
-    [onClose, router],
+    [getCompanionThread, onClose],
   );
+
+  const closeLesson = useCallback(() => setOpenLesson(null), []);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<TeacherRecentLesson>) => (
@@ -79,52 +102,70 @@ export function TeacherChatsSheet({ visible, onClose }: Props) {
           <View style={[styles.dot, { backgroundColor: teacherLessonColor(item.id) }]} />
         }
         trailing={<Ionicons name="chevron-forward" size={16} color={MUTED} />}
-        onPress={() => openLesson(item)}
+        onPress={() => openLessonChat(item)}
       />
     ),
-    [locale, openLesson],
+    [locale, openLessonChat],
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Закрыть" />
-        <View style={[styles.sheet, { marginTop: insets.top + 10 }]}>
-          <View style={styles.handle} />
-          <View style={styles.header}>
-            <Text style={styles.title}>{t('teacher.chatsTitle')}</Text>
-            <Pressable
-              onPress={onClose}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel={t('common.cancel')}
-              style={({ pressed }) => [styles.close, pressed && styles.closePressed]}>
-              <Ionicons name="close" size={20} color={MUTED} />
-            </Pressable>
-          </View>
-
-          {lessons.length > 0 ? (
-            <FlatList
-              data={lessons}
-              keyExtractor={(l) => l.id}
-              renderItem={renderItem}
-              style={styles.list}
-              contentContainerStyle={[
-                styles.listContent,
-                { paddingBottom: Math.max(insets.bottom, 12) + 16 },
-              ]}
-              showsVerticalScrollIndicator={false}
-              ItemSeparatorComponent={() => <View style={styles.sep} />}
-            />
-          ) : (
-            <View style={[styles.empty, { paddingBottom: Math.max(insets.bottom, 12) + 24 }]}>
-              <Text style={styles.emptyTitle}>{t('teacher.chatsEmptyTitle')}</Text>
-              <Text style={styles.emptySub}>{t('teacher.chatsEmptySub')}</Text>
+    <>
+      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <View style={styles.root}>
+          <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Закрыть" />
+          <View style={[styles.sheet, { marginTop: insets.top + 10 }]}>
+            <View style={styles.handle} />
+            <View style={styles.header}>
+              <Text style={styles.title}>{t('teacher.chatsTitle')}</Text>
+              <Pressable
+                onPress={onClose}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.cancel')}
+                style={({ pressed }) => [styles.close, pressed && styles.closePressed]}>
+                <Ionicons name="close" size={20} color={GAME_THEME.color.ink} />
+              </Pressable>
             </View>
-          )}
+
+            {teacherChatRows.length > 0 ? (
+              <FlatList
+                data={teacherChatRows}
+                keyExtractor={(l) => l.id}
+                renderItem={renderItem}
+                style={styles.list}
+                contentContainerStyle={[
+                  styles.listContent,
+                  { paddingBottom: Math.max(insets.bottom, 12) + 16 },
+                ]}
+                showsVerticalScrollIndicator={false}
+                ItemSeparatorComponent={() => <View style={styles.sep} />}
+              />
+            ) : (
+              <View style={[styles.empty, { paddingBottom: Math.max(insets.bottom, 12) + 24 }]}>
+                <Text style={styles.emptyTitle}>{t('teacher.chatsEmptyTitle')}</Text>
+                <Text style={styles.emptySub}>{t('teacher.chatsEmptySub')}</Text>
+              </View>
+            )}
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      <Modal
+        visible={openLesson != null}
+        animationType="fade"
+        presentationStyle="fullScreen"
+        onRequestClose={closeLesson}>
+        {openLesson ? (
+          <TeacherLessonWindow
+            key={openLesson.id}
+            lessonId={openLesson.id}
+            lessonTopic={openLesson.title}
+            initialMessages={openLesson.messages}
+            onClose={closeLesson}
+          />
+        ) : null}
+      </Modal>
+    </>
   );
 }
 
@@ -140,9 +181,9 @@ const styles = StyleSheet.create({
   sheet: {
     flex: 1,
     backgroundColor: GAME_THEME.color.cream,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: 2,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderTopWidth: 3,
     borderColor: GAME_THEME.color.ink,
     overflow: 'hidden',
   },
@@ -161,12 +202,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: GAME_THEME.color.ink,
+    backgroundColor: GAME_THEME.color.gold,
   },
   title: {
     fontSize: 18,
     fontWeight: '900',
     color: GAME_THEME.color.ink,
-    letterSpacing: -0.3,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
   close: {
     width: 32,
@@ -174,13 +219,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(26,26,26,0.06)',
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   closePressed: { opacity: 0.7 },
   list: { flex: 1 },
   listContent: {
     paddingHorizontal: 14,
-    paddingTop: 4,
+    paddingTop: 10,
   },
   sep: { height: 8 },
   dot: {

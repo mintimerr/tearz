@@ -44,6 +44,8 @@ type Props = {
   backLabel: string;
   folderName?: string;
   onClose: () => void;
+  /** Открыть форму добавления слова в эту папку. */
+  onAddWord?: () => void;
 };
 
 const SWIPE_THRESHOLD = 72;
@@ -69,6 +71,7 @@ export function VocabStudyModal({
   backLabel,
   folderName,
   onClose,
+  onAddWord,
 }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -447,7 +450,22 @@ export function VocabStudyModal({
                 <Text style={styles.progress}>{t('vocabulary.studyDone')}</Text>
               )}
             </View>
-            <View style={styles.topSpacer} />
+            {onAddWord ? (
+              <Pressable
+                hitSlop={12}
+                onPress={() => {
+                  void Haptics.selectionAsync();
+                  onAddWord();
+                }}
+                disabled={isClosing}
+                style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
+                accessibilityRole="button"
+                accessibilityLabel={t('vocabulary.addWord')}>
+                <Ionicons name="add" size={22} color={GAME_THEME.color.cream} />
+              </Pressable>
+            ) : (
+              <View style={styles.topSpacer} />
+            )}
           </View>
 
           {phase === 'study' ? (
