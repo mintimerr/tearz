@@ -71,6 +71,13 @@ function uiLangMeta(uiRaw) {
       praiseOk: 'Well done',
       praiseAlmost: 'Almost there',
       instructionsNote: 'Exercise instructions / UI copy in English',
+      photoCaption: 'The learner sent a photo for the lesson.',
+      photoOcrLead:
+        'Below is an exact OCR transcription of the photo. Answer from it and the image; take characters from the transcription — do not invent them.',
+      photoEmpty:
+        'The learner sent a photo. Carefully read all visible text in the image and answer based on it.',
+      photoAttachHint: '[Learner also attached a homework/photo — treat as language study.]',
+      photoOnlyHint: /^(📷\s*)?(photo|foto|фото|照片|图片)/i,
       intent: {
         cheat:
           'Briefly:\n' +
@@ -104,6 +111,12 @@ function uiLangMeta(uiRaw) {
       praiseOk: '做得好',
       praiseAlmost: '差不多了',
       instructionsNote: '练习说明与界面文案使用中文',
+      photoCaption: '学生发来了一张课堂相关的照片。',
+      photoOcrLead:
+        '下面是照片的精确 OCR 转写。请据此和图像作答；文字以转写为准，不要编造。',
+      photoEmpty: '学生发来了一张照片。请仔细阅读图中所有可见文字并据此回答。',
+      photoAttachHint: '[学生还附上了作业/照片——按语言学习处理。]',
+      photoOnlyHint: /^(📷\s*)?(photo|foto|фото|照片|图片)/i,
       intent: {
         cheat:
           '简短：\n' +
@@ -125,7 +138,7 @@ function uiLangMeta(uiRaw) {
   }
   return {
     code: 'ru',
-    explainLabel: 'Russian',
+    explainLabel: 'русский',
     roleTitle: 'преподаватель Tearz',
     phrases: 'Фразы:',
     dialogue: 'Диалог:',
@@ -136,6 +149,13 @@ function uiLangMeta(uiRaw) {
     praiseOk: 'Вы молодец',
     praiseAlmost: 'Почти получилось',
     instructionsNote: 'формулировки заданий на русском',
+    photoCaption: 'Ученик отправил фото к уроку.',
+    photoOcrLead:
+      'Ниже — точная расшифровка текста с фото. Отвечай по ней и по изображению; символы бери из расшифровки, не выдумывай.',
+    photoEmpty:
+      'Ученик отправил фото. Внимательно прочитай весь видимый текст на изображении и ответь по нему.',
+    photoAttachHint: '[Ученик также приложил домашку/фото — считай языковым заданием.]',
+    photoOnlyHint: /^(📷\s*)?(photo|foto|фото|照片|图片)/i,
     intent: {
       cheat:
         'Коротко:\n' +
@@ -196,8 +216,13 @@ const CHINESE_PINYIN_CHAT_RULES =
   '- Advanced or learner writes confidently in 汉字: hanzi only, no pinyin unless they asked.\n' +
   '- Never mention that you are adding or omitting pinyin.';
 
-const CHINESE_PINYIN_EXERCISE_RULES =
-  '\n\nПИНЬИНЬ В ЗАДАНИЯХ: выводи уровень из диалога молча. A1–A2 — аккуратно в скобках в китайских строках задания; B1+ уверенный — только 汉字. instruction/checkText на русском.';
+function chinesePinyinExerciseRules(uiLanguage = 'ru') {
+  const m = uiLangMeta(uiLanguage);
+  return (
+    '\n\nPINYIN IN EXERCISES: infer level silently from the dialogue. A1–A2 — toned pinyin in parentheses on Chinese task lines; confident B1+ — 汉字 only. ' +
+    `instruction / checkText MUST be in ${m.explainLabel}.`
+  );
+}
 
 function isPracticalLanguageQuestion(message) {
   if (typeof message !== 'string') return false;
@@ -230,11 +255,11 @@ function resolveTeacherTargetLanguage(requested, message, lessonTopic) {
 }
 
 function teacherTargetLabel(target) {
-  if (target === 'chinese') return 'китайский (中文; пиньинь — по уровню из диалога)';
-  if (target === 'german') return 'немецкий (Deutsch)';
-  if (target === 'french') return 'французский (français)';
-  if (target === 'english') return 'английский (English)';
-  return 'русский';
+  if (target === 'chinese') return 'Chinese (中文; pinyin by level from the dialogue)';
+  if (target === 'german') return 'German (Deutsch)';
+  if (target === 'french') return 'French (français)';
+  if (target === 'english') return 'English';
+  return 'Russian';
 }
 
 function inferSituationTargetLanguage(message, lessonLang) {
@@ -260,7 +285,15 @@ function buildPracticalQuestionOverride(message, lessonLang, uiLanguage = 'ru') 
 
 function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru') {
   const m = uiLangMeta(uiLanguage);
-  let prompt = TEACHER_SYSTEM_PROMPT_BASE;
+  let prompt =
+    `=== REPLY LANGUAGE (ABSOLUTE #1) ===\n` +
+    `App UI language is ${m.explainLabel} (code=${m.code}).\n` +
+    `Write EVERY explanation, decline, praise, scaffolding sentence, and block title in ${m.explainLabel}.\n` +
+    `If UI is Chinese → write 中文. If English → write English. If Russian → write Russian.\n` +
+    `Russian examples in the base prompt below are templates ONLY when UI is Russian — rewrite them into ${m.explainLabel} otherwise.\n` +
+    `Earlier assistant messages in the thread may be Russian: IGNORE their language; match THIS turn to ${m.explainLabel}.\n` +
+    `Writing Russian when UI is en/zh is a hard failure.\n\n`;
+  prompt += TEACHER_SYSTEM_PROMPT_BASE;
   prompt +=
     '\n\n=== UI / NATIVE LANGUAGE (ABSOLUTE — overrides any Russian defaults in this prompt) ===\n' +
     `App language = ${m.explainLabel}. ALL explanations, block titles, declines, scaffolding, and meta text MUST be in ${m.explainLabel}.\n` +
@@ -297,6 +330,9 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru') {
     '- Language-first lens: every message is either a language lesson, a situational phrase lesson, a brief vocab pivot, or (only if truly off-topic) a short polite decline — never general life advice.\n' +
     '- Practical questions ("how do I order food") = phrases + dialogue, not apps or logistics.\n' +
     '- Never label the learner\'s level or say you are adjusting difficulty.';
+  prompt +=
+    `\n\n=== FINAL CHECK BEFORE YOU WRITE ===\n` +
+    `Prose language of this reply = ${m.explainLabel} only. L2 phrases stay in the target language.`;
   return prompt;
 }
 
@@ -599,7 +635,7 @@ function buildTeacherExercisePrompt(language, lessonTopic, uiLanguage = 'ru') {
   if (language === 'chinese') {
     prompt +=
       `\n\nLESSON TARGET LANGUAGE (L2): Chinese (中文). Practice content MUST be Chinese (汉字). Never switch to English words (e.g. prescription, hospital). ${m.instructionsNote}.` +
-      CHINESE_PINYIN_EXERCISE_RULES;
+      chinesePinyinExerciseRules(uiLanguage);
   } else if (language === 'german') {
     prompt +=
       `\n\nLESSON TARGET LANGUAGE (L2): German. Practice content MUST be German. ${m.instructionsNote}.`;
@@ -631,31 +667,31 @@ function buildTeacherExerciseSetPrompt(language, lessonTopic, uiLanguage = 'ru')
 
   if (language === 'chinese') {
     prompt +=
-      '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): китайский (中文).\n' +
-      'ЖЁСТКО: вся лексика в заданиях (selectWord, wordBank, blanks, passages, shuffledWords, pairs.left для L2) — только 汉字.\n' +
-      'ЗАПРЕЩЕНО подсовывать английские слова (prescription, hospital, doctor…). Для read_and_select selectWord = китайское слово/псевдослово иероглифами, связанное с темой объяснения.\n' +
+      `\n\nLESSON TARGET LANGUAGE (L2): Chinese (中文).\n` +
+      'HARD: all L2 lexical content (selectWord, wordBank, blanks, passages, shuffledWords, pairs.left) must be 汉字 only.\n' +
+      'FORBIDDEN: English words (prescription, hospital, doctor…). For read_and_select selectWord = Chinese word/pseudo-word in characters related to the explanation.\n' +
       `${m.instructionsNote}.` +
-      CHINESE_PINYIN_EXERCISE_RULES;
+      chinesePinyinExerciseRules(uiLanguage);
   } else if (language === 'german') {
     prompt +=
-      `\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): немецкий. Лексика заданий — немецкая; ${m.instructionsNote}. Для read_and_select — немецкое слово/псевдослово.`;
+      `\n\nLESSON TARGET LANGUAGE (L2): German. Exercise vocabulary must be German; ${m.instructionsNote}. For read_and_select use a German word/pseudo-word.`;
   } else if (language === 'french') {
     prompt +=
-      `\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): французский. Лексика заданий — французская; ${m.instructionsNote}. Для read_and_select — французское слово/псевдослово.`;
+      `\n\nLESSON TARGET LANGUAGE (L2): French. Exercise vocabulary must be French; ${m.instructionsNote}. For read_and_select use a French word/pseudo-word.`;
   } else if (language === 'english') {
     prompt +=
-      `\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): английский. Лексика заданий — английская; ${m.instructionsNote}.`;
+      `\n\nLESSON TARGET LANGUAGE (L2): English. Exercise vocabulary must be English; ${m.instructionsNote}.`;
   } else {
     prompt +=
-      '\n\nЦЕЛЕВОЙ ЯЗЫК УРОКА (L2): русский как иностранный (редко). Только если ученик явно учит русский как L2.';
+      '\n\nLESSON TARGET LANGUAGE (L2): Russian-as-foreign (rare). Only when the learner explicitly studies Russian as L2.';
   }
   prompt +=
-    '\n\nЯЗЫКОВОЙ ЗАМОК: не меняй L2 посередине набора. Если урок про HSK / китайский / больницу на китайском — ни одного латинского L2-слова в упражнениях.';
+    '\n\nLANGUAGE LOCK: do not switch L2 mid-set. If the lesson is HSK / Chinese / Chinese hospital — zero Latin L2 words in exercises.';
   if (typeof lessonTopic === 'string' && lessonTopic.trim()) {
     prompt +=
-      '\n\nТЕМА УРОКА В ПРИЛОЖЕНИИ: "' +
+      '\n\nAPP LESSON TOPIC: "' +
       lessonTopic.trim().slice(0, 240).replace(/"/g, "'") +
-      '". Держи все 5 заданий в рамках этой темы и лексики из объяснения преподавателя.';
+      '". Keep all 5 tasks inside this topic and the vocabulary from the teacher explanation.';
   }
   return prompt;
 }
@@ -1461,6 +1497,7 @@ app.post('/api/teacher-chat', async (req, res) => {
     return res.status(400).json({ error: 'message must be a non-empty string (or include imageBase64)' });
   }
   const ui = normalizeUiLanguage(uiLanguage);
+  const m = uiLangMeta(ui);
   const requestedLang =
     language === 'english' ||
     language === 'chinese' ||
@@ -1482,10 +1519,10 @@ app.post('/api/teacher-chat', async (req, res) => {
       if (intent === 'cheat' || intent === 'jailbreak' || intent === 'off_topic') {
         return res.json({ reply: teacherIntentReply(intent, ui) });
       }
-    } else if (userMessageText && !/^(📷\s*)?фото/i.test(userMessageText)) {
+    } else if (userMessageText && !m.photoOnlyHint.test(userMessageText)) {
       intent = await classifyTeacherIntent(
         apiKey,
-        `${userMessageText}\n\n[Learner also attached a homework/photo — treat as language study.]`,
+        `${userMessageText}\n\n${m.photoAttachHint}`,
         history,
       );
       if (intent === 'cheat' || intent === 'jailbreak') {
@@ -1519,16 +1556,15 @@ app.post('/api/teacher-chat', async (req, res) => {
 
     const visionInstruction = photoTranscript
       ? [
-          userMessageText || 'Ученик отправил фото к уроку.',
+          userMessageText || m.photoCaption,
           '',
-          'Ниже — точная расшифровка текста с фото. Отвечай по ней и по изображению; символы бери из расшифровки, не выдумывай.',
+          m.photoOcrLead,
           '',
           '--- OCR ---',
           photoTranscript,
           '--- /OCR ---',
         ].join('\n')
-      : userMessageText ||
-        'Ученик отправил фото. Внимательно прочитай весь видимый текст на изображении и ответь по нему.';
+      : userMessageText || m.photoEmpty;
 
     const userContent = buildVisionUserContent({
       message: visionInstruction,

@@ -72,9 +72,8 @@ export function HubLanguageSwitch({ top }: Props) {
   const applyLanguage = async (next: NativeLanguage) => {
     if (user) {
       await updateNativeLanguage(next);
-    } else {
-      await setAppLocale(next);
     }
+    await setAppLocale(next);
     router.replace('/hub');
   };
 

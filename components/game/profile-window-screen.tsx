@@ -35,7 +35,7 @@ export function ProfileWindowScreen() {
   const insets = useSafeAreaInsets();
   const { entries } = useVocabulary();
   const { lessons } = useTeacherJourney();
-  const { t } = useTranslation();
+  const { t, locale, setAppLocale } = useTranslation();
   const { user, signOut, updateNativeLanguage } = useAuth();
   const { dailyStreak, longestStreak, bonusXp, streakFreezeAvailable, requestNotifications, ownedTearzIds } =
     useEngagement();
@@ -190,8 +190,13 @@ export function ProfileWindowScreen() {
             <PremiumChip
               key={lang.id}
               label={t(lang.labelKey)}
-              active={user?.nativeLanguage === lang.id}
-              onPress={() => void updateNativeLanguage(lang.id)}
+              active={locale === lang.id}
+              onPress={() => {
+                void (async () => {
+                  if (user) await updateNativeLanguage(lang.id);
+                  await setAppLocale(lang.id);
+                })();
+              }}
               style={styles.langChip}
             />
           ))}

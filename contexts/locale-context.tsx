@@ -50,7 +50,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     void AsyncStorage.setItem(LOCALE_STORAGE_KEY, user.nativeLanguage);
   }, [user?.nativeLanguage]);
 
-  const locale: AppLocale = previewLocale ?? user?.nativeLanguage ?? storedLocale;
+  const locale: AppLocale = previewLocale ?? storedLocale;
 
   const setAppLocale = useCallback(async (next: NativeLanguage) => {
     setPreviewLocale(null);
