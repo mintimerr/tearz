@@ -49,6 +49,8 @@ export type TeacherChatRequestBody = {
   message: string;
   conversationHistory: CompanionChatHistoryItem[];
   language?: CompanionChatApiLanguage;
+  /** Язык UI приложения / объяснений: ru | en | zh */
+  uiLanguage?: 'ru' | 'en' | 'zh';
   /** Тема урока из приложения */
   lessonTopic?: string;
   imageBase64?: string;
@@ -64,6 +66,7 @@ export type TeacherExerciseRequestBody = {
   explanation: string;
   conversationHistory: CompanionChatHistoryItem[];
   language?: CompanionChatApiLanguage;
+  uiLanguage?: 'ru' | 'en' | 'zh';
   lessonTopic?: string;
 };
 
@@ -169,6 +172,7 @@ export type TeacherExerciseSetRequestBody = {
   explanation: string;
   conversationHistory: CompanionChatHistoryItem[];
   language?: CompanionChatApiLanguage;
+  uiLanguage?: 'ru' | 'en' | 'zh';
   lessonTopic?: string;
   /** Последний запрос пользователя перед ответом преподавателя */
   lastUserMessage?: string;
@@ -205,6 +209,7 @@ export type TeacherExerciseCheckRequestBody = {
   answer: string;
   conversationHistory: CompanionChatHistoryItem[];
   language?: CompanionChatApiLanguage;
+  uiLanguage?: 'ru' | 'en' | 'zh';
   lessonTopic?: string;
   /** Full item with answer keys — enables deterministic grading when keys exist */
   item?: TeacherExerciseItem;

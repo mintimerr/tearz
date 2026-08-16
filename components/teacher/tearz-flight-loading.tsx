@@ -18,10 +18,15 @@ import { TearzToyPlane, TEARZ_PLANE_ASPECT } from '@/components/game/tearz-toy-p
 import { TeacherLessonWindow } from '@/components/teacher/teacher-lesson-window';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useLexicon } from '@/contexts/lexicon-context';
+import { useLocale } from '@/contexts/locale-context';
 import { postTeacherChatReply } from '@/services/companion-chat-ai';
 import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 import type { CompanionMsg } from '@/types/companion-message';
 import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
+import {
+  teacherPhotoFallbackMessage,
+  teacherUiLanguageFromLocale,
+} from '@/utils/teacher-ui-language';
 
 const GATHER_MS = 2200;
 const PLANE_IN_MS = 700;
@@ -48,6 +53,8 @@ type Props = {
   question: string;
   language?: CompanionChatApiLanguage;
   onClose: () => void;
+  /** Фото с терминала — уходит в vision/OCR вместе с вопросом. */
+  imageUri?: string;
 };
 
 type CloudSpec = {
@@ -110,9 +117,12 @@ export function TearzLessonTransit({
   question,
   language = 'english',
   onClose,
+  imageUri,
 }: Props) {
   const { width: W, height: H } = useWindowDimensions();
   const { ingestTeacherText } = useLexicon();
+  const { locale } = useLocale();
+  const uiLanguage = teacherUiLanguageFromLocale(locale);
 
   const [messages, setMessages] = useState<CompanionMsg[] | null>(null);
   const [showLesson, setShowLesson] = useState(false);
@@ -196,26 +206,45 @@ export function TearzLessonTransit({
 
   useEffect(() => {
     const q = question.trim();
-    if (!q) return;
+    if (!q && !imageUri) return;
     const started = Date.now();
     let cancelled = false;
 
-    const userMsg: CompanionMsg = {
-      id: 'seed',
-      from: 'me',
-      text: q,
-      time: formatChatTime(),
-      read: 'read',
-    };
+    const userMsg: CompanionMsg = imageUri
+      ? {
+          id: 'seed',
+          from: 'me',
+          kind: 'image',
+          imageUri,
+          text: q || '📷 Фото',
+          time: formatChatTime(),
+          read: 'read',
+        }
+      : {
+          id: 'seed',
+          from: 'me',
+          text: q,
+          time: formatChatTime(),
+          read: 'read',
+        };
 
     void (async () => {
       let assistantMsg: CompanionMsg;
       try {
+        let image:
+          | { base64: string; mimeType: string }
+          | undefined;
+        if (imageUri) {
+          const { prepareCompanionImageForApi } = await import('@/utils/companion-image-base64');
+          image = await prepareCompanionImageForApi(imageUri);
+        }
         const reply = await postTeacherChatReply({
-          message: q,
+          message: q || (image ? teacherPhotoFallbackMessage(uiLanguage) : ''),
           conversationHistory: messagesToCompanionApiHistory([userMsg]),
           language,
-          lessonTopic: q.length > 72 ? `${q.slice(0, 72)}…` : q,
+          uiLanguage,
+          lessonTopic: (q || 'Фото').length > 72 ? `${(q || 'Фото').slice(0, 72)}…` : q || 'Фото',
+          ...(image?.base64 ? { imageBase64: image.base64, imageMimeType: image.mimeType } : {}),
         });
         if (!cancelled) ingestTeacherText(reply);
         assistantMsg = {
@@ -246,7 +275,7 @@ export function TearzLessonTransit({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ingestTeacherText, language, question]);
+  }, [ingestTeacherText, language, question, imageUri, uiLanguage]);
 
   const coverStyle = useAnimatedStyle(() => ({
     opacity: cover.value,

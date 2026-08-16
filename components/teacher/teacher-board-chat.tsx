@@ -70,6 +70,10 @@ import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
 import { setTeacherLessonBootstrap } from '@/utils/teacher-lesson-bootstrap';
 import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
 import {
+  teacherPhotoFallbackMessage,
+  teacherUiLanguageFromLocale,
+} from '@/utils/teacher-ui-language';
+import {
   evaluateMiniDrillAccess,
   getPriorExerciseTexts,
   loadMiniDrillUsage,
@@ -130,7 +134,8 @@ export function TeacherBoardChat({
   language = 'english',
   gameChrome = true,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const uiLanguage = teacherUiLanguageFromLocale(locale);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [fontsLoaded] = useFonts({ Kalam_400Regular });
@@ -253,9 +258,10 @@ export function TeacherBoardChat({
       setTyping(true);
       try {
         const reply = await postTeacherChatReply({
-          message: userText.trim() || (image ? 'Ученик отправил фото.' : ''),
+          message: userText.trim() || (image ? teacherPhotoFallbackMessage(uiLanguage) : ''),
           conversationHistory: messagesToCompanionApiHistory(historyBefore),
           language,
+          uiLanguage,
           lessonTopic: lessonTopicRef.current,
           ...(image?.base64 ? { imageBase64: image.base64, imageMimeType: image.mimeType } : {}),
         });
@@ -289,7 +295,7 @@ export function TeacherBoardChat({
         scrollToEnd();
       }
     },
-    [ingestTeacherText, language, saveCompanionThread, t],
+    [ingestTeacherText, language, saveCompanionThread, t, uiLanguage],
   );
 
   useEffect(() => {
@@ -471,6 +477,7 @@ export function TeacherBoardChat({
           lastUserMessage: lastUser,
           conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
           language: drillLanguage,
+          uiLanguage,
           lessonTopic: lessonTopicRef.current,
           generationSeed,
           generationAttempt: access.generationsUsed + 1,
@@ -502,7 +509,7 @@ export function TeacherBoardChat({
         setExerciseLoadingId(null);
       }
     },
-    [exerciseLoadingId, language, miniDrillUsage, miniDrillUserId, typing],
+    [exerciseLoadingId, language, miniDrillUsage, miniDrillUserId, typing, uiLanguage],
   );
 
   const checkDrillExercise = useCallback(
@@ -530,12 +537,13 @@ export function TeacherBoardChat({
         learnerAnswers: payload.learnerAnswers,
         conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
         language,
+        uiLanguage,
         lessonTopic: lessonTopicRef.current,
       });
       recordStudySwipe(result.correct);
       return result;
     },
-    [language, recordStudySwipe],
+    [language, recordStudySwipe, uiLanguage],
   );
 
   const closeDrill = useCallback(

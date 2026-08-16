@@ -83,6 +83,10 @@ import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
 import { normalizeTeacherExerciseSet } from '@/utils/teacher-exercise-normalize';
 import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
 import {
+  teacherPhotoFallbackMessage,
+  teacherUiLanguageFromLocale,
+} from '@/utils/teacher-ui-language';
+import {
   evaluateMiniDrillAccess,
   getPriorExerciseTexts,
   loadMiniDrillUsage,
@@ -366,7 +370,8 @@ function TypingDots({ dotStyle }: { dotStyle?: object }) {
 export default function CompanionChatScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const uiLanguage = teacherUiLanguageFromLocale(locale);
   const params = useLocalSearchParams<{
     id?: string;
     name?: string;
@@ -608,9 +613,10 @@ export default function CompanionChatScreen() {
       const historyPayload = messagesToCompanionApiHistory(historyBefore);
       try {
         const reply = await postTeacherChatReply({
-          message: userText.trim() || (image ? 'Ученик отправил фото.' : ''),
+          message: userText.trim() || (image ? teacherPhotoFallbackMessage(uiLanguage) : ''),
           conversationHistory: historyPayload,
           language: teacherSessionLang,
+          uiLanguage,
           lessonTopic: lessonTopicParam,
           ...(image?.base64 ? { imageBase64: image.base64, imageMimeType: image.mimeType } : {}),
         });
@@ -645,7 +651,7 @@ export default function CompanionChatScreen() {
         setTyping(false);
       }
     },
-    [ingestTeacherText, lessonTopicParam, teacherSessionLang],
+    [ingestTeacherText, lessonTopicParam, teacherSessionLang, uiLanguage],
   );
 
   const teacherSeedRepliedRef = useRef(false);
@@ -1065,6 +1071,7 @@ export default function CompanionChatScreen() {
           lastUserMessage: lastUser,
           conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
           language: drillLanguage,
+          uiLanguage,
           lessonTopic: lessonTopicParam,
           generationSeed,
           generationAttempt: access.generationsUsed + 1,
@@ -1096,7 +1103,7 @@ export default function CompanionChatScreen() {
         setExerciseLoadingId(null);
       }
     },
-    [exerciseLoadingId, lessonTopicParam, miniDrillUsage, miniDrillUserId, teacherSessionLang, typing],
+    [exerciseLoadingId, lessonTopicParam, miniDrillUsage, miniDrillUserId, teacherSessionLang, typing, uiLanguage],
   );
 
   const checkDrillExercise = useCallback(
@@ -1124,12 +1131,13 @@ export default function CompanionChatScreen() {
         learnerAnswers: payload.learnerAnswers,
         conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
         language: teacherSessionLang,
+        uiLanguage,
         lessonTopic: lessonTopicParam,
       });
       recordStudySwipe(result.correct);
       return result;
     },
-    [lessonTopicParam, recordStudySwipe, teacherSessionLang],
+    [lessonTopicParam, recordStudySwipe, teacherSessionLang, uiLanguage],
   );
 
   const closeDrill = useCallback((summary: { correct: number; total: number } | null) => {
