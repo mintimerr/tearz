@@ -8,6 +8,12 @@ import type {
   TeacherNumberedSentence,
   TeacherPartialGap,
 } from '@/types/companion-chat-api';
+import {
+  isChoiceExerciseKind,
+  isDragBlankExerciseKind,
+  isFormExerciseKind,
+  isOrderExerciseKind,
+} from '@/utils/teacher-exercise-kinds';
 
 const BLANK_RE = /_{2,}|…{2,}|\.{3,}/g;
 
@@ -39,7 +45,7 @@ export function textToBlankSegments(text: string, blankId = 'b1'): TeacherExerci
 }
 
 function coerceDragWordToBlankItem(item: TeacherExerciseItem): TeacherExerciseItem {
-  if (item.kind !== 'drag_word_to_blank') return item;
+  if (!isDragBlankExerciseKind(item.kind)) return item;
 
   let segments = [...item.segments];
   let numberedSentences = item.numberedSentences;
@@ -96,6 +102,14 @@ const ALL_KINDS: TeacherExerciseKind[] = [
   'fill_blank',
   'multiple_choice',
   'free_text',
+  'choose_translation',
+  'choose_reply',
+  'odd_one_out',
+  'spot_error',
+  'what_do_you_say',
+  'build_from_meaning',
+  'pick_similar',
+  'complete_dialogue',
 ];
 
 export type MaskedSentencePart =
@@ -391,23 +405,25 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     (kind === 'fill_partial_word' && maskedSentence ? maskedSentence : '') ||
     (kind === 'identify_main_idea' && passage ? 'Определи главную мысль' : '') ||
     (kind === 'match_pairs' ? 'Сопоставь слова и переводы' : '') ||
-    (kind === 'sentence_order' ? 'Составь предложение из слов' : '') ||
+    (isOrderExerciseKind(kind) ? 'Составь предложение из слов' : '') ||
+    (isChoiceExerciseKind(kind) ? 'Выбери правильный вариант' : '') ||
     segmentsToPromptText(segments);
 
   return coerceDragWordToBlankItem({
     id: asString(obj.id, 32) || `ex-${index + 1}`,
     kind,
-    instruction: kind === 'choose_word_form' ? normalizeFormInstruction(instruction) : instruction,
+    instruction: isFormExerciseKind(kind) ? normalizeFormInstruction(instruction) : instruction,
     segments,
-    choices: kind === 'multiple_choice' || kind === 'identify_main_idea' ? choices : undefined,
+    choices:
+      isChoiceExerciseKind(kind) || kind === 'identify_main_idea' ? choices : undefined,
     wordBank:
-      kind === 'drag_word_to_blank' || kind === 'word_to_image' || kind === 'fill_blank' ? wordBank : undefined,
-    numberedSentences: kind === 'drag_word_to_blank' ? numberedSentences : undefined,
-    formSlots: kind === 'choose_word_form' ? formSlots : undefined,
+      isDragBlankExerciseKind(kind) || kind === 'word_to_image' ? wordBank : undefined,
+    numberedSentences: isDragBlankExerciseKind(kind) ? numberedSentences : undefined,
+    formSlots: isFormExerciseKind(kind) ? formSlots : undefined,
     imageSlots: kind === 'word_to_image' ? imageSlots : undefined,
     pairs: kind === 'match_pairs' ? pairs : undefined,
-    shuffledWords: kind === 'sentence_order' ? shuffledWords : undefined,
-    correctOrder: kind === 'sentence_order' ? correctOrder : undefined,
+    shuffledWords: isOrderExerciseKind(kind) ? shuffledWords : undefined,
+    correctOrder: isOrderExerciseKind(kind) ? correctOrder : undefined,
     minSentences: kind === 'write_sentences' ? minSentences ?? 5 : undefined,
     voicePrompt: kind === 'voice_recording' ? voicePrompt : undefined,
     selectWord: kind === 'read_and_select' ? selectWord : undefined,
@@ -416,7 +432,7 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     partialGaps: kind === 'fill_partial_word' ? partialGaps : undefined,
     passage: kind === 'identify_main_idea' ? passage : undefined,
     correctChoice:
-      kind === 'identify_main_idea' || kind === 'multiple_choice' ? correctChoice : undefined,
+      isChoiceExerciseKind(kind) || kind === 'identify_main_idea' ? correctChoice : undefined,
     checkText: resolvedCheckText,
   });
 }
@@ -529,7 +545,7 @@ export function buildExerciseCheckPayload(
     return wrap(item.checkText.trim(), freeText.trim());
   }
 
-  if (item.kind === 'multiple_choice') {
+  if (item.kind === 'multiple_choice' || isChoiceExerciseKind(item.kind)) {
     const prompt =
       segmentsToPromptText(item.segments) ||
       item.segments
@@ -540,12 +556,12 @@ export function buildExerciseCheckPayload(
     return wrap(prompt.trim(), (selectedChoice ?? '').trim());
   }
 
-  if (item.kind === 'choose_word_form' && item.formSlots?.length) {
+  if (isFormExerciseKind(item.kind) && item.formSlots?.length) {
     const lines = item.formSlots.map((s) => s.prompt).join('\n');
     const answer = item.formSlots.map((s) => `${s.id}: ${formChoices[s.id] ?? ''}`).join('; ');
     return wrap(`${item.checkText}\n${lines}`.trim(), answer);
   }
-  if (item.kind === 'choose_word_form') {
+  if (isFormExerciseKind(item.kind)) {
     return wrap(item.checkText.trim(), freeText.trim());
   }
 
@@ -565,7 +581,7 @@ export function buildExerciseCheckPayload(
     return wrap(item.checkText.trim(), freeText.trim());
   }
 
-  if (item.kind === 'sentence_order') {
+  if (isOrderExerciseKind(item.kind)) {
     const target = item.shuffledWords?.length ?? item.correctOrder?.length ?? 0;
     if (target > 0) {
       return wrap(item.checkText.trim(), sentenceOrder.join(' '));
@@ -617,7 +633,7 @@ export function exerciseHasCompleteAnswer(item: TeacherExerciseItem, state: Exer
     return item.partialGaps.every((g) => (partialGapInputs[g.id] ?? '').trim().length > 0);
   }
 
-  if (item.kind === 'identify_main_idea') {
+  if (item.kind === 'identify_main_idea' || isChoiceExerciseKind(item.kind)) {
     return Boolean(selectedChoice?.trim());
   }
 
@@ -634,14 +650,10 @@ export function exerciseHasCompleteAnswer(item: TeacherExerciseItem, state: Exer
     return freeText.trim().length > 0;
   }
 
-  if (item.kind === 'multiple_choice') {
-    return Boolean(selectedChoice?.trim());
-  }
-
-  if (item.kind === 'choose_word_form' && item.formSlots?.length) {
+  if (isFormExerciseKind(item.kind) && item.formSlots?.length) {
     return item.formSlots.every((s) => Boolean(formChoices[s.id]?.trim()));
   }
-  if (item.kind === 'choose_word_form') {
+  if (isFormExerciseKind(item.kind)) {
     return freeText.trim().length > 0;
   }
 
@@ -659,7 +671,7 @@ export function exerciseHasCompleteAnswer(item: TeacherExerciseItem, state: Exer
     return freeText.trim().length > 0;
   }
 
-  if (item.kind === 'sentence_order') {
+  if (isOrderExerciseKind(item.kind)) {
     const target = item.shuffledWords?.length ?? item.correctOrder?.length ?? 0;
     if (target > 0) return sentenceOrder.length === target;
     return freeText.trim().length > 0;
@@ -672,7 +684,7 @@ export function exerciseHasCompleteAnswer(item: TeacherExerciseItem, state: Exer
   const blankIds = item.segments.filter((s) => s.type === 'blank').map((s) => s.id);
   if (
     blankIds.length === 0 &&
-    (item.kind === 'type_word_in_blank' || item.kind === 'fill_blank' || item.kind === 'drag_word_to_blank')
+    (item.kind === 'type_word_in_blank' || isDragBlankExerciseKind(item.kind))
   ) {
     return freeText.trim().length > 0;
   }

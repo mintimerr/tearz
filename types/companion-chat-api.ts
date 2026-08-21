@@ -92,7 +92,23 @@ export type TeacherExerciseKind =
   | 'identify_main_idea'
   | 'fill_blank'
   | 'multiple_choice'
-  | 'free_text';
+  | 'free_text'
+  /** HelloChinese-style: L2 слово/фраза → выбрать перевод */
+  | 'choose_translation'
+  /** HelloChinese-style: реплика в диалоге → выбрать ответ */
+  | 'choose_reply'
+  /** HelloChinese-style: лишнее слово в наборе */
+  | 'odd_one_out'
+  /** HelloChinese-style: найти ошибку среди вариантов */
+  | 'spot_error'
+  /** HelloChinese-style: ситуация → что сказать */
+  | 'what_do_you_say'
+  /** HelloChinese-style: смысл на UI-языке → собрать L2 предложение */
+  | 'build_from_meaning'
+  /** HelloChinese-style: выбрать среди похожих форм/написаний */
+  | 'pick_similar'
+  /** HelloChinese-style: дописать реплику в коротком диалоге */
+  | 'complete_dialogue';
 
 export type TeacherPartialGap = {
   id: string;

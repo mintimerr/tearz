@@ -4,19 +4,31 @@ import { MINI_DRILL_TASK_COUNT } from '@/constants/teacher-drill';
 /** @deprecated use MINI_DRILL_TASK_COUNT */
 export const MINI_DRILL_SIZE = MINI_DRILL_TASK_COUNT;
 
-/** Полный банк типов (ProgressMe + DET), от лёгкого к сложному. */
+/**
+ * Банк типов: ProgressMe / DET + механики в духе HelloChinese.
+ * ИИ адаптирует содержание под любой L2 (zh / en / …).
+ */
 export const EXERCISE_BANK: ReadonlyArray<{ kind: TeacherExerciseKind; difficulty: number }> = [
-  { kind: 'read_and_select', difficulty: 1 },
-  { kind: 'drag_word_to_blank', difficulty: 2 },
-  { kind: 'fill_partial_word', difficulty: 3 },
-  { kind: 'type_word_in_blank', difficulty: 4 },
-  { kind: 'identify_main_idea', difficulty: 5 },
-  { kind: 'choose_word_form', difficulty: 6 },
-  { kind: 'word_to_image', difficulty: 7 },
-  { kind: 'sentence_order', difficulty: 8 },
-  { kind: 'match_pairs', difficulty: 9 },
-  { kind: 'voice_recording', difficulty: 10 },
-  { kind: 'write_sentences', difficulty: 11 },
+  { kind: 'choose_translation', difficulty: 1 },
+  { kind: 'read_and_select', difficulty: 2 },
+  { kind: 'odd_one_out', difficulty: 3 },
+  { kind: 'word_to_image', difficulty: 4 },
+  { kind: 'match_pairs', difficulty: 5 },
+  { kind: 'choose_reply', difficulty: 6 },
+  { kind: 'what_do_you_say', difficulty: 7 },
+  { kind: 'drag_word_to_blank', difficulty: 8 },
+  { kind: 'complete_dialogue', difficulty: 9 },
+  { kind: 'fill_partial_word', difficulty: 10 },
+  { kind: 'type_word_in_blank', difficulty: 11 },
+  { kind: 'pick_similar', difficulty: 12 },
+  { kind: 'choose_word_form', difficulty: 13 },
+  { kind: 'spot_error', difficulty: 14 },
+  { kind: 'identify_main_idea', difficulty: 15 },
+  { kind: 'sentence_order', difficulty: 16 },
+  { kind: 'build_from_meaning', difficulty: 17 },
+  { kind: 'multiple_choice', difficulty: 18 },
+  { kind: 'voice_recording', difficulty: 19 },
+  { kind: 'write_sentences', difficulty: 20 },
 ] as const;
 
 export function hashSeed(seed: string): number {
@@ -28,7 +40,7 @@ export function hashSeed(seed: string): number {
   return h >>> 0;
 }
 
-/** 5 случайных типов из банка, отсортированных по сложности (для mini-drill). */
+/** Случайные типы из банка, отсортированные по сложности (для mini-drill). */
 export function pickExerciseKindsForSeed(seed: string, count = MINI_DRILL_SIZE): TeacherExerciseKind[] {
   let s = hashSeed(seed || 'default');
   const rnd = () => {
@@ -52,7 +64,18 @@ export function pickExerciseKindsForSeed(seed: string, count = MINI_DRILL_SIZE):
 export function exerciseKindDifficulty(kind: TeacherExerciseKind): number {
   const found = EXERCISE_BANK.find((x) => x.kind === kind);
   if (found) return found.difficulty;
-  if (kind === 'fill_blank' || kind === 'multiple_choice') return 4;
-  if (kind === 'free_text') return 11;
+  if (kind === 'fill_blank' || kind === 'complete_dialogue') return 8;
+  if (kind === 'free_text') return 20;
+  if (
+    kind === 'choose_translation' ||
+    kind === 'choose_reply' ||
+    kind === 'odd_one_out' ||
+    kind === 'spot_error' ||
+    kind === 'what_do_you_say'
+  ) {
+    return 6;
+  }
+  if (kind === 'build_from_meaning') return 17;
+  if (kind === 'pick_similar') return 12;
   return 5;
 }

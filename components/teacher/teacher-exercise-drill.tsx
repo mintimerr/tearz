@@ -38,6 +38,10 @@ import type {
 import { DRILL, drillShellStyles } from '@/components/teacher/teacher-drill-styles';
 import { EXERCISE_KIND_META } from '@/components/teacher/teacher-exercise-kind-meta';
 import { TeacherExerciseTaskBody } from '@/components/teacher/teacher-exercise-task-body';
+import {
+  isChoiceExerciseKind,
+  isFormExerciseKind,
+} from '@/utils/teacher-exercise-kinds';
 import { WordDragProvider } from '@/components/teacher/teacher-word-drag';
 import {
   buildExerciseCheckPayload,
@@ -530,7 +534,7 @@ export function TeacherExerciseDrill({
                   </Text>
                 </View>
 
-                {current.instruction && current.kind !== 'choose_word_form' ? (
+                {current.instruction && !isFormExerciseKind(current.kind) ? (
                   <Text style={styles.instruction}>{current.instruction}</Text>
                 ) : null}
 
@@ -552,7 +556,7 @@ export function TeacherExerciseDrill({
                   />
                 ) : null}
 
-                {current.kind === 'multiple_choice' && current.choices && !result ? (
+                {isChoiceExerciseKind(current.kind) && current.choices && !result ? (
                   <View style={styles.section}>
                     <Text style={styles.sectionLabel}>Варианты</Text>
                     <View style={styles.choicesCol}>

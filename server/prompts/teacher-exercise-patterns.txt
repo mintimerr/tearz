@@ -1,62 +1,110 @@
 Exercise style patterns for Tearz Teacher.
 
-These are not a fixed database of tasks. They are style examples. Generate a new task that matches the learner's topic and level.
+These are NOT a fixed database. They are mechanics inspired by HelloChinese / Duolingo / ProgressMe.
+Always invent a NEW task for the learner’s topic and level, in the TARGET language (L2).
+Adapt every mechanic to ANY L2 (Chinese, English, Spanish, …) — never hard-code Chinese-only content unless L2 is Chinese.
 
 GLOBAL RULES
 - Output exactly ONE task card.
 - Do not output a whole worksheet, list, section, or multiple numbered items.
-- Do not output headings like "一、", "阅读第一部分", "综合一", "Задание".
+- Do not output headings like "一、", "阅读第一部分", "Задание 1".
 - Do not say where to type the answer.
 - Keep the final output compact enough for one mobile card.
+- L2 strings = target language only. Instructions can be in the UI language.
 
-UNIVERSAL EXERCISE MECHANICS
+⸻
 
-Pattern A: one fill-in-the-blank with a small word bank.
-Use this mechanic for any target language/topic: vocabulary, grammar forms, collocations, business words, exam prep, etc.
+HELLOCHINESE-STYLE MECHANICS (adapt to L2)
+
+Pattern HC-1: choose translation
+Show one L2 word/phrase; 4 options in the UI language (or reverse: UI word → L2 options).
+Example (L2 English): What does “library” mean?
+A. библиотека  B. аптека  C. вокзал  D. музей
+
+Pattern HC-2: choose reply (mini dialogue)
+One short line from speaker A; pick B’s natural reply.
+A: 你吃饭了吗？
+A. 吃了。  B. 我是学生。  C. 明天星期一。  D. 这本书很贵。
+
+Pattern HC-3: odd one out
+Four L2 words on the same “screen”; one does not belong thematically.
+Which word does not belong?  apple / banana / bus / orange
+
+Pattern HC-4: what do you say
+Describe a situation in the UI language; pick the natural L2 phrase.
+You meet a friend in the morning. What do you say?
+A. Good morning!  B. Good night!  C. See you yesterday.  D. How much is it?
+
+Pattern HC-5: spot the error
+Three short L2 sentences; pick the incorrect one (or pick the wrong word).
+Which sentence is wrong?
+A. She goes to school.  B. She go to school.  C. She went to school.
+
+Pattern HC-6: pick similar forms
+Near-miss options (tones / lookalikes / conjugations / spelling).
+Choose the correct form: She ___ home every day.
+A. go  B. goes  C. going
+
+Pattern HC-7: complete dialogue
+Two-line dialogue with one blank; word bank of 4–6 items.
+A: Where is the station?
+B: It’s ______ the bank.
+
+Pattern HC-8: build from meaning
+Give the meaning in the UI language; learner builds the L2 sentence from shuffled words.
+Meaning: «Я люблю кофе.»
+Tiles: I / coffee / like / very / much → I like coffee very much.
+
+Pattern HC-9: word ↔ picture
+Concrete nouns only; match L2 labels to images.
+
+Pattern HC-10: match pairs
+L2 ↔ UI-language (or L2 ↔ pinyin if Chinese beginner).
+
+⸻
+
+CLASSIC PATTERNS (still valid)
+
+Pattern A: fill-in-the-blank with a small word bank
 （机会 待遇 后果 办法）
 如果不认真对待这个问题，可能会产生严重的______。
 
-Pattern B: one sentence-level verb choice.
-Use this mechanic when the learner needs to choose the right verb/form/action word.
+Pattern B: verb / form choice in one sentence
 （申请 执行 管理 改进）
 我们需要不断______工作方法。
 
-Pattern C: one reading-style multiple choice.
-Use this mechanic when the learner can infer the answer from a short context.
-他大学毕业以后，在一家外贸公司工作。刚开始的时候，他对公司的业务不太了解，经常出错。后来，在同事的帮助下，他慢慢提高了工作______。
-A. 机会
-B. 效率
-C. 责任
-D. 后果
+Pattern C: reading-style multiple choice
+他大学毕业以后，在一家外贸公司工作……工作______。
+A. 机会 B. 效率 C. 责任 D. 后果
 
-Pattern D: one contextual multiple choice.
-Use this mechanic for one blank in one realistic sentence/context.
-为了减少员工的工作压力，公司决定采取一些新的______，比如调整工作时间，增加休息时间。
-A. 措施
-B. 理由
-C. 系统
-D. 标准
+Pattern D: contextual multiple choice (one blank)
+为了减少员工的工作压力，公司决定采取一些新的______……
+A. 措施 B. 理由 C. 系统 D. 标准
 
-Pattern E: one fill-in-the-blank.
-Use this mechanic for grammar forms in any target language.
+Pattern E: typed blank (grammar)
 Put the verb in Past Simple: Yesterday I ______ (go) to the office.
 
-Pattern F: one transformation.
-Use this mechanic for changing tense, negation, politeness, word order, register, or style.
-Make this sentence negative in Past Simple: She watched a movie yesterday.
+Pattern F: transformation
+Make this sentence negative: She watched a movie yesterday.
 
-Pattern G: one multiple choice.
-Use this mechanic when one correct answer is clearly best.
+Pattern G: classic MC
 Choose the correct Past Simple form: He ______ his homework last night.
-A. do
-B. did
-C. does
-D. doing
+A. do B. did C. does D. doing
 
-Pattern H: one correction.
-Use this mechanic when the lesson is about natural phrasing or common mistakes.
-Исправь фразу, чтобы она звучала естественно: "Я делал решение вчера".
+Pattern H: correction
+Исправь фразу: "Я делал решение вчера".
 
-Pattern I: one choice.
-Use this mechanic for collocations, style, register, and word choice.
-Выбери более естественный вариант: "принять решение" / "сделать решение".
+Pattern I: collocation choice
+Выбери естественный вариант: "принять решение" / "сделать решение".
+
+Pattern J: sentence order
+Shuffled tiles → one correct sentence.
+
+Pattern K: real vs fake word (DET)
+Is this a real word in L2? (pseudo-word must look native to that script)
+
+Pattern L: fill partial letters
+Many stud__ enjoy read__.
+
+Pattern M: main idea
+3–5 sentence passage → pick the main idea.

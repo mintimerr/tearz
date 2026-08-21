@@ -485,7 +485,7 @@ function tryDeterministicExerciseCheck(item, answer, learnerAnswers) {
   }
 
   if (
-    (kind === 'identify_main_idea' || kind === 'multiple_choice') &&
+    (CHOICE_KINDS.has(kind) || kind === 'identify_main_idea') &&
     typeof item.correctChoice === 'string' &&
     item.correctChoice.trim()
   ) {
@@ -495,7 +495,7 @@ function tryDeterministicExerciseCheck(item, answer, learnerAnswers) {
     return ok(answersEqual(chosen, item.correctChoice), item.correctChoice.trim());
   }
 
-  if (kind === 'choose_word_form' && Array.isArray(item.formSlots) && item.formSlots.length > 0) {
+  if (FORM_KINDS.has(kind) && Array.isArray(item.formSlots) && item.formSlots.length > 0) {
     const slots = item.formSlots.filter((s) => s && typeof s.correct === 'string' && s.correct.trim());
     if (slots.length === 0) return null;
     const choices =
@@ -543,7 +543,7 @@ function tryDeterministicExerciseCheck(item, answer, learnerAnswers) {
     return ok(correct, ideals.join('\n'));
   }
 
-  if (kind === 'sentence_order' && Array.isArray(item.correctOrder) && item.correctOrder.length > 0) {
+  if (ORDER_KINDS.has(kind) && Array.isArray(item.correctOrder) && item.correctOrder.length > 0) {
     const order =
       Array.isArray(la.sentenceOrder) && la.sentenceOrder.length > 0
         ? la.sentenceOrder.map((w) => String(w).trim()).filter(Boolean)
@@ -557,7 +557,7 @@ function tryDeterministicExerciseCheck(item, answer, learnerAnswers) {
   }
 
   if (
-    (kind === 'drag_word_to_blank' || kind === 'type_word_in_blank' || kind === 'fill_blank') &&
+    (DRAG_BLANK_KINDS.has(kind) || kind === 'type_word_in_blank') &&
     Array.isArray(item.segments)
   ) {
     const blanks = item.segments.filter(
@@ -586,7 +586,7 @@ function tryDeterministicExerciseCheck(item, answer, learnerAnswers) {
   }
 
   if (
-    kind === 'drag_word_to_blank' &&
+    DRAG_BLANK_KINDS.has(kind) &&
     Array.isArray(item.numberedSentences) &&
     item.numberedSentences.length > 0
   ) {
@@ -697,18 +697,39 @@ function buildTeacherExerciseSetPrompt(language, lessonTopic, uiLanguage = 'ru')
 }
 
 const EXERCISE_BANK = [
-  { kind: 'read_and_select', difficulty: 1 },
-  { kind: 'drag_word_to_blank', difficulty: 2 },
-  { kind: 'fill_partial_word', difficulty: 3 },
-  { kind: 'type_word_in_blank', difficulty: 4 },
-  { kind: 'identify_main_idea', difficulty: 5 },
-  { kind: 'choose_word_form', difficulty: 6 },
-  { kind: 'word_to_image', difficulty: 7 },
-  { kind: 'sentence_order', difficulty: 8 },
-  { kind: 'match_pairs', difficulty: 9 },
-  { kind: 'voice_recording', difficulty: 10 },
-  { kind: 'write_sentences', difficulty: 11 },
+  { kind: 'choose_translation', difficulty: 1 },
+  { kind: 'read_and_select', difficulty: 2 },
+  { kind: 'odd_one_out', difficulty: 3 },
+  { kind: 'word_to_image', difficulty: 4 },
+  { kind: 'match_pairs', difficulty: 5 },
+  { kind: 'choose_reply', difficulty: 6 },
+  { kind: 'what_do_you_say', difficulty: 7 },
+  { kind: 'drag_word_to_blank', difficulty: 8 },
+  { kind: 'complete_dialogue', difficulty: 9 },
+  { kind: 'fill_partial_word', difficulty: 10 },
+  { kind: 'type_word_in_blank', difficulty: 11 },
+  { kind: 'pick_similar', difficulty: 12 },
+  { kind: 'choose_word_form', difficulty: 13 },
+  { kind: 'spot_error', difficulty: 14 },
+  { kind: 'identify_main_idea', difficulty: 15 },
+  { kind: 'sentence_order', difficulty: 16 },
+  { kind: 'build_from_meaning', difficulty: 17 },
+  { kind: 'multiple_choice', difficulty: 18 },
+  { kind: 'voice_recording', difficulty: 19 },
+  { kind: 'write_sentences', difficulty: 20 },
 ];
+
+const CHOICE_KINDS = new Set([
+  'multiple_choice',
+  'choose_translation',
+  'choose_reply',
+  'odd_one_out',
+  'spot_error',
+  'what_do_you_say',
+]);
+const ORDER_KINDS = new Set(['sentence_order', 'build_from_meaning']);
+const FORM_KINDS = new Set(['choose_word_form', 'pick_similar']);
+const DRAG_BLANK_KINDS = new Set(['drag_word_to_blank', 'complete_dialogue', 'fill_blank']);
 
 function hashExerciseSeed(seed) {
   let h = 2166136261;
@@ -1022,7 +1043,8 @@ function normalizeExerciseSetFromModel(raw) {
       (kind === 'fill_partial_word' && maskedSentence ? maskedSentence : '') ||
       (kind === 'identify_main_idea' ? 'Выбери главную мысль' : '') ||
       (kind === 'match_pairs' ? 'Сопоставь слова и переводы' : '') ||
-      (kind === 'sentence_order' ? 'Составь предложение из слов' : '');
+      (ORDER_KINDS.has(kind) ? 'Составь предложение из слов' : '') ||
+      (CHOICE_KINDS.has(kind) ? 'Выбери правильный вариант' : '');
 
     out.push({
       id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : `ex-${i + 1}`,
@@ -1032,17 +1054,14 @@ function normalizeExerciseSetFromModel(raw) {
           ? item.instruction.trim().slice(0, 160)
           : undefined,
       segments,
-      choices: kind === 'multiple_choice' || kind === 'identify_main_idea' ? choices : undefined,
-      wordBank:
-        kind === 'drag_word_to_blank' || kind === 'word_to_image' || kind === 'fill_blank'
-          ? wordBank
-          : undefined,
-      numberedSentences: kind === 'drag_word_to_blank' ? numberedSentences : undefined,
-      formSlots: kind === 'choose_word_form' ? formSlots : undefined,
+      choices: CHOICE_KINDS.has(kind) || kind === 'identify_main_idea' ? choices : undefined,
+      wordBank: DRAG_BLANK_KINDS.has(kind) || kind === 'word_to_image' ? wordBank : undefined,
+      numberedSentences: DRAG_BLANK_KINDS.has(kind) ? numberedSentences : undefined,
+      formSlots: FORM_KINDS.has(kind) ? formSlots : undefined,
       imageSlots: kind === 'word_to_image' ? imageSlots : undefined,
       pairs: kind === 'match_pairs' ? pairs : undefined,
-      shuffledWords: kind === 'sentence_order' ? shuffledWords : undefined,
-      correctOrder: kind === 'sentence_order' ? correctOrder : undefined,
+      shuffledWords: ORDER_KINDS.has(kind) ? shuffledWords : undefined,
+      correctOrder: ORDER_KINDS.has(kind) ? correctOrder : undefined,
       minSentences: kind === 'write_sentences' ? minSentences || 5 : undefined,
       voicePrompt: kind === 'voice_recording' ? voicePrompt : undefined,
       selectWord: kind === 'read_and_select' ? selectWord : undefined,
@@ -1060,7 +1079,7 @@ function normalizeExerciseSetFromModel(raw) {
           : undefined,
       passage: kind === 'identify_main_idea' ? passage : undefined,
       correctChoice:
-        kind === 'identify_main_idea' || kind === 'multiple_choice' ? correctChoice : undefined,
+        CHOICE_KINDS.has(kind) || kind === 'identify_main_idea' ? correctChoice : undefined,
       checkText: resolvedCheck.slice(0, 1200),
     });
   }

@@ -242,7 +242,7 @@ export function TeacherExerciseTaskBody({
   }, [disabled, exercise.id, exercise.numberedSentences, exercise.segments, onFocusBlank]);
 
   const shuffledPool = useMemo(() => {
-    if (exercise.kind !== 'sentence_order') return [];
+    if (exercise.kind !== 'sentence_order' && exercise.kind !== 'build_from_meaning') return [];
     const words = exercise.shuffledWords?.length ? exercise.shuffledWords : exercise.correctOrder ?? [];
     return words.filter((w) => !state.sentenceOrder.includes(w));
   }, [exercise, state.sentenceOrder]);
@@ -419,6 +419,7 @@ export function TeacherExerciseTaskBody({
 
   switch (exercise.kind) {
     case 'drag_word_to_blank':
+    case 'complete_dialogue':
     case 'fill_blank':
       if (exercise.numberedSentences?.length) {
         return (
@@ -533,6 +534,7 @@ export function TeacherExerciseTaskBody({
       return renderBlanks(false);
 
     case 'choose_word_form':
+    case 'pick_similar':
       if (!exercise.formSlots?.length) {
         return (
           <FreeTextAnswer
@@ -641,6 +643,7 @@ export function TeacherExerciseTaskBody({
       );
 
     case 'sentence_order':
+    case 'build_from_meaning':
       if (!exercise.shuffledWords?.length && !exercise.correctOrder?.length) {
         return (
           <FreeTextAnswer
@@ -908,6 +911,11 @@ export function TeacherExerciseTaskBody({
       );
 
     case 'multiple_choice':
+    case 'choose_translation':
+    case 'choose_reply':
+    case 'odd_one_out':
+    case 'spot_error':
+    case 'what_do_you_say':
       return (
         <View style={styles.promptSurface}>
           <Text style={styles.promptPlain}>{exercise.checkText}</Text>
