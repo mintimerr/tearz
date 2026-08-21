@@ -758,6 +758,112 @@ function pickExerciseKindsForSeed(seed, count = 5) {
     .map((x) => x.kind);
 }
 
+const ALLOWED_EXERCISE_KINDS = new Set(EXERCISE_BANK.map((x) => x.kind));
+
+function sortKindsByDifficulty(kinds) {
+  return [...kinds].sort((a, b) => {
+    const da = EXERCISE_BANK.find((x) => x.kind === a)?.difficulty ?? 99;
+    const db = EXERCISE_BANK.find((x) => x.kind === b)?.difficulty ?? 99;
+    return da - db;
+  });
+}
+
+/**
+ * Выбирает 5 kinds под конкретный запрос ученика + объяснение учителя
+ * (максимальный учебный буст), а не случайный сэмпл из банка.
+ */
+async function pickExerciseKindsForLearnerNeed(apiKey, {
+  userRequest,
+  explanation,
+  language,
+  lessonTopic,
+  seed,
+  attempt = 1,
+  count = 5,
+}) {
+  const bankLines = EXERCISE_BANK.map(
+    (x) => `- ${x.kind} (difficulty ${x.difficulty})`,
+  ).join('\n');
+  const system =
+    'You are a language-pedagogy planner for Tearz mini-drills.\n' +
+    'Pick exactly 5 exercise kinds that give the learner the HIGHEST skill boost for THEIR specific request right now.\n' +
+    'Rules:\n' +
+    '- Optimize for the user request first, then the teacher explanation.\n' +
+    '- Prefer kinds that practice the bottleneck the learner just hit (vocab / dialogue / grammar form / listening-speaking / reading / production).\n' +
+    '- Mix recognition → production when useful, but stay tightly on the request.\n' +
+    '- Do NOT pick randomly. Do NOT pad with unrelated fun kinds.\n' +
+    '- Use ONLY kinds from the bank. No duplicates.\n' +
+    '- Return JSON only: {"kinds":["kind1","kind2","kind3","kind4","kind5"],"focus":"one short phrase"}\n' +
+    `Bank:\n${bankLines}`;
+
+  const user =
+    `L2 language: ${language}\n` +
+    `Lesson topic: ${(typeof lessonTopic === 'string' && lessonTopic.trim()) || '(none)'}\n` +
+    `Variation: ${seed} (attempt ${attempt})\n\n` +
+    `USER REQUEST (what they asked):\n${(userRequest || '').trim() || '(missing — infer from explanation)'}\n\n` +
+    `TEACHER EXPLANATION (what was just taught):\n${(explanation || '').trim().slice(0, 3500)}\n\n` +
+    `Pick ${count} kinds that maximize transfer for THIS request.`;
+
+  try {
+    const openaiRes = await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: TEACHER_FAST_MODEL,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: user },
+        ],
+        temperature: attempt > 1 ? 0.55 : 0.25,
+        max_tokens: 220,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    const data = await openaiRes.json().catch(() => ({}));
+    if (!openaiRes.ok) {
+      console.warn('[exercise-kinds]', data?.error?.message || openaiRes.status);
+      return pickExerciseKindsForSeed(seed, count);
+    }
+    const content = data?.choices?.[0]?.message?.content;
+    let parsed = null;
+    try {
+      parsed = typeof content === 'string' ? parseJsonFromModelContent(content) : null;
+    } catch {
+      parsed = null;
+    }
+    const raw = Array.isArray(parsed?.kinds) ? parsed.kinds : [];
+    const picked = [];
+    for (const k of raw) {
+      if (typeof k !== 'string') continue;
+      const kind = k.trim();
+      if (!ALLOWED_EXERCISE_KINDS.has(kind)) continue;
+      if (picked.includes(kind)) continue;
+      picked.push(kind);
+      if (picked.length >= count) break;
+    }
+    if (picked.length < count) {
+      const filler = pickExerciseKindsForSeed(`${seed}:fill`, count);
+      for (const k of filler) {
+        if (!picked.includes(k)) picked.push(k);
+        if (picked.length >= count) break;
+      }
+    }
+    if (picked.length < 3) return pickExerciseKindsForSeed(seed, count);
+    const focus =
+      typeof parsed?.focus === 'string' && parsed.focus.trim()
+        ? parsed.focus.trim().slice(0, 120)
+        : '';
+    if (focus) console.log('[exercise-kinds] focus:', focus);
+    return sortKindsByDifficulty(picked.slice(0, count));
+  } catch (e) {
+    console.warn('[exercise-kinds]', e instanceof Error ? e.message : e);
+    return pickExerciseKindsForSeed(seed, count);
+  }
+}
+
 function buildFlashcardImagePrompt(correctWord, label, lessonTopic) {
   const subject = [correctWord, label].filter((x) => typeof x === 'string' && x.trim()).join(' — ');
   const topic =
@@ -1784,16 +1890,27 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
       ? `\n\nНе повторяй и не перефразируй близко к этим уже выданным заданиям:\n${avoidList.map((line, i) => `${i + 1}. ${line}`).join('\n')}`
       : '';
 
-  const selectedKinds = pickExerciseKindsForSeed(seed, 5);
+  const selectedKinds = await pickExerciseKindsForLearnerNeed(apiKey, {
+    userRequest,
+    explanation: teacherExplanation,
+    language: lang,
+    lessonTopic,
+    seed,
+    attempt,
+    count: 5,
+  });
   const kindsBlock =
-    `\n\nТипы заданий для этой мини-тренировки (строго 5, в этом порядке, от лёгкого к сложному):\n` +
+    `\n\nТипы заданий для этой мини-тренировки (строго 5, в этом порядке, от лёгкого к сложному).\n` +
+    `Они уже выбраны под запрос ученика — максимизируй буст именно по ним:\n` +
     selectedKinds.map((k, i) => `${i + 1}. ${k}`).join('\n');
 
   const baseUserContent =
     `Последний запрос пользователя:\n${userRequest || '(не указан — выведи из контекста диалога выше)'}\n\n` +
     `Последний ответ AI:\n${teacherExplanation}\n\n` +
     `Variation id: ${seed}.${variationBlock}${avoidBlock}${kindsBlock}\n\n` +
-    `Сгенерируй ровно 5 упражнений (kinds как выше) и nextTopic. Только JSON.`;
+    `Сгенерируй ровно 5 упражнений (kinds как выше) и nextTopic.\n` +
+    `Каждое задание должно напрямую тренировать то, о чём просил пользователь (и что только что объяснил учитель) — не уходи в общую тему.\n` +
+    `Только JSON.`;
 
   try {
     let exercises = [];
