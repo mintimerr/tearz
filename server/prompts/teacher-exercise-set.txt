@@ -7,7 +7,7 @@
 ГЛАВНАЯ ЦЕЛЬ
 Максимальный учебный буст именно под ПОСЛЕДНИЙ ЗАПРОС пользователя.
 - Сначала разбери, чего человек хотел: словарный запас, фраза «как сказать», грамматика, диалог, чтение, произношение, исправление ошибки.
-- Каждое из 5 заданий должно бить в этот bottleneck, опираясь на материал из ответа преподавателя.
+- Каждое из 10 заданий должно бить в этот bottleneck, опираясь на материал из ответа преподавателя.
 - Не уходи в соседнюю «общую тему урока», если запрос узкий (например «как заказать кофе» → тренируй заказ/вежливость/ключевые слова, а не весь кафе-словарь вперемешку).
 - Distractors = типичные ошибки именно для этого запроса.
 
@@ -16,9 +16,9 @@
 * последний ответ AI-преподавателя;
 * контекст диалога;
 * Variation id;
-* список из РОВНО 5 типов заданий (kind) — уже подобраны под запрос; в этом порядке, от лёгкого к сложному.
+* список из РОВНО 10 типов заданий (kind) — уже подобраны под запрос; в этом порядке, от лёгкого к сложному.
 
-Сгенерируй РОВНО 5 упражнений — по одному на каждый указанный kind. Не добавляй другие типы. Не меняй порядок.
+Сгенерируй РОВНО 10 упражнений — по одному на каждый указанный kind. Не добавляй другие типы. Не меняй порядок.
 
 ⸻
 
@@ -111,7 +111,8 @@ HelloChinese-стиль (обязательно адаптируй под L2)
 
 * Приоритет №1 — последний запрос пользователя; №2 — только что данное объяснение.
 * Все задания — по теме запроса + объяснения (не «вообще по уроку»).
-* Лексика и примеры — на L2; instruction и checkText-подсказки — на русском (или UI-языке запроса).
+* Лексика и примеры — на L2; instruction, checkText-подсказки и UI-варианты (переводы и т.п.) — СТРОГО на UI-языке из запроса (не на русском по умолчанию).
+* nextTopic.title / reason / connection — на UI-языке.
 * Нельзя менять L2 внутри набора.
 * Не включай ответы в instruction для ученика (ключи только в JSON: correct / answer / correctChoice / selectIsReal).
 * Каждый запрос — новый набор; Variation id обязателен; при «не повторять» — другой угол, но тот же учебный фокус.
@@ -143,18 +144,18 @@ HelloChinese-стиль (обязательно адаптируй под L2)
   }
 }
 
-Ровно 5 объектов в exercises — kinds строго как в запросе пользователя.
+Ровно 10 объектов в exercises — kinds строго как в запросе пользователя.
 nextTopic обязателен.
 
 ⸻
 
-ПРИМЕРЫ ПОЛЕЙ
+ПРИМЕРЫ ПОЛЕЙ (структура; язык instruction/choices должен совпадать с UI-языком запроса, не копируй русский дословно)
 
 choose_translation:
 "checkText": "hospital",
-"choices": ["больница", "школа", "магазин", "вокзал"],
-"correctChoice": "больница",
-"instruction": "Выбери перевод"
+"choices": ["hospital (UI translation)", "school", "shop", "station"],
+"correctChoice": "hospital (UI translation)",
+"instruction": "(UI) Choose the translation"
 
 choose_reply:
 "checkText": "A: How are you?\nB: ___",
@@ -162,22 +163,22 @@ choose_reply:
 "correctChoice": "I'm fine, thanks."
 
 odd_one_out:
-"checkText": "Какое слово лишнее?",
+"checkText": "(UI) Which word does not belong?",
 "choices": ["apple", "banana", "car", "orange"],
 "correctChoice": "car"
 
 what_do_you_say:
-"checkText": "Ты заходишь в кафе. Что скажешь?",
+"checkText": "(UI) You walk into a café. What do you say?",
 "choices": ["A coffee, please.", "Good night.", "I am Tuesday.", "Close the window."],
 "correctChoice": "A coffee, please."
 
 spot_error:
-"checkText": "Какое предложение неверно?",
+"checkText": "(UI) Which sentence is wrong?",
 "choices": ["She goes home.", "She go home.", "She went home."],
 "correctChoice": "She go home."
 
 build_from_meaning:
-"checkText": "Собери: «Я люблю чай.»",
+"checkText": "(UI) Build: «I love tea.»",
 "shuffledWords": ["tea", "I", "love"],
 "correctOrder": ["I", "love", "tea"]
 
