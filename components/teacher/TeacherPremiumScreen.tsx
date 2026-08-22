@@ -616,7 +616,7 @@ export function TeacherPremiumScreen() {
       </KeyboardAvoidingView>
 
       {boardChatOpen ? (
-        <Modal visible animationType="fade" presentationStyle="fullScreen" onRequestClose={closeBoardChat}>
+        <View style={styles.boardChatOverlay}>
           <Animated.View style={[styles.boardChatLayer, { opacity: chatFade }]}>
             <TeacherLessonWindow
               key={boardLessonId ?? (boardSeed || 'new-lesson')}
@@ -627,7 +627,7 @@ export function TeacherPremiumScreen() {
               onClose={closeBoardChat}
             />
           </Animated.View>
-        </Modal>
+        </View>
       ) : null}
 
       {/* ── Список чатов ─────────────────────────────────────────────── */}
@@ -765,6 +765,12 @@ const styles = StyleSheet.create({
   boardChatLayer: {
     flex: 1,
     backgroundColor: GAME_THEME.color.void,
+  },
+  boardChatOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 80,
+    elevation: 80,
+    backgroundColor: GAME_THEME.color.cream,
   },
   root: {
     flex: 1,

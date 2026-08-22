@@ -388,6 +388,21 @@ export const drillTaskStyles = StyleSheet.create({
     color: GAME_THEME.color.ink,
     textAlignVertical: 'top',
   },
+  numberedInput: {
+    minHeight: 180,
+    maxHeight: 280,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: DRILL.radiusControl,
+    backgroundColor: DRILL.well,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: DRILL.wellEdge,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '600',
+    color: GAME_THEME.color.ink,
+    textAlignVertical: 'top',
+  },
 });
 
 export const drillShellStyles = StyleSheet.create({

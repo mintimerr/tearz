@@ -184,6 +184,26 @@ export type TeacherNextTopicRecommendation = {
   connection: string;
 };
 
+export type TeacherDrillMistakeSummary = {
+  kind: string;
+  checkText: string;
+  learnerAnswer: string;
+  idealAnswer?: string;
+  feedback?: string;
+  lessonTopic?: string;
+};
+
+export type TeacherDrillFollowUpAction = 'repeat_same' | 'review_gaps' | 'advance';
+
+export type TeacherDrillFollowUp = {
+  action: TeacherDrillFollowUpAction;
+  title: string;
+  reason: string;
+  connection?: string;
+  focusAreas?: string[];
+  repeatPrompt?: string;
+};
+
 export type TeacherExerciseSetRequestBody = {
   explanation: string;
   conversationHistory: CompanionChatHistoryItem[];
@@ -198,6 +218,24 @@ export type TeacherExerciseSetRequestBody = {
   generationAttempt?: number;
   /** Тексты прошлых заданий — модель не должна их повторять. */
   avoidExerciseTexts?: string[];
+  /** Недавние ошибки ученика — приоритет при генерации заданий. */
+  recentMistakes?: TeacherDrillMistakeSummary[];
+};
+
+export type TeacherDrillFollowUpRequestBody = {
+  correct: number;
+  total: number;
+  sessionMistakes?: TeacherDrillMistakeSummary[];
+  recentMistakes?: TeacherDrillMistakeSummary[];
+  explanation?: string;
+  lessonTopic?: string;
+  language?: CompanionChatApiLanguage;
+  uiLanguage?: 'ru' | 'en' | 'zh';
+  nextTopic?: TeacherNextTopicRecommendation;
+};
+
+export type TeacherDrillFollowUpSuccessBody = {
+  followUp: TeacherDrillFollowUp;
 };
 
 export type TeacherExerciseSetSuccessBody = {

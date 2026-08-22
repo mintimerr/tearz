@@ -49,6 +49,7 @@ import { FileMessageBubble } from '@/components/companion/file-message-bubble';
 import { ImageMessageBubble } from '@/components/companion/image-message-bubble';
 import { VoiceMessageBubble } from '@/components/companion/voice-message-bubble';
 import { LongPressWordText } from '@/components/long-press-word-text';
+import { WordAddSheetHost } from '@/components/word-add-sheet';
 import { useAuth } from '@/contexts/auth-context';
 import { useCompanionChats } from '@/contexts/companion-chats-context';
 import { useTranslation } from '@/contexts/locale-context';
@@ -67,6 +68,7 @@ import {
 import { postCompanionVoiceTranscribe } from '@/services/companion-voice-transcribe';
 import type {
   CompanionChatApiLanguage,
+  TeacherDrillFollowUp,
   TeacherExerciseItem,
   TeacherNextTopicRecommendation,
 } from '@/types/companion-chat-api';
@@ -94,6 +96,14 @@ import {
   saveMiniDrillUsage,
   type MiniDrillUsage,
 } from '@/utils/teacher-mini-drill-usage';
+import {
+  getMistakeSummariesForApi,
+  loadDrillMistakes,
+  recordDrillMistakes,
+  saveDrillMistakes,
+  type TeacherDrillMistakeRecord,
+} from '@/utils/teacher-drill-mistakes';
+import { buildFollowUpChatMessage } from '@/utils/teacher-drill-followup';
 import { takeTeacherLessonBootstrap } from '@/utils/teacher-lesson-bootstrap';
 import { persistCompanionVoice } from '@/utils/companion-voice-storage';
 import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
@@ -451,10 +461,13 @@ export default function CompanionChatScreen() {
   const [exerciseLoadingId, setExerciseLoadingId] = useState<string | null>(null);
   const [drillExercises, setDrillExercises] = useState<TeacherExerciseItem[]>([]);
   const [drillNextTopic, setDrillNextTopic] = useState<TeacherNextTopicRecommendation | null>(null);
+  const [drillMistakes, setDrillMistakes] = useState<TeacherDrillMistakeRecord[]>([]);
+  const drillSourceMessageRef = useRef<CompanionMsg | null>(null);
+  const drillExplanationRef = useRef('');
+  const drillLanguageRef = useRef<CompanionChatApiLanguage>('english');
   const [drillSessionKey, setDrillSessionKey] = useState('');
   const [drillOpen, setDrillOpen] = useState(false);
   const [plusPaywallFeature, setPlusPaywallFeature] = useState<TearzPlusFeature | null>(null);
-  const pendingFullMsgRef = useRef<CompanionMsg | null>(null);
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
   const [messages, setMessages] = useState<CompanionMsg[]>(() => initialMessagesFromParams(params));
   const threadKey = `${isTeacher ? 'teacher' : 'companion'}:${chatId ?? 'new'}:${params.mode ?? ''}`;
@@ -551,9 +564,11 @@ export default function CompanionChatScreen() {
   useEffect(() => {
     if (!isTeacher || !miniDrillUserId) {
       setMiniDrillUsage({ perMessage: {}, priorSets: {} });
+      setDrillMistakes([]);
       return;
     }
     void loadMiniDrillUsage(miniDrillUserId).then(setMiniDrillUsage);
+    void loadDrillMistakes(miniDrillUserId).then(setDrillMistakes);
   }, [isTeacher, miniDrillUserId]);
 
   useFocusEffect(
@@ -1047,13 +1062,26 @@ export default function CompanionChatScreen() {
 
   const generateExerciseForMessage = useCallback(
     async (source: CompanionMsg) => {
-      if (exerciseLoadingId || typing) return;
+      if (exerciseLoadingId) return;
       const explanation = source.text.trim();
-      if (!explanation) return;
+      if (!explanation) {
+        Alert.alert(t('teacher.drill.title'), t('teacher.drill.emptyExplanation'));
+        return;
+      }
+      if (typing) {
+        Alert.alert(t('teacher.drill.title'), t('teacher.drill.waitForReply'));
+        return;
+      }
 
       const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
       if (!access.allowed) {
-        Alert.alert('Мини-тренировка', access.reason ?? 'Лимит исчерпан.');
+        const reason =
+          access.reasonKey === 'refreshLimit'
+            ? t('teacher.drill.refreshLimit', { count: access.reasonCount ?? 0 })
+            : access.reasonKey === 'lessonLimit'
+              ? t('teacher.drill.lessonLimit', { count: access.reasonCount ?? 0 })
+              : t('teacher.drill.limitFallback');
+        Alert.alert(t('teacher.drill.title'), reason);
         return;
       }
 
@@ -1065,6 +1093,9 @@ export default function CompanionChatScreen() {
         `${lastUser}\n${lessonTopicParam ?? ''}\n${explanation}`,
         teacherSessionLang === 'russian' ? 'english' : teacherSessionLang,
       );
+      drillSourceMessageRef.current = source;
+      drillExplanationRef.current = explanation;
+      drillLanguageRef.current = drillLanguage;
       try {
         const { exercises: raw, nextTopic } = await postTeacherExerciseSet({
           explanation,
@@ -1076,6 +1107,7 @@ export default function CompanionChatScreen() {
           generationSeed,
           generationAttempt: access.generationsUsed + 1,
           avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
+          recentMistakes: getMistakeSummariesForApi(drillMistakes),
         });
         const sessionKey = `drill-${generationSeed}`;
         const exercises = raw.map((ex, i) => ({
@@ -1098,12 +1130,15 @@ export default function CompanionChatScreen() {
         setDrillOpen(true);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Ошибка сети';
-        Alert.alert('Тренировка', `Не удалось создать задания.\n\n${msg}`);
+        const msg = e instanceof Error ? e.message : t('teacher.drill.networkError');
+        Alert.alert(
+          t('teacher.drill.generateFailedTitle'),
+          t('teacher.drill.generateFailedBody', { error: msg }),
+        );
         setExerciseLoadingId(null);
       }
     },
-    [exerciseLoadingId, lessonTopicParam, miniDrillUsage, miniDrillUserId, teacherSessionLang, typing, uiLanguage],
+    [drillMistakes, exerciseLoadingId, lessonTopicParam, miniDrillUsage, miniDrillUserId, t, teacherSessionLang, typing, uiLanguage],
   );
 
   const checkDrillExercise = useCallback(
@@ -1138,6 +1173,44 @@ export default function CompanionChatScreen() {
       return result;
     },
     [lessonTopicParam, recordStudySwipe, teacherSessionLang, uiLanguage],
+  );
+
+  const handleDrillMistakesRecorded = useCallback(
+    (mistakes: Array<{
+      kind: string;
+      checkText: string;
+      learnerAnswer: string;
+      idealAnswer?: string;
+      feedback?: string;
+    }>) => {
+      if (!miniDrillUserId || mistakes.length === 0) return;
+      setDrillMistakes((prev) => {
+        const next = recordDrillMistakes(prev, mistakes, {
+          lessonTopic: lessonTopicParam,
+          language: drillLanguageRef.current,
+        });
+        void saveDrillMistakes(miniDrillUserId, next);
+        return next;
+      });
+    },
+    [lessonTopicParam, miniDrillUserId],
+  );
+
+  const handleDrillFollowUp = useCallback(
+    (followUp: TeacherDrillFollowUp) => {
+      if (followUp.action === 'repeat_same' && drillSourceMessageRef.current) {
+        setTimeout(() => {
+          void generateExerciseForMessage(drillSourceMessageRef.current!);
+        }, 120);
+        return;
+      }
+      const text = buildFollowUpChatMessage(followUp);
+      setTimeout(() => {
+        sendRef.current(text);
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 120);
+    },
+    [generateExerciseForMessage],
   );
 
   const closeDrill = useCallback((summary: { correct: number; total: number } | null) => {
@@ -1233,17 +1306,8 @@ export default function CompanionChatScreen() {
                               exerciseLoadingId={exerciseLoadingId}
                               typing={typing}
                               miniAccess={evaluateMiniDrillAccess(miniDrillUsage, m.id)}
-                              onMiniPress={(msg) => void generateExerciseForMessage(msg)}
-                              onMiniBlocked={(reason) => Alert.alert('Мини-тренировка', reason)}
-                              onFullPress={() => {
-                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                if (hasPlusAccess) {
-                                  void generateExerciseForMessage(m);
-                                  return;
-                                }
-                                pendingFullMsgRef.current = m;
-                                setPlusPaywallFeature('fullWorkout');
-                              }}
+                              onPress={(msg) => void generateExerciseForMessage(msg)}
+                              onBlocked={(reason) => Alert.alert(t('teacher.drill.title'), reason)}
                             />
                           </View>
                         </>
@@ -1287,6 +1351,8 @@ export default function CompanionChatScreen() {
             </ScrollView>
           </View>
 
+          <WordAddSheetHost />
+
           <Reanimated.View style={composerInsetStyle}>
             <TeacherChatComposer
               input={input}
@@ -1299,29 +1365,27 @@ export default function CompanionChatScreen() {
 
         <TeacherExerciseGenerating visible={Boolean(exerciseLoadingId) && !drillOpen} />
 
-        <TeacherFullWorkoutPaywall
-          visible={plusPaywallFeature === 'fullWorkout'}
-          feature="fullWorkout"
-          onClose={() => {
-            pendingFullMsgRef.current = null;
-            setPlusPaywallFeature(null);
-          }}
-          onUnlocked={() => {
-            const msg = pendingFullMsgRef.current;
-            pendingFullMsgRef.current = null;
-            setPlusPaywallFeature(null);
-            if (msg) void generateExerciseForMessage(msg);
-          }}
-        />
-
         <TeacherExerciseDrill
           visible={drillOpen}
           sessionKey={drillSessionKey}
           exercises={drillExercises}
           nextTopic={drillNextTopic}
+          followUpContext={
+            drillOpen
+              ? {
+                  explanation: drillExplanationRef.current,
+                  lessonTopic: lessonTopicParam,
+                  language: drillLanguageRef.current,
+                  uiLanguage,
+                  recentMistakes: getMistakeSummariesForApi(drillMistakes),
+                }
+              : null
+          }
           transcribeLanguage={teacherSessionLang}
           onClose={closeDrill}
           onNextTopicPress={handleDrillNextTopic}
+          onFollowUpPress={handleDrillFollowUp}
+          onMistakesRecorded={handleDrillMistakesRecorded}
           onCheck={checkDrillExercise}
         />
 
@@ -1455,6 +1519,8 @@ export default function CompanionChatScreen() {
         ) : null}
         </ScrollView>
       </View>
+
+      <WordAddSheetHost />
 
       <Reanimated.View style={[styles.composerWrap, composerInsetStyle]}>
         <View pointerEvents="none" style={styles.composerGoldLip} />

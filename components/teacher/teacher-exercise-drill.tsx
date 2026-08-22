@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,17 +23,23 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GameGoldButton } from '@/components/game/game-gold-button';
+import { useKeyboardInset } from '@/hooks/use-keyboard-inset';
 import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
 import { GAME_THEME } from '@/constants/game-theme';
 import { TearzThinking } from '@/components/teacher/tearz-thinking';
+import { useTranslation } from '@/contexts/locale-context';
 import { useCompanionVoiceRecorder } from '@/hooks/use-companion-voice-recorder';
 import { postCompanionVoiceTranscribe } from '@/services/companion-voice-transcribe';
 import type {
   CompanionChatApiLanguage,
+  TeacherDrillFollowUp,
   TeacherExerciseCheckSuccessBody,
   TeacherExerciseItem,
   TeacherNextTopicRecommendation,
 } from '@/types/companion-chat-api';
+import { postTeacherDrillFollowUp } from '@/services/companion-chat-ai';
+import { buildLocalDrillFollowUp } from '@/utils/teacher-drill-followup';
+import type { TeacherDrillMistakeItem } from '@/utils/teacher-drill-mistakes';
 import { DRILL, drillShellStyles } from '@/components/teacher/teacher-drill-styles';
 import { EXERCISE_KIND_META } from '@/components/teacher/teacher-exercise-kind-meta';
 import { TeacherExerciseTaskBody } from '@/components/teacher/teacher-exercise-task-body';
@@ -88,6 +93,7 @@ function DrillHeader({
   finished: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const progress = finished ? 1 : (index + 1) / total;
 
   return (
@@ -98,12 +104,16 @@ function DrillHeader({
           hitSlop={10}
           style={({ pressed }) => [styles.headerSideBtn, pressed && styles.pressed]}
           accessibilityRole="button"
-          accessibilityLabel="Закрыть тренировку">
+          accessibilityLabel={t('teacher.drill.closeA11y')}>
           <Ionicons name="chevron-down" size={22} color={GAME_THEME.color.ink} />
         </Pressable>
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>Мини-тренировка</Text>
-          <Text style={styles.headerMeta}>{finished ? 'Итог' : `${index + 1} из ${total}`}</Text>
+          <Text style={styles.headerTitle}>{t('teacher.drill.title')}</Text>
+          <Text style={styles.headerMeta}>
+            {finished
+              ? t('teacher.drill.summary')
+              : t('teacher.drill.of', { current: index + 1, total })}
+          </Text>
         </View>
         <View style={styles.headerSpacer} />
       </View>
@@ -121,6 +131,7 @@ function DrillFeedback({
   result: TeacherExerciseCheckSuccessBody;
   voiceTranscript: string;
 }) {
+  const { t } = useTranslation();
   const ok = result.correct;
 
   return (
@@ -134,12 +145,16 @@ function DrillFeedback({
 
           {result.idealAnswer && !ok ? (
             <View style={styles.fbAnswer}>
-              <Text style={styles.fbAnswerLabel}>Правильный ответ</Text>
+              <Text style={styles.fbAnswerLabel}>{t('teacher.drill.idealAnswer')}</Text>
               <Text style={styles.fbAnswerText}>{result.idealAnswer}</Text>
             </View>
           ) : null}
 
-          {voiceTranscript ? <Text style={styles.fbMeta}>Расшифровка · {voiceTranscript}</Text> : null}
+          {voiceTranscript ? (
+            <Text style={styles.fbMeta}>
+              {t('teacher.drill.transcript')} · {voiceTranscript}
+            </Text>
+          ) : null}
         </View>
       </View>
     </Animated.View>
@@ -164,6 +179,7 @@ function DrillVoiceAnswer({
   capture: VoiceCapture | null;
   onCapture: (next: VoiceCapture | null) => void;
 }) {
+  const { t } = useTranslation();
   const voice = useCompanionVoiceRecorder();
   const recording = voice.isRecording;
 
@@ -201,7 +217,7 @@ function DrillVoiceAnswer({
             <Ionicons name="checkmark" size={16} color={GAME_THEME.color.ink} />
           </View>
           <View style={styles.voiceReadyCopy}>
-            <Text style={styles.voiceReadyTitle}>Запись готова</Text>
+            <Text style={styles.voiceReadyTitle}>{t('teacher.drill.voiceReady')}</Text>
             <Text style={styles.voiceReadyMeta}>{formatRecordMs(capture.durationMs)}</Text>
           </View>
         </View>
@@ -210,9 +226,9 @@ function DrillVoiceAnswer({
           disabled={disabled}
           style={({ pressed }) => [styles.voiceRetakeBtn, pressed && styles.pressed]}
           accessibilityRole="button"
-          accessibilityLabel="Перезаписать голосовой ответ">
+          accessibilityLabel={t('teacher.drill.voiceRetakeA11y')}>
           <Ionicons name="refresh" size={15} color={GAME_THEME.color.ink} />
-          <Text style={styles.voiceRetakeText}>Перезаписать</Text>
+          <Text style={styles.voiceRetakeText}>{t('teacher.drill.voiceRetake')}</Text>
         </Pressable>
       </View>
     );
@@ -230,13 +246,15 @@ function DrillVoiceAnswer({
           pressed && styles.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Удерживай, чтобы записать голосовой ответ">
+        accessibilityLabel={t('teacher.drill.voiceHoldA11y')}>
         <View style={[styles.voiceMicBtn, recording && styles.voiceMicBtnActive]}>
           <Ionicons name="mic" size={26} color={recording ? GAME_THEME.color.cream : GAME_THEME.color.ink} />
         </View>
       </Pressable>
       <Text style={styles.voiceHint}>
-        {recording ? `Идёт запись · ${formatRecordMs(voice.durationMs)}` : 'Удерживай и говори'}
+        {recording
+          ? t('teacher.drill.voiceRecording', { time: formatRecordMs(voice.durationMs) })
+          : t('teacher.drill.voiceHold')}
       </Text>
     </View>
   );
@@ -244,14 +262,25 @@ function DrillVoiceAnswer({
 
 type DrillSummary = { correct: number; total: number };
 
+type DrillFollowUpContext = {
+  explanation: string;
+  lessonTopic?: string;
+  language: CompanionChatApiLanguage;
+  uiLanguage: 'ru' | 'en' | 'zh';
+  recentMistakes?: TeacherDrillMistakeItem[];
+};
+
 type Props = {
   visible: boolean;
   sessionKey: string;
   exercises: TeacherExerciseItem[];
   nextTopic?: TeacherNextTopicRecommendation | null;
+  followUpContext?: DrillFollowUpContext | null;
   transcribeLanguage: CompanionChatApiLanguage;
   onClose: (summary: DrillSummary | null) => void;
   onNextTopicPress?: (topic: TeacherNextTopicRecommendation) => void;
+  onFollowUpPress?: (followUp: TeacherDrillFollowUp) => void;
+  onMistakesRecorded?: (mistakes: TeacherDrillMistakeItem[]) => void;
   onCheck: (payload: {
     exercise: string;
     answer: string;
@@ -296,18 +325,29 @@ export function TeacherExerciseDrill({
   sessionKey,
   exercises,
   nextTopic,
+  followUpContext,
   transcribeLanguage,
   onClose,
   onNextTopicPress,
+  onFollowUpPress,
+  onMistakesRecorded,
   onCheck,
 }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 10);
+  const { animatedStyle: keyboardInsetStyle, isOpen: keyboardOpen } = useKeyboardInset(bottomInset);
+  const scrollRef = useRef<ScrollView>(null);
   const [index, setIndex] = useState(0);
   const [answerState, setAnswerState] = useState<ExerciseAnswerState>(emptyExerciseAnswerState());
   const [activeBlankId, setActiveBlankId] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<TeacherExerciseCheckSuccessBody | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
+  const [sessionMistakes, setSessionMistakes] = useState<TeacherDrillMistakeItem[]>([]);
+  const [followUp, setFollowUp] = useState<TeacherDrillFollowUp | null>(null);
+  const [followUpLoading, setFollowUpLoading] = useState(false);
+  const mistakesRecordedRef = useRef(false);
   const [finished, setFinished] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const blankRefs = useRef<Record<string, TextInput | null>>({});
@@ -320,6 +360,18 @@ export function TeacherExerciseDrill({
   const open = visible && exercises.length > 0;
   const total = exercises.length;
   const current = exercises[index] ?? null;
+  const keyboardScrollKind =
+    current?.kind === 'write_sentences' ||
+    current?.kind === 'free_text' ||
+    current?.kind === 'fill_partial_word';
+
+  useEffect(() => {
+    if (!keyboardOpen || !keyboardScrollKind) return;
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 90);
+    return () => clearTimeout(timer);
+  }, [keyboardOpen, keyboardScrollKind, index]);
 
   const resetCardState = useCallback(() => {
     setAnswerState(emptyExerciseAnswerState());
@@ -333,6 +385,10 @@ export function TeacherExerciseDrill({
     setIndex(0);
     resetCardState();
     setCorrectCount(0);
+    setSessionMistakes([]);
+    setFollowUp(null);
+    setFollowUpLoading(false);
+    mistakesRecordedRef.current = false;
     setFinished(false);
   }, [resetCardState]);
 
@@ -341,8 +397,57 @@ export function TeacherExerciseDrill({
     setIndex(0);
     resetCardState();
     setCorrectCount(0);
+    setSessionMistakes([]);
+    setFollowUp(null);
+    setFollowUpLoading(false);
+    mistakesRecordedRef.current = false;
     setFinished(false);
   }, [open, resetCardState, sessionKey]);
+
+  useEffect(() => {
+    if (!finished) return;
+    if (sessionMistakes.length > 0 && !mistakesRecordedRef.current) {
+      mistakesRecordedRef.current = true;
+      onMistakesRecorded?.(sessionMistakes);
+    }
+
+    let cancelled = false;
+    setFollowUpLoading(true);
+    void (async () => {
+      try {
+        const { followUp: nextFollowUp } = await postTeacherDrillFollowUp({
+          correct: correctCount,
+          total,
+          sessionMistakes,
+          recentMistakes: followUpContext?.recentMistakes,
+          explanation: followUpContext?.explanation,
+          lessonTopic: followUpContext?.lessonTopic,
+          language: followUpContext?.language,
+          uiLanguage: followUpContext?.uiLanguage,
+          nextTopic: nextTopic ?? undefined,
+        });
+        if (!cancelled) setFollowUp(nextFollowUp);
+      } catch {
+        if (!cancelled) {
+          setFollowUp(buildLocalDrillFollowUp(correctCount, total, sessionMistakes, nextTopic));
+        }
+      } finally {
+        if (!cancelled) setFollowUpLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    correctCount,
+    finished,
+    followUpContext,
+    nextTopic,
+    onMistakesRecorded,
+    sessionMistakes,
+    total,
+  ]);
 
   const canCheck = useMemo(() => {
     if (!current || checking || result) return false;
@@ -372,13 +477,23 @@ export function TeacherExerciseDrill({
         setCorrectCount((c) => c + 1);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
+        setSessionMistakes((prev) => [
+          ...prev,
+          {
+            kind: current.kind,
+            checkText: current.checkText,
+            learnerAnswer: payload.answer,
+            idealAnswer: check.idealAnswer,
+            feedback: check.feedback,
+          },
+        ]);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Ошибка сети';
+      const msg = e instanceof Error ? e.message : t('teacher.drill.networkError');
       setResult({
         correct: false,
-        title: 'Не удалось проверить',
+        title: t('teacher.drill.checkFailed'),
         feedback: msg,
       });
     } finally {
@@ -389,6 +504,7 @@ export function TeacherExerciseDrill({
     canCheck,
     current,
     onCheck,
+    t,
     transcribeLanguage,
   ]);
 
@@ -419,6 +535,17 @@ export function TeacherExerciseDrill({
     onClose(summary);
   }, [correctCount, onClose, resetAll, total]);
 
+  const handleFollowUpPress = useCallback(() => {
+    if (!followUp) return;
+    Keyboard.dismiss();
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const summary = { correct: correctCount, total };
+    const picked = followUp;
+    resetAll();
+    onClose(summary);
+    onFollowUpPress?.(picked);
+  }, [correctCount, followUp, onClose, onFollowUpPress, resetAll, total]);
+
   const handleNextTopicPress = useCallback(() => {
     if (!nextTopic?.title?.trim()) return;
     Keyboard.dismiss();
@@ -433,20 +560,21 @@ export function TeacherExerciseDrill({
   if (!open) return null;
 
   return (
-    <Modal visible={open} animationType="fade" presentationStyle="fullScreen" onRequestClose={handleClose}>
-      <View
-        style={[
-          styles.root,
-          { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 10) },
-        ]}>
+    <View style={styles.overlay}>
+      <View style={[styles.root, { paddingTop: insets.top }]}>
+        <Animated.View style={[styles.flex, keyboardInsetStyle]}>
         <Pressable style={styles.flex} onPress={Keyboard.dismiss} accessible={false}>
         <WordDragProvider>
         <DrillHeader total={total} index={index} finished={finished} onClose={handleClose} />
 
         {finished ? (
           <>
+            <ScrollView
+              style={styles.summaryScroll}
+              contentContainerStyle={styles.summaryScrollContent}
+              showsVerticalScrollIndicator={false}>
             <View style={styles.summaryBody}>
-              <Text style={styles.summaryEyebrow}>Итог</Text>
+              <Text style={styles.summaryEyebrow}>{t('teacher.drill.summary')}</Text>
               <View style={styles.scoreRow}>
                 <Text style={styles.summaryScore}>{correctCount}</Text>
                 <Text style={styles.scoreSlash}>/</Text>
@@ -454,22 +582,113 @@ export function TeacherExerciseDrill({
               </View>
               <Text style={styles.summarySub}>
                 {correctCount === total
-                  ? 'Все задания на тему урока — отлично.'
+                  ? t('teacher.drill.summaryPerfect')
                   : correctCount >= Math.ceil(total / 2)
-                    ? 'Хороший результат. При следующем запуске задания будут новые.'
-                    : 'Есть над чем поработать — вернитесь к объяснению или пройдите ещё раз.'}
+                    ? t('teacher.drill.summaryGood')
+                    : t('teacher.drill.summaryRetry')}
               </Text>
 
-              {nextTopic?.title ? (
+              {sessionMistakes.length > 0 ? (
+                <View style={styles.mistakesCard}>
+                  <Text style={styles.mistakesEyebrow}>
+                    {t('teacher.drill.mistakesTitle', { count: sessionMistakes.length })}
+                  </Text>
+                  {sessionMistakes.slice(0, 3).map((mistake, mi) => (
+                    <View key={`${mistake.checkText}-${mi}`} style={styles.mistakeRow}>
+                      <Text style={styles.mistakePrompt} numberOfLines={2}>
+                        {mistake.checkText}
+                      </Text>
+                      {mistake.feedback ? (
+                        <Text style={styles.mistakeFeedback} numberOfLines={2}>
+                          {mistake.feedback}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {followUpLoading ? (
+                <View style={styles.followUpLoading}>
+                  <ActivityIndicator color={GAME_THEME.color.ink} />
+                  <Text style={styles.followUpLoadingText}>{t('teacher.drill.followUpLoading')}</Text>
+                </View>
+              ) : followUp ? (
+                <Pressable
+                  onPress={handleFollowUpPress}
+                  style={({ pressed }) => [
+                    styles.nextTopicCard,
+                    followUp.action !== 'advance' && styles.followUpCardAccent,
+                    pressed && styles.nextTopicCardPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={followUp.title}>
+                  <View style={styles.nextTopicHeader}>
+                    <View style={styles.nextTopicHeading}>
+                      <Text style={styles.nextTopicEyebrowAccent}>
+                        {followUp.action === 'repeat_same'
+                          ? t('teacher.drill.followUpRepeatEyebrow')
+                          : followUp.action === 'review_gaps'
+                            ? t('teacher.drill.followUpReviewEyebrow')
+                            : t('teacher.drill.nextTopicFor')}
+                      </Text>
+                      <Text style={styles.nextTopicEyebrow}>
+                        {followUp.action === 'advance'
+                          ? t('teacher.drill.nextTopic')
+                          : t('teacher.drill.followUpAction')}
+                      </Text>
+                    </View>
+                    <View style={styles.nextTopicArrow}>
+                      <Ionicons
+                        name={
+                          followUp.action === 'repeat_same'
+                            ? 'refresh'
+                            : followUp.action === 'review_gaps'
+                              ? 'book'
+                              : 'arrow-forward'
+                        }
+                        size={16}
+                        color={GAME_THEME.color.ink}
+                      />
+                    </View>
+                  </View>
+                  <Text style={styles.nextTopicTitle}>{followUp.title}</Text>
+                  {followUp.reason ? (
+                    <Text style={styles.nextTopicLine}>
+                      <Text style={styles.nextTopicLabel}>{t('teacher.drill.nextTopicWhy')}</Text>
+                      {followUp.reason}
+                    </Text>
+                  ) : null}
+                  {followUp.connection && followUp.action === 'advance' ? (
+                    <Text style={styles.nextTopicLine}>
+                      <Text style={styles.nextTopicLabel}>{t('teacher.drill.nextTopicLink')}</Text>
+                      {followUp.connection}
+                    </Text>
+                  ) : null}
+                  {followUp.focusAreas && followUp.focusAreas.length > 0 && followUp.action !== 'advance' ? (
+                    <Text style={styles.nextTopicLine}>
+                      <Text style={styles.nextTopicLabel}>{t('teacher.drill.followUpFocus')}</Text>
+                      {followUp.focusAreas.join(' · ')}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.nextTopicTapHint}>
+                    {followUp.action === 'advance'
+                      ? t('teacher.drill.nextTopicTap')
+                      : followUp.action === 'repeat_same'
+                        ? t('teacher.drill.followUpRepeatTap')
+                        : t('teacher.drill.followUpReviewTap')}
+                  </Text>
+                </Pressable>
+              ) : nextTopic?.title ? (
                 <Pressable
                   onPress={handleNextTopicPress}
                   style={({ pressed }) => [styles.nextTopicCard, pressed && styles.nextTopicCardPressed]}
                   accessibilityRole="button"
-                  accessibilityLabel={`Предложения для следующей темы: ${nextTopic.title}`}>
+                  accessibilityLabel={`${t('teacher.drill.nextTopicFor')} ${t('teacher.drill.nextTopic')}: ${nextTopic.title}`}>
                   <View style={styles.nextTopicHeader}>
                     <View style={styles.nextTopicHeading}>
-                      <Text style={styles.nextTopicEyebrowAccent}>Предложения для</Text>
-                      <Text style={styles.nextTopicEyebrow}>следующей темы</Text>
+                      <Text style={styles.nextTopicEyebrowAccent}>{t('teacher.drill.nextTopicFor')}</Text>
+                      <Text style={styles.nextTopicEyebrow}>{t('teacher.drill.nextTopic')}</Text>
                     </View>
                     <View style={styles.nextTopicArrow}>
                       <Ionicons name="arrow-forward" size={16} color={GAME_THEME.color.ink} />
@@ -478,36 +697,41 @@ export function TeacherExerciseDrill({
                   <Text style={styles.nextTopicTitle}>{nextTopic.title}</Text>
                   {nextTopic.reason ? (
                     <Text style={styles.nextTopicLine}>
-                      <Text style={styles.nextTopicLabel}>Почему: </Text>
+                      <Text style={styles.nextTopicLabel}>{t('teacher.drill.nextTopicWhy')}</Text>
                       {nextTopic.reason}
                     </Text>
                   ) : null}
                   {nextTopic.connection ? (
                     <Text style={styles.nextTopicLine}>
-                      <Text style={styles.nextTopicLabel}>Связь: </Text>
+                      <Text style={styles.nextTopicLabel}>{t('teacher.drill.nextTopicLink')}</Text>
                       {nextTopic.connection}
                     </Text>
                   ) : null}
-                  <Text style={styles.nextTopicTapHint}>Нажми — спросить в чате</Text>
+                  <Text style={styles.nextTopicTapHint}>{t('teacher.drill.nextTopicTap')}</Text>
                 </Pressable>
               ) : null}
             </View>
+            </ScrollView>
 
             <View style={styles.footer}>
               <Pressable
                 onPress={handleFinish}
                 style={({ pressed }) => [styles.summaryCloseBtn, pressed && styles.pressed]}
                 accessibilityRole="button"
-                accessibilityLabel="Вернуться к уроку">
-                <Text style={styles.summaryCloseText}>Вернуться к уроку</Text>
+                accessibilityLabel={t('teacher.drill.backToLesson')}>
+                <Text style={styles.summaryCloseText}>{t('teacher.drill.backToLesson')}</Text>
                 <Ionicons name="arrow-forward" size={17} color={GAME_THEME.color.ink} />
               </Pressable>
             </View>
           </>
         ) : current ? (
           <ScrollView
+            ref={scrollRef}
             style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              keyboardOpen && keyboardScrollKind ? styles.scrollContentKeyboard : null,
+            ]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}>
@@ -526,7 +750,9 @@ export function TeacherExerciseDrill({
                       color={GAME_THEME.color.cream}
                     />
                     <Text style={styles.typeBadgeText}>
-                      {EXERCISE_KIND_META[current.kind]?.label ?? 'Задание'}
+                      {EXERCISE_KIND_META[current.kind]
+                        ? t(EXERCISE_KIND_META[current.kind].labelKey)
+                        : t('teacher.drill.taskFallback')}
                     </Text>
                   </View>
                   <Text style={styles.cardStep}>
@@ -558,7 +784,7 @@ export function TeacherExerciseDrill({
 
                 {isChoiceExerciseKind(current.kind) && current.choices && !result ? (
                   <View style={styles.section}>
-                    <Text style={styles.sectionLabel}>Варианты</Text>
+                    <Text style={styles.sectionLabel}>{t('teacher.drill.choices')}</Text>
                     <View style={styles.choicesCol}>
                       {current.choices.map((choice, ci) => (
                         <ChoiceOption
@@ -591,10 +817,14 @@ export function TeacherExerciseDrill({
               <GameGoldButton
                 onPress={handleContinue}
                 size="lg"
-                accessibilityLabel={index + 1 >= total ? 'К итогам' : 'Дальше'}
+                accessibilityLabel={
+                  index + 1 >= total ? t('teacher.drill.toSummary') : t('teacher.drill.next')
+                }
                 style={styles.primaryBtn}>
                 <View style={styles.primaryBtnRow}>
-                  <Text style={styles.primaryBtnText}>{index + 1 >= total ? 'К итогам' : 'Дальше'}</Text>
+                  <Text style={styles.primaryBtnText}>
+                    {index + 1 >= total ? t('teacher.drill.toSummary') : t('teacher.drill.next')}
+                  </Text>
                   <Ionicons name="arrow-forward" size={17} color={GAME_THEME.color.ink} />
                 </View>
               </GameGoldButton>
@@ -604,14 +834,18 @@ export function TeacherExerciseDrill({
                 disabled={!canCheck || checking}
                 size="lg"
                 accessibilityLabel={
-                  current.kind === 'voice_recording' ? 'Проверить запись' : 'Проверить'
+                  current.kind === 'voice_recording'
+                    ? t('teacher.drill.checkVoice')
+                    : t('teacher.drill.check')
                 }
                 style={styles.primaryBtn}>
                 {checking ? (
                   <ActivityIndicator color={GAME_THEME.color.ink} size="small" />
                 ) : (
                   <Text style={styles.primaryBtnText}>
-                    {current.kind === 'voice_recording' ? 'Проверить запись' : 'Проверить'}
+                    {current.kind === 'voice_recording'
+                      ? t('teacher.drill.checkVoice')
+                      : t('teacher.drill.check')}
                   </Text>
                 )}
               </GameGoldButton>
@@ -620,12 +854,16 @@ export function TeacherExerciseDrill({
         ) : null}
         </WordDragProvider>
         </Pressable>
+        </Animated.View>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
   root: {
     flex: 1,
     backgroundColor: GAME_THEME.color.cream,
@@ -693,6 +931,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 20,
+  },
+  scrollContentKeyboard: {
+    paddingBottom: 28,
   },
   stage: {
     flexGrow: 1,
@@ -1004,7 +1245,7 @@ const styles = StyleSheet.create({
   footer: {
     paddingTop: 12,
     paddingHorizontal: 16,
-    paddingBottom: 4,
+    paddingBottom: 8,
     backgroundColor: GAME_THEME.color.cream,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(26,26,26,0.1)',
@@ -1027,11 +1268,70 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   summaryBody: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    gap: 10,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 14,
     backgroundColor: GAME_THEME.color.cream,
+  },
+  summaryScroll: {
+    flex: 1,
+  },
+  summaryScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingBottom: 8,
+  },
+  mistakesCard: {
+    width: '100%',
+    borderRadius: DRILL.radiusControl,
+    borderWidth: GAME_THEME.border.thin,
+    borderColor: 'rgba(198, 40, 40, 0.28)',
+    backgroundColor: 'rgba(255, 235, 238, 0.55)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  mistakesEyebrow: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: 'rgba(198, 40, 40, 0.85)',
+  },
+  mistakeRow: {
+    gap: 2,
+  },
+  mistakePrompt: {
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '700',
+    color: GAME_THEME.color.ink,
+  },
+  mistakeFeedback: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.62)',
+  },
+  followUpLoading: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  followUpLoadingText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.55)',
+  },
+  followUpCardAccent: {
+    borderColor: 'rgba(255, 152, 0, 0.45)',
+    backgroundColor: 'rgba(255, 243, 224, 0.75)',
   },
   summaryEyebrow: {
     fontSize: 11,

@@ -1,10 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { Image, type ImageSource } from 'expo-image';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -27,9 +29,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GameBackButton } from '@/components/game/game-back-button';
 import { GameTeacherChatsButton } from '@/components/game/game-teacher-chats-button';
+import { GAME_THEME } from '@/constants/game-theme';
 import { TeacherChatsSheet } from '@/components/teacher/teacher-chats-sheet';
 import { TearzLessonTransit } from '@/components/teacher/tearz-flight-loading';
 import { getTerminalTheme, type TerminalThemeConfig } from '@/constants/terminal-theme';
+import { Fonts } from '@/constants/theme';
 import {
   getTerminalLocation,
   type TerminalLocationId,
@@ -38,16 +42,60 @@ import {
 import { useEngagement } from '@/contexts/engagement-context';
 import { useTranslation } from '@/contexts/locale-context';
 import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
+import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
+import {
+  ExclusionTextInput,
+  type ExclusionRect,
+  type ExclusionTextInputRef,
+} from 'tearz-exclusion-text';
 
 const SCENE_ASPECT = 1024 / 1536;
 const ZOOM_MS = 600;
 const ZOOM_EASING = Easing.bezier(0.22, 1, 0.36, 1);
+
+type FocusableInputRef = TextInput | ExclusionTextInputRef;
+
+/** Размер превью фото на Shanghai CRT (оставляем место под текст снизу). */
+function shanghaiPhotoSize(crtW: number, crtH: number) {
+  const width = Math.max(48, Math.min(Math.round(crtW * 0.2), Math.round(crtW * 0.24)));
+  const height = Math.max(
+    56,
+    Math.min(Math.round(crtH * 0.24), Math.round(crtH * 0.28), Math.round(crtH - 64)),
+  );
+  return { width, height };
+}
+
+/** Exclusion вплотную к фото: слева 3+ строки, потом на всю ширину под фото. */
+function shanghaiPhotoExclusionNorm(
+  crtW: number,
+  crtH: number,
+  inputFillH: number,
+): ExclusionRect {
+  const { width: photoW, height: photoH } = shanghaiPhotoSize(crtW, crtH);
+  const viewW = Math.max(1, crtW * 0.86);
+  const viewH = Math.max(1, inputFillH);
+
+  // Фото справа (~28–32% CRT) — текст почти до левого края превью
+  const gap = 6;
+  const x = Math.min(0.72, Math.max(0.58, 1 - (photoW + gap) / viewW));
+  // Высота exclusion ≥ фото, чтобы 3-я строка ещё упиралась в фото, а не уходила «вверх/под»
+  const height = Math.min(0.56, Math.max(0.42, (photoH + 22) / viewH));
+
+  return {
+    x,
+    y: 0,
+    width: 1 - x,
+    height,
+  };
+}
 
 function useCoverLayout(
   crt: TerminalNormRect,
   focus: TerminalNormRect,
   /** booth: зум так, чтобы CRT целиком влез в экран (cover по стеклу) */
   fillCrt = false,
+  /** Высота клавиатуры — вписываем стекло в зону над ней */
+  keyboardH = 0,
 ) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -89,9 +137,11 @@ function useCoverLayout(
     const focusH = drawH * focus.height;
 
     const padTop = insets.top + 36;
-    const padBottom = Math.max(insets.bottom, 10) + 8;
+    /** При открытой клавиатуре оставляем стекло над ней — «+» не перекрывается */
+    const kbPad = fillCrt && keyboardH > 48 ? Math.round(keyboardH * 0.92) : 0;
+    const padBottom = Math.max(insets.bottom, 10) + 8 + kbPad;
     const safeW = screenW - 16;
-    const safeH = screenH - padTop - padBottom;
+    const safeH = Math.max(screenH - padTop - padBottom, 120);
     /**
      * fillCrt: вписываем стекло в safe-area.
      * London (панель аппарата ~3–4×) — cover ~78%; крошечный LCD — сильнее запас.
@@ -116,8 +166,9 @@ function useCoverLayout(
       focusCy,
       zoomScale,
       toBox,
+      kbPad,
     };
-  }, [crt, fillCrt, focus, insets.bottom, insets.top, screenH, screenW]);
+  }, [crt, fillCrt, focus, insets.bottom, insets.top, keyboardH, screenH, screenW]);
 }
 
 function SunlightShimmer({
@@ -178,29 +229,6 @@ function LcdGlare() {
   return (
     <Animated.View style={[StyleSheet.absoluteFill, glareStyle]} pointerEvents="none">
       <View style={styles.lcdGlareBand} />
-    </Animated.View>
-  );
-}
-
-function BoothGlow() {
-  const drift = useSharedValue(0);
-
-  useEffect(() => {
-    drift.value = withRepeat(
-      withTiming(1, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true,
-    );
-  }, [drift]);
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(drift.value, [0, 0.5, 1], [0.22, 0.4, 0.25]),
-  }));
-
-  return (
-    <Animated.View style={[StyleSheet.absoluteFill, glowStyle]} pointerEvents="none">
-      <View style={styles.boothGlowCore} />
-      <View style={styles.boothGlowRing} />
     </Animated.View>
   );
 }
@@ -415,7 +443,7 @@ function CrtScanlines() {
  */
 export function ArcadeCabinetScreen() {
   const params = useLocalSearchParams<{ location?: string }>();
-  const location = getTerminalLocation((params.location as TerminalLocationId) || 'asia_arcade');
+  const location = getTerminalLocation((params.location as TerminalLocationId) || 'shanghai_metro_bund');
   const theme = getTerminalTheme(location.theme);
   const isLcd = theme.id === 'lcd';
   const isBooth = theme.id === 'booth';
@@ -449,10 +477,9 @@ export function ArcadeCabinetScreen() {
   const idleScale = idleCam.scale ?? 1;
 
   const { recordActivity } = useEngagement();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<FocusableInputRef>(null);
   /** true только при намеренном zoomOut — иначе возвращаем фокус после случайного blur */
   const dismissKeyboardRef = useRef(false);
-  const layout = useCoverLayout(crt, focus, fillCrt);
 
   const [query, setQuery] = useState('');
   const [zoomed, setZoomed] = useState(false);
@@ -460,7 +487,25 @@ export function ArcadeCabinetScreen() {
   const [gate, setGate] = useState<'idle' | 'transit'>('idle');
   const [chatsOpen, setChatsOpen] = useState(false);
   const [seed, setSeed] = useState('');
+  const [seedImageUri, setSeedImageUri] = useState<string | undefined>();
+  const [pendingPhoto, setPendingPhoto] = useState<{ uri: string; name?: string } | null>(null);
   const [focused, setFocused] = useState(false);
+  const [keyboardH, setKeyboardH] = useState(0);
+
+  const layout = useCoverLayout(crt, focus, fillCrt, zoomed ? keyboardH : 0);
+  /** Явная высота поля = CRT минус паддинги — иначе Expo native view схлопывается (марка «внизу», текст уезжает вверх) */
+  const shanghaiInputFillH =
+    isShanghai && pendingPhoto
+      ? Math.max(120, Math.round(layout.crtBox.height * 0.9))
+      : undefined;
+  const shanghaiExclusionNorm =
+    isShanghai && pendingPhoto && shanghaiInputFillH != null
+      ? shanghaiPhotoExclusionNorm(
+          layout.crtBox.width,
+          layout.crtBox.height,
+          shanghaiInputFillH,
+        )
+      : null;
 
   const zoom = useSharedValue(idleScale);
   const panX = useSharedValue(0);
@@ -470,10 +515,21 @@ export function ArcadeCabinetScreen() {
   const breathe = useSharedValue(0);
   const zoomedSv = useSharedValue(0);
 
-  const typing = query.trim().length > 0;
-  /** Shanghai / Seoul: только TAP → тап → строка ввода; остальным — подсказки пока пусто */
-  const tapOnlyUi = isShanghai || isBooth;
-  const showHints = tapOnlyUi ? !focused && !typing : !typing;
+  /** После тапа/зума — только строка ввода (+), без TAP TO START и меню предложений. */
+  const showHints = false;
+
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = Keyboard.addListener(showEvt, (e) => {
+      setKeyboardH(e.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvt, () => setKeyboardH(0));
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
+  }, []);
 
   useEffect(() => {
     sway.value = withRepeat(
@@ -493,32 +549,62 @@ export function ArcadeCabinetScreen() {
     );
   }, [breathe, drift, sway]);
 
-  const applyCamera = (inZoom: boolean) => {
+  const applyCamera = (inZoom: boolean, kbHeight = keyboardH) => {
     const scale = inZoom ? layout.zoomScale : idleScale;
     const idleX = layout.screenW * idlePanXNorm;
     const idleY = layout.screenH * idlePanYNorm;
     /**
      * Зум через transformOrigin на центре CRT (см. cameraStyle).
-     * pan в зуме почти 0 — только лёгкий подъём, чтобы LCD не уезжал под keyboard.
+     * fillCrt + keyboard: safe-area уже над клавиатурой (useCoverLayout kbPad).
+     * Лёгкий доп. подъём — зазор между низом стекла и клавишами.
      */
     const tx = inZoom ? 0 : idleX;
-    const ty = inZoom && fillCrt ? -Math.min(layout.screenH * 0.04, 28) : idleY;
+    let ty = inZoom && fillCrt ? -Math.min(layout.screenH * 0.04, 28) : idleY;
+    if (inZoom && fillCrt && kbHeight > 0) {
+      ty -= Math.min(18, 24);
+    } else if (inZoom && theme.id === 'crt' && kbHeight > 0) {
+      ty -= Math.min(kbHeight * 0.28, 110);
+    }
     zoomedSv.value = withTiming(inZoom ? 1 : 0, { duration: ZOOM_MS, easing: ZOOM_EASING });
     zoom.value = withTiming(scale, { duration: ZOOM_MS, easing: ZOOM_EASING });
     panX.value = withTiming(tx, { duration: ZOOM_MS, easing: ZOOM_EASING });
-    panY.value = withTiming(ty, { duration: ZOOM_MS, easing: ZOOM_EASING });
+    panY.value = withTiming(ty, { duration: inZoom && kbHeight > 0 ? 220 : ZOOM_MS, easing: ZOOM_EASING });
   };
 
   useEffect(() => {
     if (zoomed) {
-      applyCamera(true);
+      applyCamera(true, keyboardH);
       return;
     }
     panX.value = layout.screenW * idlePanXNorm;
     panY.value = layout.screenH * idlePanYNorm;
     zoom.value = idleScale;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync camera to layout / zoom flag
-  }, [idlePanXNorm, idlePanYNorm, idleScale, layout.focusCx, layout.focusCy, layout.screenH, layout.screenW, layout.zoomScale, zoomed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync camera to layout / zoom / keyboard
+  }, [
+    idlePanXNorm,
+    idlePanYNorm,
+    idleScale,
+    keyboardH,
+    layout.focusCx,
+    layout.focusCy,
+    layout.screenH,
+    layout.screenW,
+    layout.zoomScale,
+    zoomed,
+  ]);
+
+  useEffect(() => {
+    if (gate !== 'transit') return;
+    dismissKeyboardRef.current = true;
+    setFocused(false);
+    inputRef.current?.blur();
+    Keyboard.dismiss();
+    setKeyboardH(0);
+    const t = setTimeout(() => {
+      dismissKeyboardRef.current = false;
+    }, 400);
+    return () => clearTimeout(t);
+  }, [gate]);
 
   const openCrt = () => {
     if (zoomed) {
@@ -528,10 +614,7 @@ export function ArcadeCabinetScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setZoomed(true);
     applyCamera(true);
-    // Shanghai / Seoul: сначала TAP на LCD; клавиатура — вторым тапом
-    if (!isShanghai && !isBooth) {
-      setTimeout(() => inputRef.current?.focus(), ZOOM_MS + 40);
-    }
+    setTimeout(() => inputRef.current?.focus(), ZOOM_MS + 40);
   };
 
   const zoomOut = () => {
@@ -560,20 +643,55 @@ export function ArcadeCabinetScreen() {
 
   const submit = () => {
     const q = query.trim();
-    if (!q || gate !== 'idle') return;
+    if ((!q && !pendingPhoto) || gate !== 'idle') return;
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    recordActivity({ kind: 'message', messagePreview: q, lessonTopic: q.slice(0, 48) });
-    setSeed(q);
+    const preview = q || 'Фото';
+    recordActivity({ kind: 'message', messagePreview: preview, lessonTopic: preview.slice(0, 48) });
+    setSeed(q || 'Фото');
+    setSeedImageUri(pendingPhoto?.uri);
+    setPendingPhoto(null);
+
+    // keepKeyboard иначе мгновенно возвращает фокус после Keyboard.dismiss()
+    dismissKeyboardRef.current = true;
+    setFocused(false);
+    inputRef.current?.blur();
     Keyboard.dismiss();
-    // Сразу небо — без пана камеры в пустоту над сценой автомата
+    setKeyboardH(0);
+    setZoomed(false);
+    applyCamera(false);
+
     setGate('transit');
+    setTimeout(() => {
+      dismissKeyboardRef.current = false;
+    }, 400);
   };
 
   const closeChat = () => {
     setGate('idle');
     setSeed('');
+    setSeedImageUri(undefined);
     setQuery('');
+    setPendingPhoto(null);
     zoomOut();
+  };
+
+  const attachPhoto = async () => {
+    void Haptics.selectionAsync();
+    openCrt();
+    const picked = await pickCompanionPhoto();
+    if (!picked) return;
+    let uri = picked.uri;
+    try {
+      const out = await ImageManipulator.manipulateAsync(picked.uri, [{ resize: { width: 720 } }], {
+        compress: 0.85,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
+      uri = out.uri;
+    } catch {
+      // оставляем исходный uri
+    }
+    setPendingPhoto({ uri, name: picked.name });
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const cameraStyle = useAnimatedStyle(() => {
@@ -689,8 +807,6 @@ export function ArcadeCabinetScreen() {
           pointerEvents={floatTerminalUi && zoomed ? 'none' : 'auto'}>
           {theme.scanlines ? (
             <CrtScanlines />
-          ) : isBooth ? (
-            <BoothGlow />
           ) : isShanghai ? (
             <ShanghaiGlow />
           ) : isGlassUi ? (
@@ -698,14 +814,18 @@ export function ArcadeCabinetScreen() {
           ) : null}
           {/* Pressable вокруг TextInput на iOS срывает клавиатуру при ререндере — после зума только View */}
           {!(floatTerminalUi && zoomed) ? (
-            zoomed ? (
+            zoomed && gate === 'idle' ? (
               <View
                 style={[
                   styles.crtHit,
                   isLcd && styles.crtHitLcd,
+                  isLcd && styles.crtHitLcdFill,
                   isBooth && styles.crtHitBooth,
-                  isGlassUi && styles.crtHitMetro,
+                  isGlassUi && !isCallbox && styles.crtHitMetro,
+                  isCallbox && styles.crtHitCallbox,
                   isShanghai && styles.crtHitShanghai,
+                  isShanghai && !!pendingPhoto && styles.crtHitShanghaiWithPhoto,
+                  theme.id === 'crt' && styles.crtHitArcade,
                 ]}>
                 <TerminalFace
                   theme={theme}
@@ -717,10 +837,19 @@ export function ArcadeCabinetScreen() {
                   active
                   keepKeyboard
                   dismissKeyboardRef={dismissKeyboardRef}
+                  pendingPhotoUri={pendingPhoto?.uri}
+                  onAttach={attachPhoto}
+                  onClearAttach={() => setPendingPhoto(null)}
                   onOpen={openCrt}
                   onPick={pickSuggestion}
                   onSubmit={submit}
                   setFocused={setFocused}
+                  keyboardClearance={
+                    (isBooth || isCallbox || isMetro || isShanghai) && keyboardH > 0 ? 10 : 0
+                  }
+                  showCornerAttach={false}
+                  photoExclusionNorm={shanghaiExclusionNorm}
+                  inputFillHeight={shanghaiInputFillH}
                 />
               </View>
             ) : (
@@ -728,9 +857,12 @@ export function ArcadeCabinetScreen() {
                 style={[
                   styles.crtHit,
                   isLcd && styles.crtHitLcd,
+                  isLcd && styles.crtHitLcdFill,
                   isBooth && styles.crtHitBooth,
-                  isGlassUi && styles.crtHitMetro,
+                  isGlassUi && !isCallbox && styles.crtHitMetro,
+                  isCallbox && styles.crtHitCallbox,
                   isShanghai && styles.crtHitShanghai,
+                  theme.id === 'crt' && styles.crtHitArcade,
                 ]}
                 onPress={openCrt}>
                 <TerminalFace
@@ -743,13 +875,95 @@ export function ArcadeCabinetScreen() {
                   active={false}
                   keepKeyboard={false}
                   dismissKeyboardRef={dismissKeyboardRef}
+                  pendingPhotoUri={pendingPhoto?.uri}
+                  onAttach={attachPhoto}
+                  onClearAttach={() => setPendingPhoto(null)}
                   onOpen={openCrt}
                   onPick={pickSuggestion}
                   onSubmit={submit}
                   setFocused={setFocused}
+                  showCornerAttach={false}
+                  photoExclusionNorm={shanghaiExclusionNorm}
+                  inputFillHeight={shanghaiInputFillH}
                 />
               </Pressable>
             )
+          ) : null}
+          {zoomed && pendingPhoto ? (
+            <Pressable
+              onPress={() => setPendingPhoto(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Убрать фото"
+              style={[
+                styles.photoOnCrtGlass,
+                isShanghai && styles.photoOnCrtGlassShanghai,
+                (() => {
+                  const size = isShanghai
+                    ? shanghaiPhotoSize(layout.crtBox.width, layout.crtBox.height)
+                    : {
+                        width: Math.max(72, Math.round(layout.crtBox.width * 0.34)),
+                        height: Math.max(88, Math.round(layout.crtBox.height * 0.4)),
+                      };
+                  return size;
+                })(),
+              ]}>
+              <Image
+                source={{ uri: pendingPhoto.uri }}
+                style={styles.attachPreviewImg}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                recyclingKey={pendingPhoto.uri}
+              />
+              <View style={[styles.attachPreviewClear, isShanghai && styles.attachPreviewClearCompact]}>
+                <Text style={[styles.attachPreviewClearText, isShanghai && styles.attachPreviewClearTextCompact, { color: theme.hot }]}>
+                  ×
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
+          {zoomed && !floatTerminalUi ? (
+            <Pressable
+              onPress={attachPhoto}
+              hitSlop={isCallbox ? 8 : isShanghai ? 10 : 14}
+              accessibilityRole="button"
+              accessibilityLabel="Прикрепить фото"
+              style={({ pressed }) => [
+                styles.attachBtn,
+                styles.attachOnCrtGlass,
+                isCallbox && styles.attachOnCrtGlassSm,
+                isShanghai && styles.attachOnCrtGlassShanghai,
+                {
+                  borderColor: isLcd
+                    ? 'rgba(142, 197, 240, 0.55)'
+                    : isBooth
+                      ? 'rgba(255, 240, 248, 0.45)'
+                      : isCallbox
+                        ? 'rgba(232, 160, 154, 0.55)'
+                        : isMetro
+                          ? 'rgba(192, 38, 255, 0.55)'
+                          : isShanghai
+                            ? 'rgba(255, 92, 92, 0.42)'
+                            : 'rgba(138, 255, 168, 0.5)',
+                  opacity: pressed ? 0.72 : 1,
+                },
+              ]}>
+              <Text
+                style={[
+                  styles.attachPlus,
+                  isCallbox && styles.attachPlusCallbox,
+                  isShanghai && styles.attachPlusShanghai,
+                  {
+                    color:
+                      isMetro
+                        ? '#C026FF'
+                        : isLcd || isBooth || isCallbox || isShanghai || theme.id === 'crt'
+                          ? theme.hot
+                          : theme.fg,
+                  },
+                ]}>
+                +
+              </Text>
+            </Pressable>
           ) : null}
         </View>
 
@@ -779,7 +993,7 @@ export function ArcadeCabinetScreen() {
         </View>
       ) : null}
 
-      {floatTerminalUi && zoomed ? (
+      {floatTerminalUi && zoomed && gate === 'idle' ? (
         <View style={[styles.callboxOverlay, isBooth && styles.boothOverlay]} pointerEvents="box-none">
           <View style={[styles.callboxPanel, isBooth && styles.boothPanel]}>
             <TerminalFace
@@ -792,6 +1006,9 @@ export function ArcadeCabinetScreen() {
               active
               keepKeyboard
               dismissKeyboardRef={dismissKeyboardRef}
+              pendingPhotoUri={pendingPhoto?.uri}
+              onAttach={attachPhoto}
+              onClearAttach={() => setPendingPhoto(null)}
               onOpen={openCrt}
               onPick={pickSuggestion}
               onSubmit={submit}
@@ -803,18 +1020,15 @@ export function ArcadeCabinetScreen() {
 
       <TeacherChatsSheet visible={chatsOpen} onClose={() => setChatsOpen(false)} />
 
-      {gate === 'transit' && seed ? (
-        <Modal
-          visible
-          animationType="none"
-          presentationStyle="fullScreen"
-          onRequestClose={closeChat}>
+      {gate === 'transit' && (seed || seedImageUri) ? (
+        <View style={styles.transitLayer} pointerEvents="auto">
           <TearzLessonTransit
             question={seed}
-            language={inferTeacherLessonLanguage(seed, location.lessonLanguage ?? 'english')}
+            imageUri={seedImageUri}
+            language={inferTeacherLessonLanguage(seed || 'photo', location.lessonLanguage ?? 'english')}
             onClose={closeChat}
           />
-        </Modal>
+        </View>
       ) : null}
     </View>
   );
@@ -824,17 +1038,28 @@ type FaceProps = {
   theme: TerminalThemeConfig;
   query: string;
   setQuery: (v: string) => void;
-  inputRef: React.RefObject<TextInput | null>;
+  inputRef: React.RefObject<FocusableInputRef | null>;
   showHints: boolean;
   suggestions: string[];
   /** true после полного зума — тогда UI заполняет весь CRT */
   active: boolean;
   keepKeyboard: boolean;
   dismissKeyboardRef: React.RefObject<boolean>;
+  pendingPhotoUri?: string;
+  /** Нормализованный exclusion 0…1 для обтекания фото (Shanghai) */
+  photoExclusionNorm?: ExclusionRect | null;
+  /** Фиксированная высота поля ввода (px) — чтобы текст шёл под фото */
+  inputFillHeight?: number;
+  onAttach: () => void;
+  onClearAttach: () => void;
   onOpen: () => void;
   onPick: (s: string) => void;
   onSubmit: () => void;
   setFocused: (v: boolean) => void;
+  /** Отступ снизу внутри CRT, чтобы «+» не уезжал под клавиатуру */
+  keyboardClearance?: number;
+  /** false — «+» рисует родитель на crtGlass (надёжный низ стекла) */
+  showCornerAttach?: boolean;
 };
 
 function TerminalFace({
@@ -847,10 +1072,17 @@ function TerminalFace({
   active,
   keepKeyboard,
   dismissKeyboardRef,
+  pendingPhotoUri,
+  photoExclusionNorm = null,
+  inputFillHeight,
+  onAttach,
+  onClearAttach,
   onOpen,
   onPick,
   onSubmit,
   setFocused,
+  keyboardClearance = 0,
+  showCornerAttach = true,
 }: FaceProps) {
   const { t } = useTranslation();
   const blink = useSharedValue(1);
@@ -874,12 +1106,19 @@ function TerminalFace({
 
   const cursorStyle = useAnimatedStyle(() => ({ opacity: blink.value }));
   const hintStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  const callbox = theme.id === 'callbox';
 
   // До зума — только короткая приманка; полный UI после заполнения экрана
   if (!active) {
     return (
       <View style={styles.terminalIdle}>
-        <Animated.Text style={[styles.idleHint, { color: theme.hot }, hintStyle]}>
+        <Animated.Text
+          style={[
+            styles.idleHint,
+            callbox && styles.idleHintCallbox,
+            { color: theme.hot },
+            hintStyle,
+          ]}>
           {t('terminal.idleTap')}
         </Animated.Text>
       </View>
@@ -890,10 +1129,73 @@ function TerminalFace({
   const booth = theme.id === 'booth';
   const metro = theme.id === 'metro';
   const shanghai = theme.id === 'shanghai';
-  const callbox = theme.id === 'callbox';
+  const crt = theme.id === 'crt';
   const glass = metro || shanghai || callbox;
   const tapOnly = shanghai || booth;
+  /** Ввод сверху + «+» в правом нижнем углу экрана. */
+  const cornerAttach = shanghai || crt || lcd || booth || callbox || metro;
   const startHint = tapOnly ? t('terminal.idleTap') : t('terminal.startHint');
+  const caretColor = metro
+    ? '#C026FF'
+    : booth || shanghai || crt || lcd || callbox
+      ? theme.hot
+      : theme.fg;
+  const wrapDown = booth || shanghai || crt || lcd || callbox || metro;
+  const useExclusionInput = shanghai && !!pendingPhotoUri && Platform.OS === 'ios';
+  // Компактная «марка»: больше колонки под текст слева
+  const shanghaiPhotoWFrac = 0.2;
+  const shanghaiPhotoHFrac = 0.26;
+  const inputStyles = [
+    styles.input,
+    lcd && styles.inputLcd,
+    booth && styles.inputBooth,
+    glass && !callbox && styles.inputMetro,
+    shanghai && styles.inputShanghai,
+    wrapDown && styles.inputBoothWrap,
+    shanghai && styles.inputShanghai,
+    crt && styles.inputCrtTop,
+    lcd && styles.inputLcdTop,
+    callbox && styles.inputCallbox,
+    callbox && styles.inputCallboxPad,
+    metro && styles.inputMetroWrap,
+    shanghai && styles.inputShanghaiType,
+    !useExclusionInput && shanghai && styles.inputShanghaiPad,
+    useExclusionInput && styles.inputShanghaiExclusion,
+    !!pendingPhotoUri && !useExclusionInput && styles.inputWithPhoto,
+    shanghai && !!pendingPhotoUri && !useExclusionInput && styles.inputShanghaiWithPhoto,
+    { color: shanghai ? theme.fg : booth || crt || lcd || callbox || metro ? theme.hot : theme.fg },
+    styles.inputFillDock,
+    wrapDown && styles.inputFillWrapDown,
+    // «+» на стекле (corner) — текст на всю ширину CRT; запас справа только у inline «+»
+    cornerAttach && styles.inputFillWrapDownCorner,
+    useExclusionInput && styles.inputFillWrapDownExclusion,
+  ];
+  const sharedInputProps = {
+    value: query,
+    onChangeText: setQuery,
+    placeholder: '',
+    placeholderTextColor: theme.dim,
+    maxLength: wrapDown ? 400 : 100,
+    multiline: wrapDown,
+    textAlignVertical: wrapDown ? ('top' as const) : ('center' as const),
+    returnKeyType: 'go' as const,
+    blurOnSubmit: true,
+    underlineColorAndroid: 'transparent' as const,
+    onFocus: () => {
+      setFocused(true);
+      onOpen();
+    },
+    onBlur: () => {
+      setFocused(false);
+      if (keepKeyboard && !dismissKeyboardRef.current) {
+        requestAnimationFrame(() => inputRef.current?.focus());
+      }
+    },
+    onSubmitEditing: onSubmit,
+    selectionColor: metro ? 'rgba(192, 38, 255, 0.35)' : theme.selection,
+    cursorColor: caretColor,
+    caretHidden: false,
+  };
 
   return (
     <View
@@ -901,22 +1203,28 @@ function TerminalFace({
         styles.terminal,
         styles.terminalMenu,
         lcd && styles.terminalMenuLcd,
+        lcd && styles.terminalMenuLcdFill,
         booth && styles.terminalMenuBooth,
         glass && styles.terminalMenuMetro,
+        metro && styles.terminalMenuMetroFill,
         shanghai && styles.terminalMenuShanghai,
+        crt && styles.terminalMenuCrt,
         booth && styles.terminalMenuTapOnly,
+        styles.terminalActiveStack,
+        booth && styles.terminalActiveStackTop,
+        cornerAttach && styles.terminalActiveStackTop,
       ]}>
-      {/* Меню — только opacity; поле ввода всегда в одном и том же слое */}
       <View
         style={[
           styles.menuLayer,
+          styles.menuLayerFlex,
           booth && styles.menuLayerBooth,
           glass && styles.menuLayerMetro,
           tapOnly && styles.menuLayerTapOnly,
           !showHints && styles.menuLayerHidden,
         ]}
         pointerEvents={showHints ? 'box-none' : 'none'}>
-        {tapOnly ? (
+        {tapOnly && showHints ? (
           <Pressable
             onPress={onOpen}
             style={styles.tapOnlyHit}
@@ -933,7 +1241,7 @@ function TerminalFace({
               {startHint}
             </Animated.Text>
           </Pressable>
-        ) : (
+        ) : !tapOnly ? (
           <>
             {glass ? <View style={styles.metroHairline} /> : null}
             <Animated.Text
@@ -973,9 +1281,10 @@ function TerminalFace({
                       styles.menuIndex,
                       lcd && styles.menuIndexLcd,
                       booth && styles.menuIndexBooth,
-                      glass && styles.menuIndexMetro,
-                      { color: glass ? theme.dim : theme.hot },
-                    ]}>
+                    glass && styles.menuIndexMetro,
+                    shanghai && styles.menuIndexShanghai,
+                    { color: glass ? theme.dim : theme.hot },
+                  ]}>
                     {booth ? '✦' : glass ? String(i + 1).padStart(2, '0') : i + 1}
                   </Text>
                   <Text
@@ -984,6 +1293,7 @@ function TerminalFace({
                       lcd && styles.menuTextLcd,
                       booth && styles.menuTextBooth,
                       glass && styles.menuTextMetro,
+                      shanghai && styles.menuTextShanghai,
                       { color: theme.fg },
                     ]}
                     numberOfLines={1}
@@ -995,31 +1305,39 @@ function TerminalFace({
               ))}
             </View>
           </>
-        )}
+        ) : null}
       </View>
 
       <View
         style={[
           styles.inputLayer,
+          styles.inputLayerDock,
           tapOnly && styles.inputLayerTapOnly,
-          showHints && styles.inputLayerHidden,
+          cornerAttach && styles.inputLayerShanghaiDock,
+          wrapDown && styles.inputLayerBoothFill,
+          useExclusionInput && styles.inputLayerExclusionFill,
+          keyboardClearance > 0 && { paddingBottom: keyboardClearance },
         ]}
-        pointerEvents={showHints ? 'none' : 'auto'}>
+        pointerEvents="auto">
         <View
           style={[
             styles.cmdBlock,
-            styles.cmdBlockGrow,
+            styles.cmdBlockDock,
             booth && styles.cmdBlockBooth,
-            glass && styles.cmdBlockMetro,
-            tapOnly && styles.cmdBlockTapOnly,
-            shanghai && styles.cmdBlockShanghaiType,
+            wrapDown && styles.cmdBlockBoothFill,
+            wrapDown && styles.cmdBlockBoothWrap,
+            useExclusionInput && styles.cmdBlockExclusionFill,
+            glass && !shanghai && !metro && !callbox && styles.cmdBlockMetro,
+            cornerAttach && !wrapDown && styles.cmdBlockShanghaiTop,
+            metro && !wrapDown && styles.cmdBlockMetroTop,
           ]}>
-          {!tapOnly && theme.prompt ? (
+          {!tapOnly && !crt && !callbox && !metro && theme.prompt ? (
             <Text
               style={[
                 styles.prompt,
                 booth && styles.promptBooth,
                 glass && styles.promptMetro,
+                lcd && styles.promptLcd,
                 { color: glass ? theme.dim : theme.hot },
               ]}>
               {theme.prompt}
@@ -1028,68 +1346,92 @@ function TerminalFace({
           <View
             style={[
               styles.inputCol,
-              styles.inputColGrow,
-              glass && styles.inputColMetro,
+              glass && !shanghai && !metro && !callbox && styles.inputColMetro,
               shanghai && styles.inputColShanghai,
-              booth && styles.inputColBoothTap,
-              shanghai && styles.inputColShanghaiType,
+              callbox && styles.inputColCallbox,
+              metro && !wrapDown && styles.inputColMetroTop,
+              wrapDown && styles.inputColBoothFill,
+              styles.inputColDock,
+              wrapDown && styles.inputColWrapDown,
+              !!pendingPhotoUri && !shanghai && styles.inputColWithPhoto,
+              useExclusionInput && styles.inputColExclusionFill,
             ]}>
-            <TextInput
-              ref={inputRef}
-              value={query}
-              onChangeText={setQuery}
-              placeholder=""
-              placeholderTextColor={theme.dim}
-              style={[
-                styles.input,
-                lcd && styles.inputLcd,
-                booth && styles.inputBooth,
-                glass && styles.inputMetro,
-                shanghai && styles.inputShanghai,
-                booth && styles.inputBoothTap,
-                (callbox || booth) && !tapOnly && styles.inputCallbox,
-                shanghai && styles.inputShanghaiType,
-                { color: tapOnly ? theme.hot : theme.fg },
-                styles.inputFill,
-                shanghai && styles.inputFillShanghai,
-              ]}
-              maxLength={100}
-              multiline={shanghai || !tapOnly}
-              textAlignVertical={shanghai ? 'top' : 'center'}
-              returnKeyType="go"
-              blurOnSubmit
-              underlineColorAndroid="transparent"
-              onFocus={() => {
-                setFocused(true);
-                onOpen();
-              }}
-              onBlur={() => {
-                setFocused(false);
-                if (keepKeyboard && !dismissKeyboardRef.current) {
-                  requestAnimationFrame(() => inputRef.current?.focus());
-                }
-              }}
-              onSubmitEditing={onSubmit}
-              selectionColor={theme.selection}
-              cursorColor={tapOnly ? theme.hot : theme.fg}
-              caretHidden={!shanghai}
-            />
-            {!query ? (
-              <Animated.Text
-                style={[
-                  styles.underscore,
-                  booth && styles.underscoreBooth,
-                  glass && styles.underscoreMetro,
-                  tapOnly && styles.underscoreTapOnly,
-                  shanghai && styles.underscoreShanghaiType,
-                  { color: tapOnly ? theme.hot : glass ? theme.dim : theme.fg },
-                  cursorStyle,
-                ]}>
-                {booth && !tapOnly ? '▌' : '_'}
-              </Animated.Text>
-            ) : null}
+            {useExclusionInput ? (
+              <ExclusionTextInput
+                ref={inputRef}
+                {...sharedInputProps}
+                style={[inputStyles, styles.inputExclusionFill]}
+                photoUri={pendingPhotoUri}
+                photoWidthFrac={shanghaiPhotoWFrac}
+                photoHeightFrac={shanghaiPhotoHFrac}
+                onClearPhoto={onClearAttach}
+              />
+            ) : (
+              <TextInput ref={inputRef} {...sharedInputProps} style={inputStyles} />
+            )}
           </View>
+          {!cornerAttach ? (
+            <Pressable
+              onPress={onAttach}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Прикрепить фото"
+              style={({ pressed }) => [
+                styles.attachBtn,
+                glass && styles.attachBtnGlass,
+                { borderColor: theme.dim, opacity: pressed ? 0.55 : 1 },
+              ]}>
+              <Text style={[styles.attachPlus, { color: theme.fg }]}>+</Text>
+            </Pressable>
+          ) : null}
         </View>
+        {cornerAttach && showCornerAttach ? (
+          <Pressable
+            onPress={onAttach}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Прикрепить фото"
+            style={({ pressed }) => [
+              styles.attachBtn,
+              styles.attachBtnShanghaiCorner,
+              shanghai && styles.attachBtnShanghaiHot,
+              crt && styles.attachBtnCrtCorner,
+              lcd && styles.attachBtnLcdCorner,
+              booth && styles.attachBtnBoothCorner,
+              callbox && styles.attachBtnCallboxCorner,
+              metro && styles.attachBtnMetroCorner,
+              {
+                borderColor: crt
+                  ? 'rgba(138, 255, 168, 0.45)'
+                  : lcd
+                    ? 'rgba(142, 197, 240, 0.5)'
+                    : booth
+                      ? 'rgba(255, 240, 248, 0.35)'
+                      : callbox
+                        ? 'rgba(232, 160, 154, 0.55)'
+                        : metro
+                          ? 'rgba(192, 38, 255, 0.55)'
+                          : shanghai
+                            ? 'rgba(255, 70, 70, 0.55)'
+                            : 'rgba(255,255,255,0.35)',
+                opacity: pressed ? 0.55 : 1,
+              },
+            ]}>
+            <Text
+              style={[
+                styles.attachPlus,
+                callbox && styles.attachPlusCallbox,
+                {
+                  color:
+                    crt || lcd || booth || callbox || shanghai || metro
+                      ? theme.hot
+                      : theme.fg,
+                },
+              ]}>
+              +
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -1107,6 +1449,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 100,
     elevation: 100,
+  },
+  transitLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 200,
+    elevation: 200,
+    backgroundColor: GAME_THEME.color.cream,
   },
   scene: {
     position: 'absolute',
@@ -1229,22 +1577,119 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 0,
   },
+  /** «+» на рамке стекла — всегда правый нижний угол LCD, не зависит от flex ввода */
+  attachOnCrtGlass: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    zIndex: 30,
+    elevation: 30,
+  },
+  attachOnCrtGlassSm: {
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    right: 2,
+    bottom: 5,
+  },
+  attachOnCrtGlassShanghai: {
+    width: 19,
+    height: 19,
+    borderRadius: 10,
+    right: 18,
+    bottom: 14,
+    borderWidth: 1,
+    backgroundColor: 'rgba(8, 4, 6, 0.52)',
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 4,
+  },
+  attachPlusShanghai: {
+    fontFamily: Fonts.rounded,
+    fontSize: 15,
+    lineHeight: 16,
+    fontWeight: '300',
+    marginTop: -1,
+    letterSpacing: -0.5,
+  },
+  photoOnCrtGlass: {
+    position: 'absolute',
+    top: 8,
+    right: 6,
+    borderRadius: 6,
+    overflow: 'visible',
+    zIndex: 40,
+    elevation: 40,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  photoOnCrtGlassShanghai: {
+    top: 14,
+    right: 11,
+    borderRadius: 5,
+    borderWidth: 0,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  attachPreviewClearCompact: {
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    paddingTop: 2,
+    paddingRight: 3,
+    backgroundColor: 'rgba(0,0,0,0.32)',
+  },
+  attachPreviewClearTextCompact: {
+    fontSize: 9,
+    lineHeight: 10,
+    fontWeight: '400',
+  },
   crtHit: {
     flex: 1,
-    paddingHorizontal: '7%',
-    paddingTop: '8%',
+    paddingHorizontal: '8%',
+    paddingTop: '10%',
     paddingBottom: '8%',
     zIndex: 2,
   },
   crtHitLcd: {
-    paddingHorizontal: '6%',
-    paddingTop: '6%',
+    paddingHorizontal: '7%',
+    paddingTop: '8%',
     paddingBottom: '7%',
   },
-  crtHitBooth: {
+  crtHitLcdFill: {
     paddingHorizontal: '6%',
     paddingTop: '7%',
-    paddingBottom: '7%',
+    paddingBottom: '5%',
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  terminalMenuLcdFill: {
+    flex: 1,
+    width: '100%',
+    gap: 0,
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+  },
+  attachBtnLcdCorner: {
+    right: 2,
+    bottom: 2,
+  },
+  attachBtnBoothCorner: {
+    right: 4,
+    bottom: 4,
+  },
+  crtHitBooth: {
+    paddingHorizontal: '5%',
+    paddingTop: '5%',
+    paddingBottom: '6%',
     overflow: 'hidden',
     width: '100%',
     maxWidth: '100%',
@@ -1252,23 +1697,104 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   crtHitMetro: {
-    paddingHorizontal: '8%',
-    paddingTop: '9%',
-    paddingBottom: '9%',
-    overflow: 'hidden',
-    width: '100%',
-    maxWidth: '100%',
-    alignItems: 'stretch',
-  },
-  crtHitShanghai: {
-    paddingHorizontal: '4%',
-    paddingTop: '4%',
-    paddingBottom: '4%',
+    paddingHorizontal: '6%',
+    paddingTop: '7%',
+    paddingBottom: '5%',
     overflow: 'hidden',
     width: '100%',
     maxWidth: '100%',
     alignItems: 'stretch',
     justifyContent: 'flex-start',
+  },
+  terminalMenuMetroFill: {
+    flex: 1,
+    width: '100%',
+    gap: 0,
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+  },
+  attachBtnMetroCorner: {
+    right: 4,
+    bottom: 4,
+  },
+  inputMetroWrap: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+    textAlign: 'left',
+    width: '100%',
+    paddingLeft: 4,
+  },
+  crtHitCallbox: {
+    paddingHorizontal: '5%',
+    paddingTop: '8%',
+    paddingBottom: '8%',
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  attachBtnCallboxCorner: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    right: 3,
+    bottom: 3,
+  },
+  attachPlusCallbox: {
+    fontSize: 11,
+    lineHeight: 13,
+    fontWeight: '300',
+    marginTop: -1,
+  },
+  inputColCallbox: {
+    borderBottomWidth: 0,
+    paddingBottom: 0,
+    width: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  inputCallboxPad: {
+    paddingLeft: 6,
+  },
+  crtHitShanghai: {
+    paddingHorizontal: '7%',
+    paddingTop: '9%',
+    paddingBottom: '7%',
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  /** С фото — почти весь чёрный CRT, марка сверху справа */
+  crtHitShanghaiWithPhoto: {
+    paddingHorizontal: '3%',
+    paddingTop: '3%',
+    paddingBottom: '4%',
+  },
+  crtHitArcade: {
+    paddingHorizontal: '6%',
+    paddingTop: '8%',
+    paddingBottom: '5%',
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  terminalMenuCrt: {
+    flex: 1,
+    width: '100%',
+    gap: 0,
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+  },
+  attachBtnCrtCorner: {
+    right: 2,
+    bottom: 2,
   },
   /** London: UI не раздуваем вместе с LCD — карточка поверх среднего плана будки */
   callboxOverlay: {
@@ -1325,6 +1851,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 2,
   },
+  idleHintCallbox: {
+    fontSize: 7,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
   terminal: {
     flex: 1,
     justifyContent: 'center',
@@ -1362,11 +1893,308 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'stretch',
   },
-  tapHintShanghai: {
-    fontSize: 13,
+  terminalActiveStack: {
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  terminalActiveStackTop: {
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+  },
+  inputLayerBoothTop: {
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+    width: '100%',
+    marginTop: 0,
+  },
+  inputLayerBoothFill: {
+    flex: 1,
+    width: '100%',
+    position: 'relative',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+  },
+  cmdBlockBoothTop: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: '100%',
+  },
+  cmdBlockBoothFill: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  cmdBlockBoothWrap: {
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+  },
+  inputColBoothFill: {
+    borderBottomWidth: 0,
+    paddingBottom: 0,
+    width: '100%',
+    flex: 1,
+    minHeight: 0,
+  },
+  inputColWrapDown: {
+    flex: 1,
+    minHeight: 0,
+    alignSelf: 'stretch',
+  },
+  inputBoothWrap: {
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '600',
-    letterSpacing: 3.2,
-    lineHeight: 18,
+    letterSpacing: 0.4,
+    textAlign: 'left',
+    width: '100%',
+  },
+  inputFillWrapDown: {
+    flex: 1,
+    width: '100%',
+    minHeight: 48,
+    paddingRight: 36,
+    textAlignVertical: 'top',
+  },
+  /** «+» absolute на CRT — не резервируем широкую колонку справа */
+  inputFillWrapDownCorner: {
+    paddingRight: 10,
+  },
+  inputFillWrapDownExclusion: {
+    paddingRight: 8,
+  },
+  attachPreviewBooth: {
+    alignSelf: 'flex-start',
+  },
+  menuLayerFlex: {
+    position: 'relative',
+    left: undefined,
+    top: undefined,
+    right: undefined,
+    bottom: undefined,
+    flex: 1,
+    width: '100%',
+  },
+  inputLayerDock: {
+    position: 'relative',
+    left: undefined,
+    top: undefined,
+    right: undefined,
+    bottom: undefined,
+    flexGrow: 0,
+    flexShrink: 0,
+    width: '100%',
+    zIndex: 3,
+    gap: 6,
+  },
+  inputLayerShanghaiDock: {
+    flex: 1,
+    width: '100%',
+    position: 'relative',
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
+    paddingTop: 2,
+  },
+  inputLayerExclusionFill: {
+    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0,
+    width: '100%',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cmdBlockShanghaiTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  cmdBlockMetroTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    flexGrow: 0,
+    flexShrink: 0,
+    paddingTop: 2,
+  },
+  inputColMetroTop: {
+    flex: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(210, 218, 235, 0.28)',
+    paddingBottom: 3,
+    minHeight: 22,
+    justifyContent: 'center',
+  },
+  attachBtnShanghaiCorner: {
+    position: 'absolute',
+    right: 2,
+    bottom: 2,
+    zIndex: 4,
+  },
+  attachBtnShanghaiHot: {
+    right: 4,
+    bottom: 6,
+  },
+  inputShanghaiPad: {
+    paddingLeft: 10,
+    paddingTop: 4,
+  },
+  inputMeasureHost: {
+    flex: 1,
+    width: '100%',
+    minHeight: 0,
+    alignSelf: 'stretch',
+  },
+  attachPreviewShanghai: {
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  attachPreviewShanghaiCorner: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: '46%',
+    aspectRatio: 0.82,
+    maxHeight: '62%',
+    alignSelf: 'auto',
+    zIndex: 5,
+    borderRadius: 8,
+    borderColor: 'rgba(255, 70, 70, 0.35)',
+  },
+  inputColWithPhoto: {
+    flex: 0,
+    width: '48%',
+    maxWidth: '48%',
+    alignSelf: 'flex-start',
+    paddingRight: 0,
+  },
+  inputColShanghaiWithPhoto: {
+    width: '54%',
+    maxWidth: '54%',
+    paddingRight: 2,
+  },
+  inputWithPhoto: {
+    paddingRight: 8,
+    width: '100%',
+  },
+  inputShanghaiWithPhoto: {
+    paddingLeft: 8,
+    paddingRight: 4,
+    fontSize: 17,
+    lineHeight: 22,
+  },
+  /** Padding для native UITextView задаётся insets внутри модуля — тут только типографика */
+  inputShanghaiExclusion: {
+    paddingLeft: 0,
+    paddingTop: 0,
+    paddingRight: 0,
+    fontFamily: Fonts.rounded,
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: '500',
+    letterSpacing: -0.35,
+  },
+  inputColExclusionFill: {
+    flex: 1,
+    minHeight: 0,
+    alignSelf: 'stretch',
+    justifyContent: 'flex-start',
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  inputExclusionFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    minHeight: 0,
+  },
+  cmdBlockExclusionFill: {
+    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 0,
+    width: '100%',
+    alignItems: 'stretch',
+    alignSelf: 'stretch',
+    justifyContent: 'flex-start',
+  },
+  cmdBlockDock: {
+    alignItems: 'center',
+    flexShrink: 0,
+    width: '100%',
+  },
+  inputColDock: {
+    flex: 1,
+    minHeight: 22,
+    justifyContent: 'flex-start',
+  },
+  inputFillDock: {
+    minHeight: 22,
+    paddingVertical: 2,
+  },
+  attachBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    marginLeft: 2,
+  },
+  attachBtnGlass: {
+    borderColor: 'rgba(210, 218, 235, 0.35)',
+  },
+  attachBtnBooth: {
+    borderColor: 'rgba(255, 190, 220, 0.4)',
+  },
+  attachPlus: {
+    fontSize: 18,
+    fontWeight: '200',
+    lineHeight: 20,
+    marginTop: -1,
+  },
+  attachPreview: {
+    alignSelf: 'flex-start',
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  attachPreviewImg: {
+    width: '100%',
+    height: '100%',
+  },
+  attachPreviewClear: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    padding: 1,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+  },
+  attachPreviewClearText: {
+    fontSize: 11,
+    fontWeight: '300',
+    lineHeight: 12,
+  },
+  tapHintShanghai: {
+    fontFamily: Fonts.rounded,
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 4,
+    lineHeight: 20,
     marginBottom: 0,
     textTransform: 'uppercase',
     textAlign: 'center',
@@ -1427,7 +2255,6 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   menuLayer: {
-    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     gap: 10,
     zIndex: 2,
@@ -1445,9 +2272,11 @@ const styles = StyleSheet.create({
   },
   menuLayerHidden: {
     opacity: 0,
+    height: 0,
+    flex: 0,
+    overflow: 'hidden',
   },
   inputLayer: {
-    ...StyleSheet.absoluteFillObject,
     zIndex: 1,
   },
   inputLayerHidden: {
@@ -1529,6 +2358,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
+  promptLcd: {
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginTop: 0,
+  },
   promptMetro: {
     fontSize: 12,
     fontWeight: '300',
@@ -1593,10 +2428,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   inputShanghai: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '600',
-    letterSpacing: 0.4,
+    fontFamily: Fonts.rounded,
+    fontSize: 17,
+    lineHeight: 23,
+    fontWeight: '500',
+    letterSpacing: -0.35,
     textAlign: 'left',
     minWidth: '100%',
   },
@@ -1620,6 +2456,18 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '500',
   },
+  inputCrtTop: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  inputLcdTop: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
   inputColMetro: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(210, 218, 235, 0.28)',
@@ -1640,7 +2488,7 @@ const styles = StyleSheet.create({
   },
   inputColBoothTap: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 110, 199, 0.55)',
+    borderBottomColor: 'rgba(255, 240, 248, 0.28)',
     paddingBottom: 4,
     width: '100%',
     alignItems: 'stretch',
@@ -1664,8 +2512,9 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   underscoreBooth: {
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
   },
   underscoreMetro: {
     fontSize: 12,
@@ -1815,6 +2664,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     fontVariant: ['tabular-nums'],
   },
+  menuIndexShanghai: {
+    fontFamily: Fonts.rounded,
+    fontSize: 11,
+    fontWeight: '600',
+    minWidth: 20,
+    textAlign: 'left',
+    lineHeight: 16,
+    letterSpacing: -0.2,
+    fontVariant: ['tabular-nums'],
+  },
   menuText: {
     flex: 1,
     fontSize: 11,
@@ -1843,6 +2702,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 14,
     letterSpacing: 0.15,
+  },
+  menuTextShanghai: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    fontFamily: Fonts.rounded,
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 20,
+    letterSpacing: -0.3,
   },
   panelHit: {
     position: 'absolute',

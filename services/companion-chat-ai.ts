@@ -14,9 +14,13 @@ import type {
   TeacherExerciseSetRequestBody,
   TeacherExerciseSetSuccessBody,
   TeacherExerciseSuccessBody,
+  TeacherDrillFollowUp,
+  TeacherDrillFollowUpRequestBody,
+  TeacherDrillFollowUpSuccessBody,
   TeacherNextTopicRecommendation,
 } from '@/types/companion-chat-api';
 import { normalizeTeacherExerciseSet } from '@/utils/teacher-exercise-normalize';
+import { buildLocalDrillFollowUp } from '@/utils/teacher-drill-followup';
 import { defaultOpeningForLang, defaultStatusBio } from '@/utils/companion-ai-fallback-profile';
 
 import { companionApiRequestHeaders, getCompanionChatApiBaseUrl, SERVER_UNREACHABLE_HINT } from '@/utils/companion-api-config';
@@ -115,6 +119,34 @@ function normalizeNextTopic(raw: unknown): TeacherNextTopicRecommendation | unde
   };
 }
 
+function normalizeDrillFollowUp(raw: unknown): TeacherDrillFollowUp | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const follow = (raw as { followUp?: unknown }).followUp ?? raw;
+  if (!follow || typeof follow !== 'object') return undefined;
+  const actionRaw = (follow as { action?: unknown }).action;
+  const action =
+    actionRaw === 'repeat_same' || actionRaw === 'review_gaps' || actionRaw === 'advance'
+      ? actionRaw
+      : 'review_gaps';
+  const title = asTrimmedString((follow as { title?: unknown }).title, 160);
+  if (!title) return undefined;
+  const focusAreasRaw = (follow as { focusAreas?: unknown }).focusAreas;
+  const focusAreas = Array.isArray(focusAreasRaw)
+    ? focusAreasRaw
+        .map((line) => asTrimmedString(line, 120))
+        .filter(Boolean)
+        .slice(0, 4)
+    : undefined;
+  return {
+    action,
+    title,
+    reason: asTrimmedString((follow as { reason?: unknown }).reason, 500),
+    connection: asTrimmedString((follow as { connection?: unknown }).connection, 400) || undefined,
+    repeatPrompt: asTrimmedString((follow as { repeatPrompt?: unknown }).repeatPrompt, 600) || undefined,
+    ...(focusAreas && focusAreas.length > 0 ? { focusAreas } : {}),
+  };
+}
+
 /** POST /api/teacher-exercise-set — 5 заданий по объяснению преподавателя */
 export async function postTeacherExerciseSet(
   body: TeacherExerciseSetRequestBody,
@@ -176,6 +208,40 @@ export async function postTeacherExerciseCheck(
     title: asTrimmedString(json.title, 120) || (json.correct ? 'Вы молодец' : 'Почти получилось'),
     feedback: asTrimmedString(json.feedback, 1200) || 'Ответ проверен.',
     idealAnswer: asTrimmedString(json.idealAnswer, 800) || undefined,
+  };
+}
+
+/** POST /api/teacher-drill-followup — что делать после тренировки с учётом ошибок */
+export async function postTeacherDrillFollowUp(
+  body: TeacherDrillFollowUpRequestBody,
+): Promise<TeacherDrillFollowUpSuccessBody> {
+  try {
+    const res = await postCompanionChatJson('/api/teacher-drill-followup', body);
+    const raw = await res.text();
+    let json: unknown;
+    try {
+      json = raw ? JSON.parse(raw) : {};
+    } catch {
+      throw new Error(raw.slice(0, 200) || `HTTP ${res.status}`);
+    }
+    if (!res.ok) {
+      const err = json as Partial<CompanionChatErrorBody>;
+      throw new Error(err.error || `Ошибка сервера (${res.status})`);
+    }
+    const followUp = normalizeDrillFollowUp(json);
+    if (followUp) return { followUp };
+  } catch {
+    // fall through to local heuristic
+  }
+
+  const sessionMistakes = body.sessionMistakes ?? [];
+  return {
+    followUp: buildLocalDrillFollowUp(
+      body.correct,
+      body.total,
+      sessionMistakes,
+      body.nextTopic,
+    ),
   };
 }
 

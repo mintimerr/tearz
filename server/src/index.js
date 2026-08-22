@@ -44,6 +44,10 @@ const TEACHER_EXERCISE_SET_PROMPT = fs
   .readFileSync(path.join(__dirname, '../prompts/teacher-exercise-set.txt'), 'utf8')
   .trim();
 
+const TEACHER_DRILL_FOLLOWUP_PROMPT = fs
+  .readFileSync(path.join(__dirname, '../prompts/teacher-drill-followup.txt'), 'utf8')
+  .trim();
+
 const ENGAGEMENT_NOTIFICATION_PROMPT = fs
   .readFileSync(path.join(__dirname, '../prompts/engagement-notification.txt'), 'utf8')
   .trim();
@@ -996,6 +1000,112 @@ function normalizeNextTopicFromModel(raw) {
   return { title, reason, connection };
 }
 
+function normalizeMistakeList(raw, max = 12) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const checkText =
+      typeof item.checkText === 'string' && item.checkText.trim()
+        ? item.checkText.trim().slice(0, 220)
+        : '';
+    const learnerAnswer =
+      typeof item.learnerAnswer === 'string' && item.learnerAnswer.trim()
+        ? item.learnerAnswer.trim().slice(0, 400)
+        : '';
+    if (!checkText || !learnerAnswer) continue;
+    out.push({
+      kind:
+        typeof item.kind === 'string' && item.kind.trim() ? item.kind.trim().slice(0, 48) : 'unknown',
+      checkText,
+      learnerAnswer,
+      idealAnswer:
+        typeof item.idealAnswer === 'string' && item.idealAnswer.trim()
+          ? item.idealAnswer.trim().slice(0, 400)
+          : undefined,
+      feedback:
+        typeof item.feedback === 'string' && item.feedback.trim()
+          ? item.feedback.trim().slice(0, 400)
+          : undefined,
+      lessonTopic:
+        typeof item.lessonTopic === 'string' && item.lessonTopic.trim()
+          ? item.lessonTopic.trim().slice(0, 160)
+          : undefined,
+    });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function formatMistakesBlock(label, mistakes) {
+  if (!mistakes.length) return '';
+  return (
+    `\n\n${label}:\n` +
+    mistakes
+      .map((m, i) => {
+        const lines = [
+          `${i + 1}. [${m.kind}] ${m.checkText}`,
+          `   Ответ: ${m.learnerAnswer}`,
+        ];
+        if (m.idealAnswer) lines.push(`   Эталон: ${m.idealAnswer}`);
+        if (m.feedback) lines.push(`   Фидбек: ${m.feedback}`);
+        if (m.lessonTopic) lines.push(`   Тема: ${m.lessonTopic}`);
+        return lines.join('\n');
+      })
+      .join('\n')
+  );
+}
+
+function normalizeDrillFollowUpFromModel(raw, fallbackNextTopic) {
+  if (!raw || typeof raw !== 'object') return null;
+  const actionRaw = raw.action;
+  const action =
+    actionRaw === 'repeat_same' || actionRaw === 'review_gaps' || actionRaw === 'advance'
+      ? actionRaw
+      : 'review_gaps';
+  const title =
+    typeof raw.title === 'string' && raw.title.trim() ? raw.title.trim().slice(0, 160) : '';
+  const reason =
+    typeof raw.reason === 'string' && raw.reason.trim() ? raw.reason.trim().slice(0, 500) : '';
+  const connection =
+    typeof raw.connection === 'string' && raw.connection.trim()
+      ? raw.connection.trim().slice(0, 400)
+      : '';
+  const repeatPrompt =
+    typeof raw.repeatPrompt === 'string' && raw.repeatPrompt.trim()
+      ? raw.repeatPrompt.trim().slice(0, 600)
+      : '';
+  const focusAreas = Array.isArray(raw.focusAreas)
+    ? raw.focusAreas
+        .filter((line) => typeof line === 'string' && line.trim())
+        .map((line) => line.trim().slice(0, 120))
+        .slice(0, 4)
+    : [];
+
+  if (!title) {
+    if (action === 'advance' && fallbackNextTopic?.title) {
+      return {
+        action: 'advance',
+        title: fallbackNextTopic.title,
+        reason: fallbackNextTopic.reason || reason,
+        connection: fallbackNextTopic.connection || connection,
+        focusAreas,
+        repeatPrompt: repeatPrompt || undefined,
+      };
+    }
+    return null;
+  }
+
+  return {
+    action,
+    title,
+    reason,
+    connection: connection || undefined,
+    focusAreas: focusAreas.length > 0 ? focusAreas : undefined,
+    repeatPrompt: repeatPrompt || undefined,
+  };
+}
+
 function normalizeExerciseSetFromModel(raw) {
   if (!raw || typeof raw !== 'object') return [];
   const list = Array.isArray(raw.exercises) ? raw.exercises : [];
@@ -1856,6 +1966,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     generationAttempt,
     avoidExerciseTexts,
     uiLanguage,
+    recentMistakes,
   } = req.body ?? {};
   if (typeof explanation !== 'string' || !explanation.trim()) {
     return res.status(400).json({ error: 'explanation must be a non-empty string' });
@@ -1893,6 +2004,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
         .map((line) => line.trim().slice(0, 220))
         .slice(0, 18)
     : [];
+  const mistakeList = normalizeMistakeList(recentMistakes, 12);
 
   const history = sanitizeHistory(conversationHistory).slice(-16);
   const systemContent = buildTeacherExerciseSetPrompt(lang, lessonTopic, ui);
@@ -1905,6 +2017,10 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     avoidList.length > 0
       ? `\n\nНе повторяй и не перефразируй близко к этим уже выданным заданиям:\n${avoidList.map((line, i) => `${i + 1}. ${line}`).join('\n')}`
       : '';
+  const mistakesBlock = formatMistakesBlock(
+    'Недавние ошибки ученика (ПРИОРИТЕТ: закрыть эти пробелы в заданиях; distractors = типичные промахи из списка)',
+    mistakeList,
+  );
 
   const selectedKinds = await pickExerciseKindsForLearnerNeed(apiKey, {
     userRequest,
@@ -1923,7 +2039,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
   const baseUserContent =
     `Последний запрос пользователя:\n${userRequest || '(не указан — выведи из контекста диалога выше)'}\n\n` +
     `Последний ответ AI:\n${teacherExplanation}\n\n` +
-    `Variation id: ${seed}.${variationBlock}${avoidBlock}${kindsBlock}\n\n` +
+    `Variation id: ${seed}.${variationBlock}${avoidBlock}${mistakesBlock}${kindsBlock}\n\n` +
     `Сгенерируй ровно ${DRILL_TASK_COUNT} упражнений (kinds как выше) и nextTopic.\n` +
     `Каждое задание должно напрямую тренировать то, о чём просил пользователь (и что только что объяснил учитель) — не уходи в общую тему.\n` +
     `Только JSON.`;
@@ -2120,6 +2236,190 @@ app.post('/api/teacher-exercise-check', async (req, res) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Network error';
     return res.status(502).json({ error: msg });
+  }
+});
+
+app.post('/api/teacher-drill-followup', async (req, res) => {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Server misconfiguration: OPENAI_API_KEY is not set' });
+  }
+
+  const {
+    correct,
+    total,
+    sessionMistakes,
+    recentMistakes,
+    explanation,
+    lessonTopic,
+    language,
+    uiLanguage,
+    nextTopic,
+  } = req.body ?? {};
+
+  const scoreCorrect =
+    typeof correct === 'number' && Number.isFinite(correct) ? Math.max(0, Math.floor(correct)) : 0;
+  const scoreTotal =
+    typeof total === 'number' && Number.isFinite(total) ? Math.max(1, Math.floor(total)) : 1;
+  const ui = normalizeUiLanguage(uiLanguage);
+  const m = uiLangMeta(ui);
+  const sessionList = normalizeMistakeList(sessionMistakes, 10);
+  const memoryList = normalizeMistakeList(recentMistakes, 12);
+  const normalizedNextTopic = normalizeNextTopicFromModel({ nextTopic });
+  const teacherExplanation =
+    typeof explanation === 'string' && explanation.trim() ? explanation.trim().slice(0, 6000) : '';
+  const topic =
+    typeof lessonTopic === 'string' && lessonTopic.trim() ? lessonTopic.trim().slice(0, 160) : '';
+  const lang =
+    language === 'english' ||
+    language === 'chinese' ||
+    language === 'russian' ||
+    language === 'german' ||
+    language === 'french'
+      ? language
+      : 'english';
+
+  const wrong = Math.max(0, scoreTotal - scoreCorrect);
+  const localFallback = () => {
+    if (wrong === 0 && normalizedNextTopic) {
+      return {
+        action: 'advance',
+        title: normalizedNextTopic.title,
+        reason: normalizedNextTopic.reason,
+        connection: normalizedNextTopic.connection,
+      };
+    }
+    if (wrong >= Math.ceil(scoreTotal / 2) || wrong >= 4) {
+      return {
+        action: 'repeat_same',
+        title: ui === 'en' ? 'Repeat practice' : ui === 'zh' ? '再练一次' : 'Повторить тренировку',
+        reason:
+          ui === 'en'
+            ? 'Too many mistakes — repeat this topic before moving on.'
+            : ui === 'zh'
+              ? '错误较多 — 先巩固本主题再继续。'
+              : 'Много ошибок — лучше повторить эту тему, прежде чем идти дальше.',
+        focusAreas: sessionList.slice(0, 3).map((item) => item.checkText),
+        repeatPrompt:
+          ui === 'en'
+            ? 'Let’s practice this topic again. Review my mistakes and give a new drill.'
+            : ui === 'zh'
+              ? '我们再练一次这个主题。请分析我的错误并给新的练习。'
+              : 'Давай ещё раз потренируем эту тему. Разбери мои ошибки и дай новую тренировку.',
+      };
+    }
+    if (wrong > 0) {
+      const gapHint = sessionList[0]?.feedback || sessionList[0]?.idealAnswer || sessionList[0]?.checkText;
+      return {
+        action: 'review_gaps',
+        title: ui === 'en' ? 'Review mistakes' : ui === 'zh' ? '复习错误' : 'Разобрать ошибки',
+        reason:
+          gapHint && ui === 'ru'
+            ? `Стоит закрыть пробел: ${gapHint}`
+            : ui === 'en'
+              ? 'A few gaps to fix before the next topic.'
+              : ui === 'zh'
+                ? '还有几处需要巩固，再继续新主题。'
+                : 'Есть точечные ошибки — разберём их перед новой темой.',
+        focusAreas: sessionList.slice(0, 4).map((item) => item.checkText),
+        repeatPrompt:
+          ui === 'en'
+            ? 'Review my mistakes from the last drill and explain the correct forms. Then suggest a short practice on my weak spots.'
+            : ui === 'zh'
+              ? '请分析我上次练习的错误并讲解正确用法，然后给针对薄弱点的短练习。'
+              : 'Разбери мои ошибки из последней тренировки и объясни, как правильно. Потом предложи короткую тренировку на слабые места.',
+      };
+    }
+    if (normalizedNextTopic) {
+      return {
+        action: 'advance',
+        title: normalizedNextTopic.title,
+        reason: normalizedNextTopic.reason,
+        connection: normalizedNextTopic.connection,
+      };
+    }
+    return {
+      action: 'repeat_same',
+      title: ui === 'en' ? 'Repeat practice' : ui === 'zh' ? '再练一次' : 'Повторить тренировку',
+      reason:
+        ui === 'en'
+          ? 'One more pass to lock it in.'
+          : ui === 'zh'
+            ? '再巩固一遍。'
+            : 'Закрепим материал ещё одним проходом.',
+      repeatPrompt:
+        ui === 'en'
+          ? 'Let’s practice this topic again.'
+          : ui === 'zh'
+            ? '我们再练一次这个主题。'
+            : 'Давай ещё раз потренируем эту тему.',
+    };
+  };
+
+  const userContent =
+    `Результат тренировки: ${scoreCorrect}/${scoreTotal} (ошибок: ${wrong}).\n` +
+    `Тема урока: ${topic || '(не указана)'}\n` +
+    `UI-язык: ${m.explainLabel}\n` +
+    `L2: ${lang}\n` +
+    (teacherExplanation ? `Объяснение преподавателя:\n${teacherExplanation}\n` : '') +
+    (normalizedNextTopic
+      ? `Предложенная nextTopic (используй только при action=advance): ${normalizedNextTopic.title} — ${normalizedNextTopic.reason}\n`
+      : '') +
+    formatMistakesBlock('Ошибки этой сессии', sessionList) +
+    formatMistakesBlock('Память недавних ошибок', memoryList) +
+    '\n\nВерни JSON followUp по правилам промпта.';
+
+  try {
+    const openaiRes = await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: TEACHER_FAST_MODEL,
+        temperature: 0.35,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content:
+              TEACHER_DRILL_FOLLOWUP_PROMPT +
+              `\n\nUI LANGUAGE: ${m.explainLabel}. All learner-facing strings in JSON must be in ${m.explainLabel}.`,
+          },
+          { role: 'user', content: userContent },
+        ],
+      }),
+    });
+
+    const raw = await openaiRes.text();
+    let data;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      return res.json({ followUp: localFallback() });
+    }
+
+    if (!openaiRes.ok) {
+      return res.json({ followUp: localFallback() });
+    }
+
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) {
+      return res.json({ followUp: localFallback() });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(content.trim());
+    } catch {
+      return res.json({ followUp: localFallback() });
+    }
+
+    const followUp = normalizeDrillFollowUpFromModel(parsed, normalizedNextTopic) || localFallback();
+    return res.json({ followUp });
+  } catch {
+    return res.json({ followUp: localFallback() });
   }
 });
 
@@ -2530,7 +2830,7 @@ attachCompanionRealtimeBridge(companionRealtimeWss, {
 httpServer.listen(PORT, () => {
   const resend = process.env.RESEND_API_KEY?.trim();
   console.log(
-    `[chat-api] listening on http://0.0.0.0:${PORT}  WS /ws/companion-realtime  POST /api/teacher-chat (${TEACHER_MODEL})  POST /api/teacher-exercise  POST /api/teacher-exercise-set  POST /api/teacher-exercise-check  POST /api/engagement-notification  POST /api/chat (${COMPANION_MODEL})  POST /api/companion-profile  POST /api/transcribe  POST /api/vocab/share  GET /api/vocab/share/:id`,
+    `[chat-api] listening on http://0.0.0.0:${PORT}  WS /ws/companion-realtime  POST /api/teacher-chat (${TEACHER_MODEL})  POST /api/teacher-exercise  POST /api/teacher-exercise-set  POST /api/teacher-exercise-check  POST /api/teacher-drill-followup  POST /api/engagement-notification  POST /api/chat (${COMPANION_MODEL})  POST /api/companion-profile  POST /api/transcribe  POST /api/vocab/share  GET /api/vocab/share/:id`,
   );
   if (resend) {
     console.log(`[auth] Письма с кодом: Resend (отправитель ${AUTH_FROM})`);

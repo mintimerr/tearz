@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Kalam_400Regular, useFonts } from '@expo-google-fonts/kalam';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Alert,
@@ -27,13 +27,9 @@ import { ImageMessageBubble } from '@/components/companion/image-message-bubble'
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
 import { TeacherAttachGallery } from '@/components/teacher/teacher-attach-gallery';
 import { TeacherExerciseActions } from '@/components/teacher/teacher-exercise-actions';
-import { TeacherExerciseDrill } from '@/components/teacher/teacher-exercise-drill';
-import { TeacherExerciseGenerating } from '@/components/teacher/teacher-exercise-generating';
-import {
-  TeacherFullWorkoutPaywall,
-  type TearzPlusFeature,
-} from '@/components/teacher/teacher-full-workout-paywall';
+import { useTeacherDrillOverlay } from '@/components/teacher/teacher-drill-overlay';
 import { TeacherMessageBody } from '@/components/teacher/teacher-message-body';
+import { WordAddSheetHost } from '@/components/word-add-sheet';
 import {
   TEACHER_MUTED,
   TEACHER_MUTED_SOFT,
@@ -59,6 +55,7 @@ import {
 } from '@/services/companion-chat-ai';
 import type {
   CompanionChatApiLanguage,
+  TeacherDrillFollowUp,
   TeacherExerciseItem,
   TeacherNextTopicRecommendation,
 } from '@/types/companion-chat-api';
@@ -81,6 +78,14 @@ import {
   saveMiniDrillUsage,
   type MiniDrillUsage,
 } from '@/utils/teacher-mini-drill-usage';
+import {
+  getMistakeSummariesForApi,
+  loadDrillMistakes,
+  recordDrillMistakes,
+  saveDrillMistakes,
+  type TeacherDrillMistakeRecord,
+} from '@/utils/teacher-drill-mistakes';
+import { buildFollowUpChatMessage } from '@/utils/teacher-drill-followup';
 
 function formatChatTime(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -142,7 +147,7 @@ export function TeacherBoardChat({
   const { registerUserStudyText, recordStudySwipe } = useUserProfile();
   const { addChat, saveCompanionThread } = useCompanionChats();
   const { markLessonCreated, addRecentLesson } = useTeacherJourney();
-  const { recordActivity, hasPlusAccess } = useEngagement();
+  const { recordActivity } = useEngagement();
   const { ingestTeacherText } = useLexicon();
   const { animatedStyle: composerInsetStyle, isOpen: keyboardOpen } = useKeyboardInset(
     Math.max(insets.bottom, gameChrome ? 4 : 10) + (gameChrome ? 0 : 8),
@@ -164,20 +169,39 @@ export function TeacherBoardChat({
   const [exerciseLoadingId, setExerciseLoadingId] = useState<string | null>(null);
   const [drillExercises, setDrillExercises] = useState<TeacherExerciseItem[]>([]);
   const [drillNextTopic, setDrillNextTopic] = useState<TeacherNextTopicRecommendation | null>(null);
+  const [drillMistakes, setDrillMistakes] = useState<TeacherDrillMistakeRecord[]>([]);
+  const drillSourceMessageRef = useRef<CompanionMsg | null>(null);
+  const drillExplanationRef = useRef('');
+  const drillLanguageRef = useRef<CompanionChatApiLanguage>(language);
   const [drillSessionKey, setDrillSessionKey] = useState('');
   const [drillOpen, setDrillOpen] = useState(false);
-  const [plusPaywallFeature, setPlusPaywallFeature] = useState<TearzPlusFeature | null>(null);
-  const pendingFullMsgRef = useRef<CompanionMsg | null>(null);
+  const [drillNotice, setDrillNotice] = useState<string | null>(null);
+  const drillNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
+
+  const showDrillNotice = useCallback((text: string) => {
+    setDrillNotice(text);
+    if (drillNoticeTimer.current) clearTimeout(drillNoticeTimer.current);
+    drillNoticeTimer.current = setTimeout(() => setDrillNotice(null), 4500);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (drillNoticeTimer.current) clearTimeout(drillNoticeTimer.current);
+    },
+    [],
+  );
 
   messagesRef.current = messages;
 
   useEffect(() => {
     if (!miniDrillUserId) {
       setMiniDrillUsage({ perMessage: {}, priorSets: {} });
+      setDrillMistakes([]);
       return;
     }
     void loadMiniDrillUsage(miniDrillUserId).then(setMiniDrillUsage);
+    void loadDrillMistakes(miniDrillUserId).then(setDrillMistakes);
   }, [miniDrillUserId]);
 
   const scrollToEnd = (animated = true) => {
@@ -453,13 +477,29 @@ export function TeacherBoardChat({
 
   const generateExerciseForMessage = useCallback(
     async (source: CompanionMsg) => {
-      if (exerciseLoadingId || typing) return;
+      if (exerciseLoadingId) {
+        showDrillNotice(t('teacher.drill.generatingInProgress'));
+        return;
+      }
       const explanation = source.text.trim();
-      if (!explanation) return;
+      if (!explanation) {
+        showDrillNotice(t('teacher.drill.emptyExplanation'));
+        return;
+      }
+      if (typing) {
+        showDrillNotice(t('teacher.drill.waitForReply'));
+        return;
+      }
 
       const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
       if (!access.allowed) {
-        Alert.alert('Мини-тренировка', access.reason ?? 'Лимит исчерпан.');
+        const reason =
+          access.reasonKey === 'refreshLimit'
+            ? t('teacher.drill.refreshLimit', { count: access.reasonCount ?? 0 })
+            : access.reasonKey === 'lessonLimit'
+              ? t('teacher.drill.lessonLimit', { count: access.reasonCount ?? 0 })
+              : t('teacher.drill.limitFallback');
+        showDrillNotice(reason);
         return;
       }
 
@@ -471,6 +511,9 @@ export function TeacherBoardChat({
         `${lastUser}\n${lessonTopicRef.current}\n${explanation}`,
         language,
       );
+      drillSourceMessageRef.current = source;
+      drillExplanationRef.current = explanation;
+      drillLanguageRef.current = drillLanguage;
       try {
         const { exercises: raw, nextTopic } = await postTeacherExerciseSet({
           explanation,
@@ -482,6 +525,7 @@ export function TeacherBoardChat({
           generationSeed,
           generationAttempt: access.generationsUsed + 1,
           avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
+          recentMistakes: getMistakeSummariesForApi(drillMistakes),
         });
         const sessionKey = `drill-${generationSeed}`;
         const exercises = raw.map((ex, i) => ({
@@ -504,12 +548,12 @@ export function TeacherBoardChat({
         setDrillOpen(true);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Ошибка сети';
-        Alert.alert('Тренировка', `Не удалось создать задания.\n\n${msg}`);
+        const msg = e instanceof Error ? e.message : t('teacher.drill.networkError');
+        showDrillNotice(t('teacher.drill.generateFailedBody', { error: msg }));
         setExerciseLoadingId(null);
       }
     },
-    [exerciseLoadingId, language, miniDrillUsage, miniDrillUserId, typing, uiLanguage],
+    [drillMistakes, exerciseLoadingId, language, miniDrillUsage, miniDrillUserId, showDrillNotice, t, typing, uiLanguage],
   );
 
   const checkDrillExercise = useCallback(
@@ -563,6 +607,52 @@ export function TeacherBoardChat({
     [recordActivity],
   );
 
+  const handleDrillMistakesRecorded = useCallback(
+    (mistakes: Array<{
+      kind: string;
+      checkText: string;
+      learnerAnswer: string;
+      idealAnswer?: string;
+      feedback?: string;
+    }>) => {
+      if (!miniDrillUserId || mistakes.length === 0) return;
+      setDrillMistakes((prev) => {
+        const next = recordDrillMistakes(prev, mistakes, {
+          lessonTopic: lessonTopicRef.current,
+          language: drillLanguageRef.current,
+        });
+        void saveDrillMistakes(miniDrillUserId, next);
+        return next;
+      });
+    },
+    [miniDrillUserId],
+  );
+
+  const handleDrillFollowUp = useCallback(
+    (followUp: TeacherDrillFollowUp) => {
+      if (followUp.action === 'repeat_same' && drillSourceMessageRef.current) {
+        setTimeout(() => {
+          void generateExerciseForMessage(drillSourceMessageRef.current!);
+        }, 120);
+        return;
+      }
+      if (followUp.action === 'advance' && followUp.title) {
+        const text = buildFollowUpChatMessage(followUp);
+        setTimeout(() => {
+          void send(text);
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }, 120);
+        return;
+      }
+      const text = buildFollowUpChatMessage(followUp);
+      setTimeout(() => {
+        void send(text);
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 120);
+    },
+    [generateExerciseForMessage, send],
+  );
+
   const handleDrillNextTopic = useCallback(
     (topic: TeacherNextTopicRecommendation) => {
       const text = buildNextTopicChatMessage(topic);
@@ -573,6 +663,48 @@ export function TeacherBoardChat({
     },
     [send],
   );
+
+  const drillOverlayModel = useMemo(
+    () => ({
+      generatingVisible: Boolean(exerciseLoadingId) && !drillOpen,
+      drillVisible: drillOpen,
+      sessionKey: drillSessionKey,
+      exercises: drillExercises,
+      nextTopic: drillNextTopic,
+      followUpContext: drillOpen
+        ? {
+            explanation: drillExplanationRef.current,
+            lessonTopic: lessonTopicRef.current,
+            language: drillLanguageRef.current,
+            uiLanguage,
+            recentMistakes: getMistakeSummariesForApi(drillMistakes),
+          }
+        : null,
+      transcribeLanguage: language,
+      onCloseDrill: closeDrill,
+      onNextTopicPress: handleDrillNextTopic,
+      onFollowUpPress: handleDrillFollowUp,
+      onMistakesRecorded: handleDrillMistakesRecorded,
+      onCheckDrill: checkDrillExercise,
+    }),
+    [
+      checkDrillExercise,
+      closeDrill,
+      drillExercises,
+      drillMistakes,
+      drillNextTopic,
+      drillOpen,
+      drillSessionKey,
+      exerciseLoadingId,
+      handleDrillFollowUp,
+      handleDrillMistakesRecorded,
+      handleDrillNextTopic,
+      language,
+      uiLanguage,
+    ],
+  );
+
+  useTeacherDrillOverlay(drillOverlayModel);
 
   const renderPracticeActions = useCallback(
     (message: CompanionMsg) => {
@@ -586,21 +718,12 @@ export function TeacherBoardChat({
           exerciseLoadingId={exerciseLoadingId}
           typing={typing}
           miniAccess={evaluateMiniDrillAccess(miniDrillUsage, message.id)}
-          onMiniPress={(msg) => void generateExerciseForMessage(msg)}
-          onMiniBlocked={(reason) => Alert.alert('Мини-тренировка', reason)}
-          onFullPress={() => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            if (hasPlusAccess) {
-              void generateExerciseForMessage(message);
-              return;
-            }
-            pendingFullMsgRef.current = message;
-            setPlusPaywallFeature('fullWorkout');
-          }}
+          onPress={(msg) => void generateExerciseForMessage(msg)}
+          onBlocked={showDrillNotice}
         />
       );
     },
-    [exerciseLoadingId, generateExerciseForMessage, hasPlusAccess, miniDrillUsage, typing],
+    [exerciseLoadingId, generateExerciseForMessage, miniDrillUsage, showDrillNotice, typing],
   );
 
   const markerFamily = fontsLoaded ? 'Kalam_400Regular' : undefined;
@@ -662,6 +785,14 @@ export function TeacherBoardChat({
           </View>
         </View>
 
+        {drillNotice ? (
+          <View style={[styles.drillNotice, gameChrome && styles.drillNoticeGame]}>
+            <Text style={[styles.drillNoticeText, gameChrome && styles.drillNoticeTextGame]}>
+              {drillNotice}
+            </Text>
+          </View>
+        ) : null}
+
         <ScrollView
           ref={scrollRef}
           style={styles.flex}
@@ -703,7 +834,7 @@ export function TeacherBoardChat({
                       messageId={m.id}
                       textStyle={[styles.teacherText, gameChrome && styles.teacherTextGame]}
                       variant={gameChrome ? 'game' : 'default'}
-                      practiceActions={gameChrome ? renderPracticeActions(m) : undefined}
+                      practiceActions={renderPracticeActions(m)}
                     />
                   )}
                 </BoardLessonBubble>
@@ -720,6 +851,8 @@ export function TeacherBoardChat({
             </FadeInView>
           ) : null}
         </ScrollView>
+
+        <WordAddSheetHost />
 
         <Reanimated.View
           style={[
@@ -826,34 +959,6 @@ export function TeacherBoardChat({
           </View>
         </Reanimated.View>
       </View>
-
-      <TeacherExerciseGenerating visible={Boolean(exerciseLoadingId) && !drillOpen} />
-
-      <TeacherFullWorkoutPaywall
-        visible={plusPaywallFeature === 'fullWorkout'}
-        feature="fullWorkout"
-        onClose={() => {
-          pendingFullMsgRef.current = null;
-          setPlusPaywallFeature(null);
-        }}
-        onUnlocked={() => {
-          const msg = pendingFullMsgRef.current;
-          pendingFullMsgRef.current = null;
-          setPlusPaywallFeature(null);
-          if (msg) void generateExerciseForMessage(msg);
-        }}
-      />
-
-      <TeacherExerciseDrill
-        visible={drillOpen}
-        sessionKey={drillSessionKey}
-        exercises={drillExercises}
-        nextTopic={drillNextTopic}
-        transcribeLanguage={language}
-        onClose={closeDrill}
-        onNextTopicPress={handleDrillNextTopic}
-        onCheck={checkDrillExercise}
-      />
     </View>
   );
 }
@@ -862,12 +967,40 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: APP_THEME.color.bgSoft,
+    position: 'relative',
   },
   rootGame: {
     backgroundColor: GAME_THEME.color.cream,
   },
   flex: {
     flex: 1,
+  },
+  drillNotice: {
+    marginHorizontal: 12,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 59, 48, 0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 59, 48, 0.35)',
+  },
+  drillNoticeGame: {
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    backgroundColor: '#FFF4F2',
+  },
+  drillNoticeText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '600',
+    color: '#B42318',
+    textAlign: 'center',
+  },
+  drillNoticeTextGame: {
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
   },
   header: {
     borderBottomWidth: StyleSheet.hairlineWidth,

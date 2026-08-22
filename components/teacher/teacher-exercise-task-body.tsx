@@ -8,6 +8,7 @@ import { APP_THEME } from '@/constants/theme';
 import { TEACHER_TITLE } from '@/components/teacher/teacher-tokens';
 import { drillTaskStyles as styles } from '@/components/teacher/teacher-drill-styles';
 import { DrillDropZone, DraggableWordBank, useWordDragAssign } from '@/components/teacher/teacher-word-drag';
+import { useTranslation } from '@/contexts/locale-context';
 import type { TeacherExerciseItem, TeacherExerciseSegment } from '@/types/companion-chat-api';
 import { hashSeed } from '@/utils/teacher-exercise-bank';
 import type { ExerciseAnswerState } from '@/utils/teacher-exercise-normalize';
@@ -149,6 +150,7 @@ function NumberedSentenceInput({
   disabled: boolean;
   onChange: (text: string) => void;
 }) {
+  const { t } = useTranslation();
   const seeded = useRef(false);
 
   useEffect(() => {
@@ -161,12 +163,13 @@ function NumberedSentenceInput({
     <TextInput
       value={value || NUMBERED_SENTENCE_START}
       onChangeText={(text) => onChange(normalizeNumberedSentenceInput(value || NUMBERED_SENTENCE_START, text))}
-      placeholder="1. Первое предложение…"
+      placeholder={t('teacher.drill.firstSentence')}
       placeholderTextColor={APP_THEME.color.mutedFaint}
       multiline
-      style={styles.freeInput}
+      style={styles.numberedInput}
       editable={!disabled}
       blurOnSubmit={false}
+      scrollEnabled
     />
   );
 }
@@ -176,7 +179,7 @@ function FreeTextAnswer({
   disabled,
   value,
   onChange,
-  label = 'Ваш ответ',
+  label,
 }: {
   exercise: TeacherExerciseItem;
   disabled: boolean;
@@ -184,16 +187,17 @@ function FreeTextAnswer({
   onChange: (text: string) => void;
   label?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionLabel}>{label}</Text>
+      <Text style={styles.sectionLabel}>{label ?? t('teacher.drill.yourAnswer')}</Text>
       <View style={styles.promptSurface}>
         <Text style={styles.promptPlain}>{exercise.checkText}</Text>
       </View>
       <TextInput
         value={value}
         onChangeText={onChange}
-        placeholder="Напишите ответ здесь…"
+        placeholder={t('teacher.drill.writeHere')}
         placeholderTextColor={APP_THEME.color.mutedFaint}
         multiline
         style={styles.freeInput}
@@ -215,6 +219,7 @@ export function TeacherExerciseTaskBody({
   voiceCapture,
   onVoiceCapture,
 }: Props) {
+  const { t } = useTranslation();
   const [selectedChip, setSelectedChip] = useState<{ word: string; index: number } | null>(null);
   const [activeLeftId, setActiveLeftId] = useState<string | null>(null);
   const [activeNumberedId, setActiveNumberedId] = useState<string | null>(null);
@@ -404,7 +409,7 @@ export function TeacherExerciseTaskBody({
       </View>
       {withBank && exercise.wordBank?.length ? (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Перетащи слово в пропуск</Text>
+          <Text style={styles.sectionLabel}>{t('teacher.drill.dragToBlank')}</Text>
           <DraggableWordBank
             words={exercise.wordBank}
             usedIndices={usedChipIndices}
@@ -425,7 +430,7 @@ export function TeacherExerciseTaskBody({
         return (
           <>
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Перетащи слово в пропуск в каждом предложении</Text>
+              <Text style={styles.sectionLabel}>{t('teacher.drill.dragToBlankEach')}</Text>
               {exercise.numberedSentences.map((s) => {
                 const assignment = state.numberedAssignments[s.id] ?? '';
                 const parts = textToBlankSegments(s.text, s.id);
@@ -460,7 +465,7 @@ export function TeacherExerciseTaskBody({
             </View>
             {exercise.wordBank?.length ? (
               <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Слова</Text>
+                <Text style={styles.sectionLabel}>{t('teacher.drill.words')}</Text>
                 <DraggableWordBank
                   words={exercise.wordBank}
                   usedIndices={usedChipIndices}
@@ -492,7 +497,7 @@ export function TeacherExerciseTaskBody({
               <Text style={styles.promptPlain}>{exercise.checkText}</Text>
             </View>
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Нажми слова — собери ответ</Text>
+              <Text style={styles.sectionLabel}>{t('teacher.drill.tapWordsBuild')}</Text>
               <WordBank
                 words={exercise.wordBank!}
                 usedIndices={usedChipIndices}
@@ -508,7 +513,7 @@ export function TeacherExerciseTaskBody({
             <TextInput
               value={state.freeText}
               onChangeText={(text) => onStateChange({ freeText: text })}
-              placeholder="Или напиши ответ вручную…"
+              placeholder={t('teacher.drill.writeOrType')}
               placeholderTextColor={APP_THEME.color.mutedFaint}
               multiline
               style={styles.freeInput}
@@ -547,7 +552,7 @@ export function TeacherExerciseTaskBody({
       }
       return (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Выбери слово для пропуска</Text>
+          <Text style={styles.sectionLabel}>{t('teacher.drill.chooseForBlank')}</Text>
           {exercise.formSlots.map((slot) => {
             const chosen = state.formChoices[slot.id];
             const promptText = slot.prompt.replace('___', chosen || '___');
@@ -615,7 +620,7 @@ export function TeacherExerciseTaskBody({
           </View>
           {exercise.wordBank?.length ? (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Слова — нажми слово, затем картинку</Text>
+              <Text style={styles.sectionLabel}>{t('teacher.drill.wordsThenImage')}</Text>
               <WordBank
                 words={exercise.wordBank}
                 usedIndices={usedChipIndices}
@@ -657,10 +662,12 @@ export function TeacherExerciseTaskBody({
       return (
         <>
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Собранное предложение</Text>
+            <Text style={styles.sectionLabel}>{t('teacher.drill.builtSentence')}</Text>
             <View style={styles.sentenceBuilt}>
               <Text style={styles.sentenceBuiltText}>
-                {state.sentenceOrder.length > 0 ? state.sentenceOrder.join(' ') : 'Нажимай слова по порядку'}
+                {state.sentenceOrder.length > 0
+                  ? state.sentenceOrder.join(' ')
+                  : t('teacher.drill.tapWordsOrder')}
               </Text>
               {state.sentenceOrder.length > 0 ? (
                 <Pressable
@@ -672,7 +679,7 @@ export function TeacherExerciseTaskBody({
             </View>
           </View>
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Слова</Text>
+            <Text style={styles.sectionLabel}>{t('teacher.drill.words')}</Text>
             <View style={styles.bankRow}>
               {shuffledPool.map((word, wi) => (
                 <Pressable
@@ -754,7 +761,7 @@ export function TeacherExerciseTaskBody({
     case 'read_and_select':
       return (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Настоящее это слово?</Text>
+          <Text style={styles.sectionLabel}>{t('teacher.drill.isRealWord')}</Text>
           <View style={styles.readSelectCard}>
             <Text style={styles.readSelectWord}>{exercise.selectWord ?? exercise.checkText}</Text>
           </View>
@@ -774,7 +781,7 @@ export function TeacherExerciseTaskBody({
                   styles.readSelectBtnText,
                   state.readSelectChoice === 'real' && styles.readSelectBtnTextActive,
                 ]}>
-                Настоящее
+                {t('teacher.drill.wordReal')}
               </Text>
             </Pressable>
             <Pressable
@@ -792,7 +799,7 @@ export function TeacherExerciseTaskBody({
                   styles.readSelectBtnText,
                   state.readSelectChoice === 'fake' && styles.readSelectBtnTextActive,
                 ]}>
-                Выдуманное
+                {t('teacher.drill.wordFake')}
               </Text>
             </Pressable>
           </View>
@@ -804,7 +811,7 @@ export function TeacherExerciseTaskBody({
       const parts = parseMaskedSentence(masked);
       return (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Допиши пропущенные буквы</Text>
+          <Text style={styles.sectionLabel}>{t('teacher.drill.fillLetters')}</Text>
           <View style={styles.promptSurface}>
             <View style={styles.inlineRow}>
               {parts.map((part, i) => {
@@ -843,7 +850,7 @@ export function TeacherExerciseTaskBody({
     case 'identify_main_idea':
       return (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Главная мысль текста</Text>
+          <Text style={styles.sectionLabel}>{t('teacher.drill.mainIdea')}</Text>
           <View style={styles.promptSurface}>
             <Text style={styles.passageText}>{exercise.passage ?? exercise.checkText}</Text>
           </View>
@@ -879,7 +886,9 @@ export function TeacherExerciseTaskBody({
     case 'write_sentences':
       return (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Напиши {exercise.minSentences ?? 5} предложений</Text>
+          <Text style={styles.sectionLabel}>
+            {t('teacher.drill.writeNSentences', { count: exercise.minSentences ?? 5 })}
+          </Text>
           <View style={styles.promptSurface}>
             <Text style={styles.promptPlain}>{exercise.checkText}</Text>
           </View>
@@ -894,14 +903,14 @@ export function TeacherExerciseTaskBody({
     case 'free_text':
       return (
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Ваш ответ</Text>
+          <Text style={styles.sectionLabel}>{t('teacher.drill.yourAnswer')}</Text>
           <View style={styles.promptSurface}>
             <Text style={styles.promptPlain}>{exercise.checkText}</Text>
           </View>
           <TextInput
             value={state.freeText}
             onChangeText={(text) => onStateChange({ freeText: text })}
-            placeholder="Напишите ответ здесь…"
+            placeholder={t('teacher.drill.writeHere')}
             placeholderTextColor={APP_THEME.color.mutedFaint}
             multiline
             style={styles.freeInput}
