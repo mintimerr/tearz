@@ -2167,7 +2167,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
         genAttempt === 1
           ? baseUserContent
           : genAttempt === 2 && lang !== 'chinese'
-            ? `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый JSON имел неверное число упражнений или неверные kind. Верни ровно ${DRILL_TASK_COUNT} объектов; exercises[i].kind ДОЛЖЕН совпадать с пунктом ${i + 1} списка kinds.`
+            ? `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый JSON имел неверное число упражнений или неверные kind. Верни ровно ${DRILL_TASK_COUNT} объектов; exercises[i].kind ДОЛЖЕН совпадать с пунктом (i+1) списка kinds.`
             : `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый набор нарушил L2 или kinds. Для китайского урока selectWord / wordBank / shuffledWords — ТОЛЬКО 汉字. Перегенерируй весь набор с теми же kinds.`;
 
       const messages = [
