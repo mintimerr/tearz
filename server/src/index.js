@@ -1347,7 +1347,27 @@ function normalizeExerciseSetFromModel(raw) {
         ? item.correctChoice.trim().slice(0, 200)
         : undefined;
 
-    if (!checkText && !pairs?.length && !shuffledWords?.length && !selectWord && !maskedSentence && !passage) {
+    const instructionText =
+      typeof item.instruction === 'string' && item.instruction.trim()
+        ? item.instruction.trim()
+        : '';
+    const hasBlankSegment = segments.some((s) => s && s.type === 'blank');
+
+    if (
+      !checkText &&
+      !instructionText &&
+      !pairs?.length &&
+      !shuffledWords?.length &&
+      !selectWord &&
+      !maskedSentence &&
+      !passage &&
+      !(choices?.length >= 2) &&
+      !formSlots?.length &&
+      !(imageSlots?.length || wordBank?.length) &&
+      !voicePrompt &&
+      !minSentences &&
+      !hasBlankSegment
+    ) {
       continue;
     }
 
@@ -1375,6 +1395,7 @@ function normalizeExerciseSetFromModel(raw) {
 
     const resolvedCheck =
       checkText ||
+      instructionText ||
       (kind === 'read_and_select' && selectWord ? selectWord : '') ||
       (kind === 'fill_partial_word' && maskedSentence ? maskedSentence : '') ||
       (kind === 'identify_main_idea' ? 'Выбери главную мысль' : '') ||
@@ -1420,6 +1441,307 @@ function normalizeExerciseSetFromModel(raw) {
     });
   }
   return out;
+}
+
+function alignExerciseKinds(exercises, expectedKinds) {
+  return exercises.map((ex, i) => ({
+    ...ex,
+    kind: expectedKinds[i] || ex.kind,
+    id: ex?.id || `ex-${i + 1}`,
+  }));
+}
+
+function buildExerciseKindsBlock(kinds, startIndex, drillFocus) {
+  let block = `\n\nТипы заданий (строго ${kinds.length}, позиции ${startIndex}–${startIndex + kinds.length - 1}).\n`;
+  if (drillFocus) block += `Фокус: ${drillFocus}\n`;
+  block += 'Kinds в этом порядке — не меняй:\n';
+  block += kinds
+    .map((k, i) => {
+      const meta = EXERCISE_BANK.find((x) => x.kind === k);
+      return `${startIndex + i}. ${k}${meta?.bestFor ? ` — ${meta.bestFor}` : ''}`;
+    })
+    .join('\n');
+  return block;
+}
+
+function buildExerciseBatchUserContent({
+  userRequest,
+  teacherExplanation,
+  seed,
+  variationBlock,
+  avoidBlock,
+  mistakesBlock,
+  kinds,
+  startIndex,
+  drillFocus,
+  includeNextTopic = false,
+}) {
+  const kindsBlock = buildExerciseKindsBlock(kinds, startIndex, drillFocus);
+  const nextTopicLine = includeNextTopic ? ' и nextTopic' : '';
+  const jsonHint = includeNextTopic
+    ? '{"exercises":[...], "nextTopic":{...}}'
+    : '{"exercises":[...]}';
+
+  return (
+    `Последний запрос пользователя:\n${userRequest || '(не указан — выведи из контекста диалога выше)'}\n\n` +
+    `Последний ответ AI:\n${teacherExplanation}\n\n` +
+    `Variation id: ${seed}.${variationBlock}${avoidBlock}${mistakesBlock}${kindsBlock}\n\n` +
+    `Сгенерируй ровно ${kinds.length} упражнений (kinds как выше)${nextTopicLine}.\n` +
+    `Каждое задание должно напрямую тренировать то, о чём просил пользователь.\n` +
+    `Только JSON: ${jsonHint}.`
+  );
+}
+
+async function fetchTeacherExerciseSetJson(apiKey, { messages, temperature, maxTokens = 5200 }) {
+  const openaiRes = await fetch(OPENAI_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: TEACHER_MODEL,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+      response_format: { type: 'json_object' },
+    }),
+  });
+
+  const raw = await openaiRes.text();
+  let data;
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    return { ok: false, error: 'Invalid response from OpenAI' };
+  }
+
+  if (!openaiRes.ok) {
+    const errMsg = data?.error?.message || data?.error || `OpenAI HTTP ${openaiRes.status}`;
+    return { ok: false, error: typeof errMsg === 'string' ? errMsg : 'OpenAI request failed' };
+  }
+
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string' || !content.trim()) {
+    return { ok: false, error: 'Empty exercise set reply' };
+  }
+
+  try {
+    const parsed = parseJsonFromModelContent(content);
+    return { ok: true, parsed, finishReason: data?.choices?.[0]?.finish_reason };
+  } catch {
+    return { ok: false, error: 'Invalid exercise set JSON' };
+  }
+}
+
+async function generateTeacherExerciseBatch(apiKey, {
+  systemContent,
+  history,
+  userContent,
+  expectedKinds,
+  temperature,
+  maxAttempts = 3,
+}) {
+  let best = [];
+  let bestParsed = null;
+
+  for (let genAttempt = 1; genAttempt <= maxAttempts; genAttempt += 1) {
+    const correction =
+      genAttempt === 1
+        ? ''
+        : `\n\nИСПРАВЛЕНИЕ: нужно ровно ${expectedKinds.length} объектов в exercises. kinds по порядку: ${expectedKinds.join(', ')}. У каждого — checkText или обязательные поля своего kind.`;
+
+    const messages = [
+      { role: 'system', content: systemContent },
+      ...history,
+      { role: 'user', content: userContent + correction },
+    ];
+
+    const result = await fetchTeacherExerciseSetJson(apiKey, {
+      messages,
+      temperature: genAttempt > 1 ? Math.min(0.78, temperature + 0.08) : temperature,
+      maxTokens: expectedKinds.length <= 3 ? 3200 : 5200,
+    });
+
+    if (!result.ok) {
+      console.warn('[teacher-exercise-set] batch fetch failed', result.error);
+      continue;
+    }
+
+    let exercises = normalizeExerciseSetFromModel(result.parsed);
+    exercises = alignExerciseKinds(exercises, expectedKinds);
+
+    if (exercises.length >= expectedKinds.length) {
+      return { exercises: exercises.slice(0, expectedKinds.length), parsed: result.parsed };
+    }
+
+    if (exercises.length > best.length) {
+      best = exercises;
+      bestParsed = result.parsed;
+    }
+
+    console.warn(
+      '[teacher-exercise-set] batch short',
+      exercises.length,
+      '/',
+      expectedKinds.length,
+      'raw',
+      Array.isArray(result.parsed?.exercises) ? result.parsed.exercises.length : 0,
+    );
+  }
+
+  return { exercises: best, parsed: bestParsed };
+}
+
+async function topUpTeacherExerciseSet(apiKey, {
+  systemContent,
+  history,
+  userRequest,
+  teacherExplanation,
+  seed,
+  variationBlock,
+  avoidBlock,
+  mistakesBlock,
+  drillFocus,
+  selectedKinds,
+  exercises,
+  temperature,
+}) {
+  let result = alignExerciseKinds(exercises, selectedKinds.slice(0, exercises.length));
+
+  for (let round = 0; round < 4 && result.length < DRILL_TASK_COUNT; round += 1) {
+    const missingCount = DRILL_TASK_COUNT - result.length;
+    const missingKinds = selectedKinds.slice(result.length, result.length + Math.min(missingCount, 3));
+    if (missingKinds.length === 0) break;
+
+    const userContent = buildExerciseBatchUserContent({
+      userRequest,
+      teacherExplanation,
+      seed: `${seed}:topup:${round + 1}`,
+      variationBlock,
+      avoidBlock,
+      mistakesBlock,
+      kinds: missingKinds,
+      startIndex: result.length + 1,
+      drillFocus,
+    });
+
+    const { exercises: added } = await generateTeacherExerciseBatch(apiKey, {
+      systemContent,
+      history,
+      userContent,
+      expectedKinds: missingKinds,
+      temperature: Math.min(0.78, temperature + 0.06),
+      maxAttempts: 2,
+    });
+
+    if (!added.length) break;
+    result = [...result, ...alignExerciseKinds(added, missingKinds).slice(0, missingKinds.length)];
+  }
+
+  return alignExerciseKinds(result, selectedKinds).slice(0, DRILL_TASK_COUNT);
+}
+
+async function generateTeacherExerciseSetFull(apiKey, opts) {
+  const {
+    systemContent,
+    history,
+    userRequest,
+    teacherExplanation,
+    seed,
+    variationBlock,
+    avoidBlock,
+    mistakesBlock,
+    drillFocus,
+    selectedKinds,
+    lang,
+    attempt,
+  } = opts;
+
+  const temperature = attempt > 1 ? 0.72 : 0.62;
+  const batch1Kinds = selectedKinds.slice(0, 5);
+  const batch2Kinds = selectedKinds.slice(5, 10);
+  const shared = {
+    userRequest,
+    teacherExplanation,
+    seed,
+    variationBlock,
+    avoidBlock,
+    mistakesBlock,
+    drillFocus,
+  };
+
+  async function runBatches(extraVariation = '') {
+    const variation = `${variationBlock}${extraVariation}`;
+    const [batch1, batch2] = await Promise.all([
+      generateTeacherExerciseBatch(apiKey, {
+        systemContent,
+        history,
+        userContent: buildExerciseBatchUserContent({
+          ...shared,
+          variationBlock: variation,
+          kinds: batch1Kinds,
+          startIndex: 1,
+        }),
+        expectedKinds: batch1Kinds,
+        temperature,
+      }),
+      generateTeacherExerciseBatch(apiKey, {
+        systemContent,
+        history,
+        userContent: buildExerciseBatchUserContent({
+          ...shared,
+          variationBlock: variation,
+          kinds: batch2Kinds,
+          startIndex: 6,
+          includeNextTopic: true,
+        }),
+        expectedKinds: batch2Kinds,
+        temperature,
+      }),
+    ]);
+    return {
+      exercises: [...batch1.exercises, ...batch2.exercises],
+      parsed: batch2.parsed || batch1.parsed,
+    };
+  }
+
+  let { exercises, parsed } = await runBatches();
+
+  if (exercises.length < DRILL_TASK_COUNT) {
+    console.warn('[teacher-exercise-set] batches incomplete — top-up', exercises.length);
+    exercises = await topUpTeacherExerciseSet(apiKey, {
+      systemContent,
+      history,
+      ...shared,
+      selectedKinds,
+      exercises,
+      temperature,
+    });
+  }
+
+  exercises = alignExerciseKinds(exercises, selectedKinds).slice(0, DRILL_TASK_COUNT);
+
+  if (lang === 'chinese' && exerciseSetViolatesChineseL2(exercises)) {
+    console.warn('[teacher-exercise-set] Chinese L2 violation — retry batches');
+    const retry = await runBatches(
+      '\n\nИСПРАВЛЕНИЕ: selectWord / wordBank / shuffledWords — ТОЛЬКО 汉字, без латиницы в L2.',
+    );
+    if (retry.exercises.length >= DRILL_TASK_COUNT && !exerciseSetViolatesChineseL2(retry.exercises)) {
+      exercises = alignExerciseKinds(retry.exercises, selectedKinds).slice(0, DRILL_TASK_COUNT);
+      parsed = retry.parsed;
+    }
+  }
+
+  if (exercises.length < DRILL_TASK_COUNT) {
+    return { ok: false, error: 'Exercise set too short' };
+  }
+
+  if (!exerciseSetMatchesKinds(exercises, selectedKinds)) {
+    exercises = alignExerciseKinds(exercises, selectedKinds);
+  }
+
+  return { ok: true, exercises, parsed };
 }
 
 /** Китайский урок: latin-only L2 (типа prescription) = баг модели. */
@@ -1591,7 +1913,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.1.0', drillPlanner: 'ai-bank-v2' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.1.1', drillPlanner: 'ai-bank-v2', drillSet: 'batch-v3' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */
@@ -2138,120 +2460,28 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
   });
   const selectedKinds = selectedKindsResult.kinds;
   const drillFocus = selectedKindsResult.focus || '';
-  const kindsBlock =
-    `\n\nТипы заданий для этой тренировки (строго ${DRILL_TASK_COUNT}, в этом порядке).\n` +
-    (drillFocus ? `Фокус: ${drillFocus}\n` : '') +
-    `Подобраны под запрос ученика — не меняй kinds и порядок:\n` +
-    selectedKinds
-      .map((k, i) => {
-        const meta = EXERCISE_BANK.find((x) => x.kind === k);
-        return `${i + 1}. ${k}${meta?.bestFor ? ` — ${meta.bestFor}` : ''}`;
-      })
-      .join('\n');
-
-  const baseUserContent =
-    `Последний запрос пользователя:\n${userRequest || '(не указан — выведи из контекста диалога выше)'}\n\n` +
-    `Последний ответ AI:\n${teacherExplanation}\n\n` +
-    `Variation id: ${seed}.${variationBlock}${avoidBlock}${mistakesBlock}${kindsBlock}\n\n` +
-    `Сгенерируй ровно ${DRILL_TASK_COUNT} упражнений (kinds как выше) и nextTopic.\n` +
-    `Каждое задание должно напрямую тренировать то, о чём просил пользователь (и что только что объяснил учитель) — не уходи в общую тему.\n` +
-    `Только JSON.`;
 
   try {
-    let exercises = [];
-    let parsed = null;
-    const maxGenAttempts = 3;
-    const MIN_EXERCISE_SET = 3;
+    const genResult = await generateTeacherExerciseSetFull(apiKey, {
+      systemContent,
+      history,
+      userRequest,
+      teacherExplanation,
+      seed,
+      variationBlock,
+      avoidBlock,
+      mistakesBlock,
+      drillFocus,
+      selectedKinds,
+      lang,
+      attempt,
+    });
 
-    for (let genAttempt = 1; genAttempt <= maxGenAttempts; genAttempt += 1) {
-      const userContent =
-        genAttempt === 1
-          ? baseUserContent
-          : lang !== 'chinese'
-            ? `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый JSON имел неверное число упражнений или неверные kind. Верни ровно ${DRILL_TASK_COUNT} объектов; exercises[i].kind ДОЛЖЕН совпадать с пунктом (i+1) списка kinds.`
-            : `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый набор нарушил L2 или kinds. Для китайского урока selectWord / wordBank / shuffledWords — ТОЛЬКО 汉字. Перегенерируй весь набор с теми же kinds.`;
-
-      const messages = [
-        { role: 'system', content: systemContent },
-        ...history,
-        { role: 'user', content: userContent },
-      ];
-
-      const openaiRes = await fetch(OPENAI_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: TEACHER_MODEL,
-          messages,
-          temperature: attempt > 1 || genAttempt > 1 ? 0.72 : 0.62,
-          max_tokens: 9000,
-          response_format: { type: 'json_object' },
-        }),
-      });
-
-      const raw = await openaiRes.text();
-      let data;
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        return res.status(502).json({ error: 'Invalid response from OpenAI' });
-      }
-
-      if (!openaiRes.ok) {
-        const errMsg = data?.error?.message || data?.error || `OpenAI HTTP ${openaiRes.status}`;
-        return res.status(502).json({ error: typeof errMsg === 'string' ? errMsg : 'OpenAI request failed' });
-      }
-
-      const content = data?.choices?.[0]?.message?.content;
-      if (typeof content !== 'string' || !content.trim()) {
-        return res.status(502).json({ error: 'Empty exercise set reply' });
-      }
-
-      try {
-        parsed = parseJsonFromModelContent(content);
-      } catch {
-        return res.status(502).json({ error: 'Invalid exercise set JSON' });
-      }
-
-      exercises = normalizeExerciseSetFromModel(parsed);
-      const rawCount = Array.isArray(parsed?.exercises) ? parsed.exercises.length : 0;
-
-      if (exercises.length < MIN_EXERCISE_SET) {
-        console.warn(
-          '[teacher-exercise-set] too few after normalize',
-          exercises.length,
-          'raw',
-          rawCount,
-        );
-        if (genAttempt < maxGenAttempts) continue;
-        return res.status(502).json({ error: 'Exercise set too short' });
-      }
-
-      const needsMoreCount = exercises.length < DRILL_TASK_COUNT;
-      const kindsMismatch = !exerciseSetMatchesKinds(exercises, selectedKinds);
-      const chineseBad = lang === 'chinese' && exerciseSetViolatesChineseL2(exercises);
-
-      if ((needsMoreCount || kindsMismatch || chineseBad) && genAttempt < maxGenAttempts) {
-        if (needsMoreCount) {
-          console.warn('[teacher-exercise-set] count short — regenerating', exercises.length);
-        }
-        if (kindsMismatch) {
-          console.warn('[teacher-exercise-set] kind mismatch — regenerating');
-        }
-        if (chineseBad) {
-          console.warn('[teacher-exercise-set] Chinese L2 script violation — regenerating');
-        }
-        continue;
-      }
-
-      if (needsMoreCount) {
-        console.warn('[teacher-exercise-set] returning partial set', exercises.length);
-      }
-      break;
+    if (!genResult.ok) {
+      return res.status(502).json({ error: genResult.error || 'Exercise set too short' });
     }
+
+    const { exercises, parsed } = genResult;
 
     const topicHint = typeof lessonTopic === 'string' ? lessonTopic : '';
     await enrichExerciseSetImages(apiKey, exercises, topicHint || teacherExplanation.slice(0, 120));
