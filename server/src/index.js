@@ -2160,13 +2160,14 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
   try {
     let exercises = [];
     let parsed = null;
-    const maxGenAttempts = lang === 'chinese' ? 3 : 2;
+    const maxGenAttempts = 3;
+    const MIN_EXERCISE_SET = 3;
 
     for (let genAttempt = 1; genAttempt <= maxGenAttempts; genAttempt += 1) {
       const userContent =
         genAttempt === 1
           ? baseUserContent
-          : genAttempt === 2 && lang !== 'chinese'
+          : lang !== 'chinese'
             ? `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый JSON имел неверное число упражнений или неверные kind. Верни ровно ${DRILL_TASK_COUNT} объектов; exercises[i].kind ДОЛЖЕН совпадать с пунктом (i+1) списка kinds.`
             : `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый набор нарушил L2 или kinds. Для китайского урока selectWord / wordBank / shuffledWords — ТОЛЬКО 汉字. Перегенерируй весь набор с теми же kinds.`;
 
@@ -2186,7 +2187,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
           model: TEACHER_MODEL,
           messages,
           temperature: attempt > 1 || genAttempt > 1 ? 0.72 : 0.62,
-          max_tokens: 6500,
+          max_tokens: 9000,
           response_format: { type: 'json_object' },
         }),
       });
@@ -2216,19 +2217,38 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
       }
 
       exercises = normalizeExerciseSetFromModel(parsed);
-      if (exercises.length < DRILL_TASK_COUNT) {
+      const rawCount = Array.isArray(parsed?.exercises) ? parsed.exercises.length : 0;
+
+      if (exercises.length < MIN_EXERCISE_SET) {
+        console.warn(
+          '[teacher-exercise-set] too few after normalize',
+          exercises.length,
+          'raw',
+          rawCount,
+        );
         if (genAttempt < maxGenAttempts) continue;
         return res.status(502).json({ error: 'Exercise set too short' });
       }
 
-      if (!exerciseSetMatchesKinds(exercises, selectedKinds) && genAttempt < maxGenAttempts) {
-        console.warn('[teacher-exercise-set] kind mismatch — regenerating');
+      const needsMoreCount = exercises.length < DRILL_TASK_COUNT;
+      const kindsMismatch = !exerciseSetMatchesKinds(exercises, selectedKinds);
+      const chineseBad = lang === 'chinese' && exerciseSetViolatesChineseL2(exercises);
+
+      if ((needsMoreCount || kindsMismatch || chineseBad) && genAttempt < maxGenAttempts) {
+        if (needsMoreCount) {
+          console.warn('[teacher-exercise-set] count short — regenerating', exercises.length);
+        }
+        if (kindsMismatch) {
+          console.warn('[teacher-exercise-set] kind mismatch — regenerating');
+        }
+        if (chineseBad) {
+          console.warn('[teacher-exercise-set] Chinese L2 script violation — regenerating');
+        }
         continue;
       }
 
-      if (lang === 'chinese' && exerciseSetViolatesChineseL2(exercises) && genAttempt < maxGenAttempts) {
-        console.warn('[teacher-exercise-set] Chinese L2 script violation — regenerating');
-        continue;
+      if (needsMoreCount) {
+        console.warn('[teacher-exercise-set] returning partial set', exercises.length);
       }
       break;
     }
