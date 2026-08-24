@@ -1,32 +1,24 @@
 import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 
-/**
- * Целевой язык урока (L2), не родной.
- * Родной (UI/объяснения) — отдельно; здесь только что учить.
- */
-export function inferTeacherLessonLanguage(
-  seed: string,
-  fallback: CompanionChatApiLanguage = 'english',
-): CompanionChatApiLanguage {
-  const t = seed.trim();
-  if (!t) return fallback === 'russian' ? 'english' : fallback;
+const EXPLICIT_L2 = new Set<CompanionChatApiLanguage>(['english', 'chinese', 'german', 'french']);
 
-  // Китайский: иероглифы / HSK / явные маркеры / Shanghai metro
+function detectStrongTargetLanguage(seed: string): CompanionChatApiLanguage | null {
+  const t = seed.trim();
+  if (!t) return null;
+
   if (
     /[\u4e00-\u9fff]/.test(t) ||
-    /点餐|中文|китай|\bhsk\b|хск|汉语|医院|больниц|мандарин|单程票|怎么走|上海|shanghai|bund|南京东路/iu.test(
+    /点餐|中文|китай|\bchina\b|\bhsk\b|хск|汉语|医院|мандарин|上海|shanghai|bund|南京东路/iu.test(
       t,
     )
   ) {
     return 'chinese';
   }
 
-  // Корейский вайб (пока нет L2=korean в API → english для туристов в Сеуле)
   if (/[\uac00-\ud7af]/.test(t) || /сеул|seoul|hongdae|인생네컷|한국|корей/iu.test(t)) {
-    return fallback === 'russian' ? 'english' : fallback;
+    return 'english';
   }
 
-  // Немецкий: ATM / Berlin / типичные фразы
   if (
     /pin\s*eingeben|geld\s*abheben|geldautomat|deutsch|german|\bberlin\b|[äöüß]/iu.test(t) ||
     /\b(bitte|danke|entschuldigung|sprechen)\b/iu.test(t)
@@ -34,7 +26,6 @@ export function inferTeacherLessonLanguage(
     return 'german';
   }
 
-  // Французский: Métro / Navigo / Paris
   if (
     /billet\s*t\+|navigo|métro|metro|guimard|paris|français|francais|french|où\s*est|ou\s*est/iu.test(
       t,
@@ -44,12 +35,42 @@ export function inferTeacherLessonLanguage(
     return 'french';
   }
 
-  // Явно английский
   if (/airport\s*english|english\s*(lesson|for)?|\benglish\b/iu.test(t)) return 'english';
 
-  // Японский travel — пока учим полезный English для поездки (нет jp в API)
   if (/旅行|日本語|japan/iu.test(t)) return 'english';
 
-  if (fallback === 'russian') return 'english';
-  return fallback;
+  return null;
+}
+
+/**
+ * Целевой язык урока (L2), не родной.
+ * Родной (UI/объяснения) — отдельно; здесь только что учить.
+ */
+export function inferTeacherLessonLanguage(
+  seed: string,
+  fallback: CompanionChatApiLanguage = 'english',
+): CompanionChatApiLanguage {
+  const t = seed.trim();
+  const sessionFallback = fallback === 'russian' ? 'english' : fallback;
+
+  if (!t) return sessionFallback;
+
+  // Явный L2 сессии (english/chinese/…) — не переопределяем по ответу учителя / старому topic.
+  if (EXPLICIT_L2.has(fallback)) {
+    const strong = detectStrongTargetLanguage(t);
+    return strong ?? sessionFallback;
+  }
+
+  return detectStrongTargetLanguage(t) ?? sessionFallback;
+}
+
+/** L2 для drill: язык сессии, эвристика только по последнему вопросу ученика. */
+export function resolveDrillTargetLanguage(
+  sessionLanguage: CompanionChatApiLanguage,
+  lastUserMessage: string,
+): CompanionChatApiLanguage {
+  if (EXPLICIT_L2.has(sessionLanguage)) {
+    return sessionLanguage;
+  }
+  return inferTeacherLessonLanguage(lastUserMessage, 'english');
 }

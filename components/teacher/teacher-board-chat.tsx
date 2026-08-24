@@ -4,8 +4,8 @@ import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Animated,
   Alert,
+  Animated,
   Keyboard,
   Pressable,
   ScrollView,
@@ -27,7 +27,7 @@ import { ImageMessageBubble } from '@/components/companion/image-message-bubble'
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
 import { TeacherAttachGallery } from '@/components/teacher/teacher-attach-gallery';
 import { TeacherExerciseActions } from '@/components/teacher/teacher-exercise-actions';
-import { useTeacherDrillOverlay } from '@/components/teacher/teacher-drill-overlay';
+import { useTeacherDrillSession } from '@/components/teacher/teacher-drill-session';
 import { TeacherMessageBody } from '@/components/teacher/teacher-message-body';
 import { WordAddSheetHost } from '@/components/word-add-sheet';
 import {
@@ -65,7 +65,7 @@ import { prepareCompanionImageForApi } from '@/utils/companion-image-base64';
 import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
 import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
 import { setTeacherLessonBootstrap } from '@/utils/teacher-lesson-bootstrap';
-import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
+import { resolveDrillTargetLanguage } from '@/utils/teacher-lesson-language';
 import {
   teacherPhotoFallbackMessage,
   teacherUiLanguageFromLocale,
@@ -149,6 +149,7 @@ export function TeacherBoardChat({
   const { markLessonCreated, addRecentLesson } = useTeacherJourney();
   const { recordActivity } = useEngagement();
   const { ingestTeacherText } = useLexicon();
+  const drillSession = useTeacherDrillSession();
   const { animatedStyle: composerInsetStyle, isOpen: keyboardOpen } = useKeyboardInset(
     Math.max(insets.bottom, gameChrome ? 4 : 10) + (gameChrome ? 0 : 8),
   );
@@ -166,15 +167,10 @@ export function TeacherBoardChat({
   const [attachOpen, setAttachOpen] = useState(false);
   const [typing, setTyping] = useState(false);
   const [sending, setSending] = useState(false);
-  const [exerciseLoadingId, setExerciseLoadingId] = useState<string | null>(null);
-  const [drillExercises, setDrillExercises] = useState<TeacherExerciseItem[]>([]);
-  const [drillNextTopic, setDrillNextTopic] = useState<TeacherNextTopicRecommendation | null>(null);
   const [drillMistakes, setDrillMistakes] = useState<TeacherDrillMistakeRecord[]>([]);
   const drillSourceMessageRef = useRef<CompanionMsg | null>(null);
   const drillExplanationRef = useRef('');
   const drillLanguageRef = useRef<CompanionChatApiLanguage>(language);
-  const [drillSessionKey, setDrillSessionKey] = useState('');
-  const [drillOpen, setDrillOpen] = useState(false);
   const [drillNotice, setDrillNotice] = useState<string | null>(null);
   const drillNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
@@ -475,87 +471,6 @@ export function TeacherBoardChat({
     });
   }, [sendImageFromUri]);
 
-  const generateExerciseForMessage = useCallback(
-    async (source: CompanionMsg) => {
-      if (exerciseLoadingId) {
-        showDrillNotice(t('teacher.drill.generatingInProgress'));
-        return;
-      }
-      const explanation = source.text.trim();
-      if (!explanation) {
-        showDrillNotice(t('teacher.drill.emptyExplanation'));
-        return;
-      }
-      if (typing) {
-        showDrillNotice(t('teacher.drill.waitForReply'));
-        return;
-      }
-
-      const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
-      if (!access.allowed) {
-        const reason =
-          access.reasonKey === 'refreshLimit'
-            ? t('teacher.drill.refreshLimit', { count: access.reasonCount ?? 0 })
-            : access.reasonKey === 'lessonLimit'
-              ? t('teacher.drill.lessonLimit', { count: access.reasonCount ?? 0 })
-              : t('teacher.drill.limitFallback');
-        showDrillNotice(reason);
-        return;
-      }
-
-      setExerciseLoadingId(source.id);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const generationSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      const lastUser = lastUserTextBefore(messagesRef.current, source.id);
-      const drillLanguage = inferTeacherLessonLanguage(
-        `${lastUser}\n${lessonTopicRef.current}\n${explanation}`,
-        language,
-      );
-      drillSourceMessageRef.current = source;
-      drillExplanationRef.current = explanation;
-      drillLanguageRef.current = drillLanguage;
-      try {
-        const { exercises: raw, nextTopic } = await postTeacherExerciseSet({
-          explanation,
-          lastUserMessage: lastUser,
-          conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
-          language: drillLanguage,
-          uiLanguage,
-          lessonTopic: lessonTopicRef.current,
-          generationSeed,
-          generationAttempt: access.generationsUsed + 1,
-          avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
-          recentMistakes: getMistakeSummariesForApi(drillMistakes),
-        });
-        const sessionKey = `drill-${generationSeed}`;
-        const exercises = raw.map((ex, i) => ({
-          ...ex,
-          id: `${sessionKey}-${i}`,
-        }));
-        const nextUsage = recordMiniDrillGeneration(
-          miniDrillUsage,
-          source.id,
-          exercises.map((ex) => ex.checkText),
-        );
-        setMiniDrillUsage(nextUsage);
-        if (miniDrillUserId) {
-          void saveMiniDrillUsage(miniDrillUserId, nextUsage);
-        }
-        setDrillSessionKey(sessionKey);
-        setDrillExercises(exercises);
-        setDrillNextTopic(nextTopic ?? null);
-        setExerciseLoadingId(null);
-        setDrillOpen(true);
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : t('teacher.drill.networkError');
-        showDrillNotice(t('teacher.drill.generateFailedBody', { error: msg }));
-        setExerciseLoadingId(null);
-      }
-    },
-    [drillMistakes, exerciseLoadingId, language, miniDrillUsage, miniDrillUserId, showDrillNotice, t, typing, uiLanguage],
-  );
-
   const checkDrillExercise = useCallback(
     async (payload: {
       exercise: string;
@@ -592,10 +507,7 @@ export function TeacherBoardChat({
 
   const closeDrill = useCallback(
     (summary: { correct: number; total: number } | null) => {
-      setDrillOpen(false);
-      setDrillExercises([]);
-      setDrillSessionKey('');
-      setDrillNextTopic(null);
+      drillSession.endDrill();
       if (summary && summary.correct > 0) {
         recordActivity({
           kind: 'teacher_drill',
@@ -604,7 +516,7 @@ export function TeacherBoardChat({
         });
       }
     },
-    [recordActivity],
+    [drillSession, recordActivity],
   );
 
   const handleDrillMistakesRecorded = useCallback(
@@ -628,11 +540,153 @@ export function TeacherBoardChat({
     [miniDrillUserId],
   );
 
+  const handleDrillNextTopic = useCallback(
+    (topic: TeacherNextTopicRecommendation) => {
+      const text = buildNextTopicChatMessage(topic);
+      setTimeout(() => {
+        void send(text);
+        scrollRef.current?.scrollToEnd({ animated: true });
+      }, 120);
+    },
+    [send],
+  );
+
+  const handleDrillFollowUpRef = useRef<(followUp: TeacherDrillFollowUp) => void>(() => {});
+
+  const prepareDrillForMessage = useCallback(
+    (source: CompanionMsg): boolean => {
+      const explanation = source.text.trim();
+      if (!explanation) {
+        Alert.alert(t('teacher.drill.generateFailedTitle'), t('teacher.drill.emptyExplanation'));
+        showDrillNotice(t('teacher.drill.emptyExplanation'));
+        return false;
+      }
+      if (typing) {
+        Alert.alert(t('teacher.drill.generateFailedTitle'), t('teacher.drill.waitForReply'));
+        showDrillNotice(t('teacher.drill.waitForReply'));
+        return false;
+      }
+
+      const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
+      if (!access.allowed) {
+        const reason =
+          access.reasonKey === 'refreshLimit'
+            ? t('teacher.drill.refreshLimit', { count: access.reasonCount ?? 0 })
+            : access.reasonKey === 'lessonLimit'
+              ? t('teacher.drill.lessonLimit', { count: access.reasonCount ?? 0 })
+              : t('teacher.drill.limitFallback');
+        Alert.alert(t('teacher.drill.generateFailedTitle'), reason);
+        showDrillNotice(reason);
+        return false;
+      }
+
+      if (!drillSession.beginGenerating(source.id)) {
+        Alert.alert(t('teacher.drill.generateFailedTitle'), t('teacher.drill.generatingInProgress'));
+        showDrillNotice(t('teacher.drill.generatingInProgress'));
+        return false;
+      }
+
+      Keyboard.dismiss();
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      return true;
+    },
+    [drillSession, miniDrillUsage, showDrillNotice, t, typing],
+  );
+
+  const generateExerciseForMessage = useCallback(
+    async (source: CompanionMsg) => {
+      const explanation = source.text.trim();
+      if (!explanation) return;
+
+      const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
+      const generationSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const lastUser = lastUserTextBefore(messagesRef.current, source.id);
+      const drillLanguage = resolveDrillTargetLanguage(language, lastUser);
+      drillSourceMessageRef.current = source;
+      drillExplanationRef.current = explanation;
+      drillLanguageRef.current = drillLanguage;
+      try {
+        const { exercises: raw, nextTopic } = await postTeacherExerciseSet({
+          explanation,
+          lastUserMessage: lastUser,
+          conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
+          language: drillLanguage,
+          uiLanguage,
+          lessonTopic: lessonTopicRef.current,
+          generationSeed,
+          generationAttempt: access.generationsUsed + 1,
+          avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
+          recentMistakes: getMistakeSummariesForApi(drillMistakes),
+        });
+        const sessionKey = `drill-${generationSeed}`;
+        const exercises = raw.map((ex, i) => ({
+          ...ex,
+          id: `${sessionKey}-${i}`,
+        }));
+        const nextUsage = recordMiniDrillGeneration(
+          miniDrillUsage,
+          source.id,
+          exercises.map((ex) => ex.checkText),
+        );
+        setMiniDrillUsage(nextUsage);
+        if (miniDrillUserId) {
+          void saveMiniDrillUsage(miniDrillUserId, nextUsage);
+        }
+        drillSession.beginDrill({
+          sessionKey,
+          exercises,
+          nextTopic: nextTopic ?? null,
+          followUpContext: {
+            explanation,
+            lessonTopic: lessonTopicRef.current,
+            language: drillLanguage,
+            uiLanguage,
+            recentMistakes: getMistakeSummariesForApi(drillMistakes),
+          },
+          transcribeLanguage: language,
+          onClose: closeDrill,
+          onNextTopicPress: handleDrillNextTopic,
+          onFollowUpPress: (followUp) => handleDrillFollowUpRef.current(followUp),
+          onMistakesRecorded: handleDrillMistakesRecorded,
+          onCheck: checkDrillExercise,
+        });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : t('teacher.drill.networkError');
+        drillSession.cancelGenerating();
+        showDrillNotice(t('teacher.drill.generateFailedBody', { error: msg }));
+        Alert.alert(t('teacher.drill.generateFailedTitle'), t('teacher.drill.generateFailedBody', { error: msg }));
+      }
+    },
+    [
+      checkDrillExercise,
+      closeDrill,
+      drillMistakes,
+      drillSession,
+      handleDrillMistakesRecorded,
+      handleDrillNextTopic,
+      language,
+      miniDrillUsage,
+      miniDrillUserId,
+      showDrillNotice,
+      t,
+      uiLanguage,
+    ],
+  );
+
+  const handlePracticePress = useCallback(
+    (message: CompanionMsg) => {
+      void generateExerciseForMessage(message);
+    },
+    [generateExerciseForMessage],
+  );
+
   const handleDrillFollowUp = useCallback(
     (followUp: TeacherDrillFollowUp) => {
       if (followUp.action === 'repeat_same' && drillSourceMessageRef.current) {
         setTimeout(() => {
-          void generateExerciseForMessage(drillSourceMessageRef.current!);
+          const msg = drillSourceMessageRef.current!;
+          if (prepareDrillForMessage(msg)) void generateExerciseForMessage(msg);
         }, 120);
         return;
       }
@@ -650,61 +704,10 @@ export function TeacherBoardChat({
         scrollRef.current?.scrollToEnd({ animated: true });
       }, 120);
     },
-    [generateExerciseForMessage, send],
+    [generateExerciseForMessage, prepareDrillForMessage, send],
   );
 
-  const handleDrillNextTopic = useCallback(
-    (topic: TeacherNextTopicRecommendation) => {
-      const text = buildNextTopicChatMessage(topic);
-      setTimeout(() => {
-        void send(text);
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 120);
-    },
-    [send],
-  );
-
-  const drillOverlayModel = useMemo(
-    () => ({
-      generatingVisible: Boolean(exerciseLoadingId) && !drillOpen,
-      drillVisible: drillOpen,
-      sessionKey: drillSessionKey,
-      exercises: drillExercises,
-      nextTopic: drillNextTopic,
-      followUpContext: drillOpen
-        ? {
-            explanation: drillExplanationRef.current,
-            lessonTopic: lessonTopicRef.current,
-            language: drillLanguageRef.current,
-            uiLanguage,
-            recentMistakes: getMistakeSummariesForApi(drillMistakes),
-          }
-        : null,
-      transcribeLanguage: language,
-      onCloseDrill: closeDrill,
-      onNextTopicPress: handleDrillNextTopic,
-      onFollowUpPress: handleDrillFollowUp,
-      onMistakesRecorded: handleDrillMistakesRecorded,
-      onCheckDrill: checkDrillExercise,
-    }),
-    [
-      checkDrillExercise,
-      closeDrill,
-      drillExercises,
-      drillMistakes,
-      drillNextTopic,
-      drillOpen,
-      drillSessionKey,
-      exerciseLoadingId,
-      handleDrillFollowUp,
-      handleDrillMistakesRecorded,
-      handleDrillNextTopic,
-      language,
-      uiLanguage,
-    ],
-  );
-
-  useTeacherDrillOverlay(drillOverlayModel);
+  handleDrillFollowUpRef.current = handleDrillFollowUp;
 
   const renderPracticeActions = useCallback(
     (message: CompanionMsg) => {
@@ -715,15 +718,16 @@ export function TeacherBoardChat({
         <TeacherExerciseActions
           messageId={message.id}
           message={message}
-          exerciseLoadingId={exerciseLoadingId}
+          exerciseLoadingId={drillSession.messageIdLoading}
           typing={typing}
           miniAccess={evaluateMiniDrillAccess(miniDrillUsage, message.id)}
-          onPress={(msg) => void generateExerciseForMessage(msg)}
+          onPrepare={prepareDrillForMessage}
+          onPress={handlePracticePress}
           onBlocked={showDrillNotice}
         />
       );
     },
-    [exerciseLoadingId, generateExerciseForMessage, miniDrillUsage, showDrillNotice, typing],
+    [drillSession.messageIdLoading, handlePracticePress, miniDrillUsage, prepareDrillForMessage, showDrillNotice, typing],
   );
 
   const markerFamily = fontsLoaded ? 'Kalam_400Regular' : undefined;
@@ -797,7 +801,7 @@ export function TeacherBoardChat({
           ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={[styles.thread, gameChrome && styles.threadGame]}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           keyboardDismissMode="none"
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>

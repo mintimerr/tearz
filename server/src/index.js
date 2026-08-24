@@ -219,7 +219,7 @@ const PRACTICAL_QUESTION_RE =
   /(?:^|[\s,.!?])(?:как\s+(?:заказать|сказать|спросить|попросить|объяснить|назвать|позвонить|договориться|оплатить|найти|добраться)|не\s+знаю\s+как|что\s+(?:говорить|сказать)|как\s+бы\s+сказать|how\s+(?:do\s+i|to)\s+(?:say|order|ask|tell|get|call)|what\s+(?:do\s+i|should\s+i)\s+say)(?:[\s,.!?]|$)/iu;
 
 const SITUATION_CHINA_RE =
-  /кита|china|中国|пекин|beijing|shanghai|上海|北京|广州|成都|点餐|\bhsk\b|хск|汉语|医院|больниц|мандарин/iu;
+  /китай|\bchina\b|中国|пекин|beijing|shanghai|上海|北京|广州|成都|点餐|\bhsk\b|хск|汉语|医院|мандарин/iu;
 const SITUATION_ENGLISH_RE =
   /англи|britain|london|usa|америк|нью-йорк|new\s+york|airport\s*english|english\s*(lesson|for)?/iu;
 const SITUATION_GERMAN_RE =
@@ -256,12 +256,7 @@ function isPracticalLanguageQuestion(message) {
  * если тема явно не «учить русский как иностранный».
  */
 function resolveTeacherTargetLanguage(requested, message, lessonTopic) {
-  const blob = `${typeof message === 'string' ? message : ''} ${typeof lessonTopic === 'string' ? lessonTopic : ''}`;
-  if (/[\u4e00-\u9fff]/.test(blob) || SITUATION_CHINA_RE.test(blob)) return 'chinese';
-  if (SITUATION_GERMAN_RE.test(blob)) return 'german';
-  if (SITUATION_FRENCH_RE.test(blob)) return 'french';
-  if (SITUATION_ENGLISH_RE.test(blob)) return 'english';
-  if (SITUATION_RUSSIA_RE.test(blob) && /учить|foreign|как\s+иностран/iu.test(blob)) return 'russian';
+  // Явный L2 от клиента (english/chinese/…) — не переопределяем эвристикой по тексту.
   if (
     requested === 'english' ||
     requested === 'chinese' ||
@@ -270,6 +265,13 @@ function resolveTeacherTargetLanguage(requested, message, lessonTopic) {
   ) {
     return requested;
   }
+
+  const blob = `${typeof message === 'string' ? message : ''} ${typeof lessonTopic === 'string' ? lessonTopic : ''}`;
+  if (/[\u4e00-\u9fff]/.test(blob) || SITUATION_CHINA_RE.test(blob)) return 'chinese';
+  if (SITUATION_GERMAN_RE.test(blob)) return 'german';
+  if (SITUATION_FRENCH_RE.test(blob)) return 'french';
+  if (SITUATION_ENGLISH_RE.test(blob)) return 'english';
+  if (SITUATION_RUSSIA_RE.test(blob) && /учить|foreign|как\s+иностран/iu.test(blob)) return 'russian';
   return 'english';
 }
 
@@ -1913,7 +1915,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.1.1', drillPlanner: 'ai-bank-v2', drillSet: 'batch-v3' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.1.2', drillPlanner: 'ai-bank-v2', drillSet: 'batch-v3' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */

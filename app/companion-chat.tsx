@@ -34,12 +34,11 @@ import { GAME_THEME } from '@/constants/game-theme';
 import { CompanionVoiceComposer } from '@/components/companion/companion-voice-record-control';
 import { TeacherMessageBody } from '@/components/teacher/teacher-message-body';
 import { TeacherExerciseActions } from '@/components/teacher/teacher-exercise-actions';
-import { TeacherExerciseDrill } from '@/components/teacher/teacher-exercise-drill';
+import { useTeacherDrillSession } from '@/components/teacher/teacher-drill-session';
 import {
   TeacherFullWorkoutPaywall,
   type TearzPlusFeature,
 } from '@/components/teacher/teacher-full-workout-paywall';
-import { TeacherExerciseGenerating } from '@/components/teacher/teacher-exercise-generating';
 import { TeacherChatComposer } from '@/components/teacher/teacher-chat-composer';
 import { teacherChatStyles as tStyles } from '@/components/teacher/teacher-chat-styles';
 import { FadeInView } from '@/components/ui';
@@ -83,7 +82,7 @@ import { persistCompanionAttachment } from '@/utils/companion-attachment-storage
 import { prepareCompanionImageForApi } from '@/utils/companion-image-base64';
 import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
 import { normalizeTeacherExerciseSet } from '@/utils/teacher-exercise-normalize';
-import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
+import { resolveDrillTargetLanguage } from '@/utils/teacher-lesson-language';
 import {
   teacherPhotoFallbackMessage,
   teacherUiLanguageFromLocale,
@@ -378,6 +377,10 @@ function TypingDots({ dotStyle }: { dotStyle?: object }) {
 }
 
 export default function CompanionChatScreen() {
+  return <CompanionChatScreenInner />;
+}
+
+function CompanionChatScreenInner() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, locale } = useTranslation();
@@ -413,6 +416,7 @@ export default function CompanionChatScreen() {
   const { registerUserStudyText, recordStudySwipe } = useUserProfile();
   const { recordActivity, hasPlusAccess } = useEngagement();
   const { ingestTeacherText } = useLexicon();
+  const drillSession = useTeacherDrillSession();
   const chatRow = useMemo(
     () => (typeof params.id === 'string' ? chats.find((c) => c.id === params.id) : undefined),
     [chats, params.id],
@@ -458,15 +462,10 @@ export default function CompanionChatScreen() {
   const [input, setInput] = useState('');
   const [attachOpen, setAttachOpen] = useState(false);
   const [typing, setTyping] = useState(false);
-  const [exerciseLoadingId, setExerciseLoadingId] = useState<string | null>(null);
-  const [drillExercises, setDrillExercises] = useState<TeacherExerciseItem[]>([]);
-  const [drillNextTopic, setDrillNextTopic] = useState<TeacherNextTopicRecommendation | null>(null);
   const [drillMistakes, setDrillMistakes] = useState<TeacherDrillMistakeRecord[]>([]);
   const drillSourceMessageRef = useRef<CompanionMsg | null>(null);
   const drillExplanationRef = useRef('');
   const drillLanguageRef = useRef<CompanionChatApiLanguage>('english');
-  const [drillSessionKey, setDrillSessionKey] = useState('');
-  const [drillOpen, setDrillOpen] = useState(false);
   const [plusPaywallFeature, setPlusPaywallFeature] = useState<TearzPlusFeature | null>(null);
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
   const [messages, setMessages] = useState<CompanionMsg[]>(() => initialMessagesFromParams(params));
@@ -1060,87 +1059,6 @@ export default function CompanionChatScreen() {
     }
   }, [sendFileFromUri, sendImageFromUri]);
 
-  const generateExerciseForMessage = useCallback(
-    async (source: CompanionMsg) => {
-      if (exerciseLoadingId) return;
-      const explanation = source.text.trim();
-      if (!explanation) {
-        Alert.alert(t('teacher.drill.title'), t('teacher.drill.emptyExplanation'));
-        return;
-      }
-      if (typing) {
-        Alert.alert(t('teacher.drill.title'), t('teacher.drill.waitForReply'));
-        return;
-      }
-
-      const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
-      if (!access.allowed) {
-        const reason =
-          access.reasonKey === 'refreshLimit'
-            ? t('teacher.drill.refreshLimit', { count: access.reasonCount ?? 0 })
-            : access.reasonKey === 'lessonLimit'
-              ? t('teacher.drill.lessonLimit', { count: access.reasonCount ?? 0 })
-              : t('teacher.drill.limitFallback');
-        Alert.alert(t('teacher.drill.title'), reason);
-        return;
-      }
-
-      setExerciseLoadingId(source.id);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const generationSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      const lastUser = lastUserTextBefore(messagesRef.current, source.id);
-      const drillLanguage = inferTeacherLessonLanguage(
-        `${lastUser}\n${lessonTopicParam ?? ''}\n${explanation}`,
-        teacherSessionLang === 'russian' ? 'english' : teacherSessionLang,
-      );
-      drillSourceMessageRef.current = source;
-      drillExplanationRef.current = explanation;
-      drillLanguageRef.current = drillLanguage;
-      try {
-        const { exercises: raw, nextTopic } = await postTeacherExerciseSet({
-          explanation,
-          lastUserMessage: lastUser,
-          conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
-          language: drillLanguage,
-          uiLanguage,
-          lessonTopic: lessonTopicParam,
-          generationSeed,
-          generationAttempt: access.generationsUsed + 1,
-          avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
-          recentMistakes: getMistakeSummariesForApi(drillMistakes),
-        });
-        const sessionKey = `drill-${generationSeed}`;
-        const exercises = raw.map((ex, i) => ({
-          ...ex,
-          id: `${sessionKey}-${i}`,
-        }));
-        const nextUsage = recordMiniDrillGeneration(
-          miniDrillUsage,
-          source.id,
-          exercises.map((ex) => ex.checkText),
-        );
-        setMiniDrillUsage(nextUsage);
-        if (miniDrillUserId) {
-          void saveMiniDrillUsage(miniDrillUserId, nextUsage);
-        }
-        setDrillSessionKey(sessionKey);
-        setDrillExercises(exercises);
-        setDrillNextTopic(nextTopic ?? null);
-        setExerciseLoadingId(null);
-        setDrillOpen(true);
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : t('teacher.drill.networkError');
-        Alert.alert(
-          t('teacher.drill.generateFailedTitle'),
-          t('teacher.drill.generateFailedBody', { error: msg }),
-        );
-        setExerciseLoadingId(null);
-      }
-    },
-    [drillMistakes, exerciseLoadingId, lessonTopicParam, miniDrillUsage, miniDrillUserId, t, teacherSessionLang, typing, uiLanguage],
-  );
-
   const checkDrillExercise = useCallback(
     async (payload: {
       exercise: string;
@@ -1175,6 +1093,20 @@ export default function CompanionChatScreen() {
     [lessonTopicParam, recordStudySwipe, teacherSessionLang, uiLanguage],
   );
 
+  const closeDrill = useCallback(
+    (summary: { correct: number; total: number } | null) => {
+      drillSession.endDrill();
+      if (summary && summary.correct > 0) {
+        recordActivity({
+          kind: 'teacher_drill',
+          drillCorrect: summary.correct,
+          ...(lessonTopicParam ? { lessonTopic: lessonTopicParam } : {}),
+        });
+      }
+    },
+    [drillSession, lessonTopicParam, recordActivity],
+  );
+
   const handleDrillMistakesRecorded = useCallback(
     (mistakes: Array<{
       kind: string;
@@ -1196,11 +1128,140 @@ export default function CompanionChatScreen() {
     [lessonTopicParam, miniDrillUserId],
   );
 
+  const handleDrillFollowUpRef = useRef<(followUp: TeacherDrillFollowUp) => void>(() => {});
+
+  const prepareDrillForMessage = useCallback(
+    (source: CompanionMsg): boolean => {
+      const explanation = source.text.trim();
+      if (!explanation) {
+        Alert.alert(t('teacher.drill.title'), t('teacher.drill.emptyExplanation'));
+        return false;
+      }
+      if (typing) {
+        Alert.alert(t('teacher.drill.title'), t('teacher.drill.waitForReply'));
+        return false;
+      }
+
+      const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
+      if (!access.allowed) {
+        const reason =
+          access.reasonKey === 'refreshLimit'
+            ? t('teacher.drill.refreshLimit', { count: access.reasonCount ?? 0 })
+            : access.reasonKey === 'lessonLimit'
+              ? t('teacher.drill.lessonLimit', { count: access.reasonCount ?? 0 })
+              : t('teacher.drill.limitFallback');
+        Alert.alert(t('teacher.drill.title'), reason);
+        return false;
+      }
+
+      if (!drillSession.beginGenerating(source.id)) {
+        Alert.alert(t('teacher.drill.title'), t('teacher.drill.generatingInProgress'));
+        return false;
+      }
+
+      Keyboard.dismiss();
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      return true;
+    },
+    [drillSession, miniDrillUsage, t, typing],
+  );
+
+  const generateExerciseForMessage = useCallback(
+    async (source: CompanionMsg) => {
+      const explanation = source.text.trim();
+      if (!explanation) return;
+
+      const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
+      const generationSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const lastUser = lastUserTextBefore(messagesRef.current, source.id);
+      const drillLanguage = resolveDrillTargetLanguage(teacherSessionLang, lastUser);
+      drillSourceMessageRef.current = source;
+      drillExplanationRef.current = explanation;
+      drillLanguageRef.current = drillLanguage;
+      try {
+        const { exercises: raw, nextTopic } = await postTeacherExerciseSet({
+          explanation,
+          lastUserMessage: lastUser,
+          conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
+          language: drillLanguage,
+          uiLanguage,
+          lessonTopic: lessonTopicParam,
+          generationSeed,
+          generationAttempt: access.generationsUsed + 1,
+          avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
+          recentMistakes: getMistakeSummariesForApi(drillMistakes),
+        });
+        const sessionKey = `drill-${generationSeed}`;
+        const exercises = raw.map((ex, i) => ({
+          ...ex,
+          id: `${sessionKey}-${i}`,
+        }));
+        const nextUsage = recordMiniDrillGeneration(
+          miniDrillUsage,
+          source.id,
+          exercises.map((ex) => ex.checkText),
+        );
+        setMiniDrillUsage(nextUsage);
+        if (miniDrillUserId) {
+          void saveMiniDrillUsage(miniDrillUserId, nextUsage);
+        }
+        drillSession.beginDrill({
+          sessionKey,
+          exercises,
+          nextTopic: nextTopic ?? null,
+          followUpContext: {
+            explanation,
+            lessonTopic: lessonTopicParam,
+            language: drillLanguage,
+            uiLanguage,
+            recentMistakes: getMistakeSummariesForApi(drillMistakes),
+          },
+          transcribeLanguage: teacherSessionLang,
+          onClose: closeDrill,
+          onNextTopicPress: handleDrillNextTopic,
+          onFollowUpPress: (followUp) => handleDrillFollowUpRef.current(followUp),
+          onMistakesRecorded: handleDrillMistakesRecorded,
+          onCheck: checkDrillExercise,
+        });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : t('teacher.drill.networkError');
+        drillSession.cancelGenerating();
+        Alert.alert(
+          t('teacher.drill.generateFailedTitle'),
+          t('teacher.drill.generateFailedBody', { error: msg }),
+        );
+      }
+    },
+    [
+      checkDrillExercise,
+      closeDrill,
+      drillMistakes,
+      drillSession,
+      handleDrillMistakesRecorded,
+      handleDrillNextTopic,
+      lessonTopicParam,
+      miniDrillUsage,
+      miniDrillUserId,
+      t,
+      teacherSessionLang,
+      uiLanguage,
+    ],
+  );
+
+  const handlePracticePress = useCallback(
+    (message: CompanionMsg) => {
+      void generateExerciseForMessage(message);
+    },
+    [generateExerciseForMessage],
+  );
+
   const handleDrillFollowUp = useCallback(
     (followUp: TeacherDrillFollowUp) => {
       if (followUp.action === 'repeat_same' && drillSourceMessageRef.current) {
         setTimeout(() => {
-          void generateExerciseForMessage(drillSourceMessageRef.current!);
+          const msg = drillSourceMessageRef.current!;
+          if (prepareDrillForMessage(msg)) void generateExerciseForMessage(msg);
         }, 120);
         return;
       }
@@ -1210,22 +1271,10 @@ export default function CompanionChatScreen() {
         scrollRef.current?.scrollToEnd({ animated: true });
       }, 120);
     },
-    [generateExerciseForMessage],
+    [generateExerciseForMessage, prepareDrillForMessage],
   );
 
-  const closeDrill = useCallback((summary: { correct: number; total: number } | null) => {
-    setDrillOpen(false);
-    setDrillExercises([]);
-    setDrillSessionKey('');
-    setDrillNextTopic(null);
-    if (summary && summary.correct > 0) {
-      recordActivity({
-        kind: 'teacher_drill',
-        drillCorrect: summary.correct,
-        ...(lessonTopicParam ? { lessonTopic: lessonTopicParam } : {}),
-      });
-    }
-  }, [lessonTopicParam, recordActivity]);
+  handleDrillFollowUpRef.current = handleDrillFollowUp;
 
   if (!companionChatsHydrated) {
     return (
@@ -1274,7 +1323,7 @@ export default function CompanionChatScreen() {
               style={tStyles.thread}
               contentContainerStyle={tStyles.threadContent}
               showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
+              keyboardShouldPersistTaps="always"
               removeClippedSubviews={false}
               onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
               <View style={tStyles.dateWrap}>
@@ -1303,10 +1352,11 @@ export default function CompanionChatScreen() {
                             <TeacherExerciseActions
                               messageId={m.id}
                               message={m}
-                              exerciseLoadingId={exerciseLoadingId}
+                              exerciseLoadingId={drillSession.messageIdLoading}
                               typing={typing}
                               miniAccess={evaluateMiniDrillAccess(miniDrillUsage, m.id)}
-                              onPress={(msg) => void generateExerciseForMessage(msg)}
+                              onPrepare={prepareDrillForMessage}
+                              onPress={handlePracticePress}
                               onBlocked={(reason) => Alert.alert(t('teacher.drill.title'), reason)}
                             />
                           </View>
@@ -1362,32 +1412,6 @@ export default function CompanionChatScreen() {
             />
           </Reanimated.View>
         </View>
-
-        <TeacherExerciseGenerating visible={Boolean(exerciseLoadingId) && !drillOpen} />
-
-        <TeacherExerciseDrill
-          visible={drillOpen}
-          sessionKey={drillSessionKey}
-          exercises={drillExercises}
-          nextTopic={drillNextTopic}
-          followUpContext={
-            drillOpen
-              ? {
-                  explanation: drillExplanationRef.current,
-                  lessonTopic: lessonTopicParam,
-                  language: drillLanguageRef.current,
-                  uiLanguage,
-                  recentMistakes: getMistakeSummariesForApi(drillMistakes),
-                }
-              : null
-          }
-          transcribeLanguage={teacherSessionLang}
-          onClose={closeDrill}
-          onNextTopicPress={handleDrillNextTopic}
-          onFollowUpPress={handleDrillFollowUp}
-          onMistakesRecorded={handleDrillMistakesRecorded}
-          onCheck={checkDrillExercise}
-        />
 
       </View>
     );
