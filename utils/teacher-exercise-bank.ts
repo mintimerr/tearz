@@ -1,34 +1,35 @@
 import type { TeacherExerciseKind } from '@/types/companion-chat-api';
-import { MINI_DRILL_TASK_COUNT } from '@/constants/teacher-drill';
+import { DRILL_TASK_COUNT } from '@/constants/teacher-drill';
 
-/** @deprecated use MINI_DRILL_TASK_COUNT */
-export const MINI_DRILL_SIZE = MINI_DRILL_TASK_COUNT;
+/** @deprecated use DRILL_TASK_COUNT */
+export const MINI_DRILL_SIZE = DRILL_TASK_COUNT;
 
-/**
- * Банк типов: ProgressMe / DET + механики в духе HelloChinese.
- * ИИ адаптирует содержание под любой L2 (zh / en / …).
- */
-export const EXERCISE_BANK: ReadonlyArray<{ kind: TeacherExerciseKind; difficulty: number }> = [
-  { kind: 'choose_translation', difficulty: 1 },
-  { kind: 'read_and_select', difficulty: 2 },
-  { kind: 'odd_one_out', difficulty: 3 },
-  { kind: 'word_to_image', difficulty: 4 },
-  { kind: 'match_pairs', difficulty: 5 },
-  { kind: 'choose_reply', difficulty: 6 },
-  { kind: 'what_do_you_say', difficulty: 7 },
-  { kind: 'drag_word_to_blank', difficulty: 8 },
-  { kind: 'complete_dialogue', difficulty: 9 },
-  { kind: 'fill_partial_word', difficulty: 10 },
-  { kind: 'type_word_in_blank', difficulty: 11 },
-  { kind: 'pick_similar', difficulty: 12 },
-  { kind: 'choose_word_form', difficulty: 13 },
-  { kind: 'spot_error', difficulty: 14 },
-  { kind: 'identify_main_idea', difficulty: 15 },
-  { kind: 'sentence_order', difficulty: 16 },
-  { kind: 'build_from_meaning', difficulty: 17 },
-  { kind: 'multiple_choice', difficulty: 18 },
-  { kind: 'voice_recording', difficulty: 19 },
-  { kind: 'write_sentences', difficulty: 20 },
+/** Sync с server/src/index.js EXERCISE_BANK — planner выбирает kinds только отсюда. */
+export const EXERCISE_BANK: ReadonlyArray<{
+  kind: TeacherExerciseKind;
+  difficulty: number;
+  bestFor: string;
+}> = [
+  { kind: 'choose_translation', difficulty: 1, bestFor: 'новая лексика / перевод' },
+  { kind: 'read_and_select', difficulty: 2, bestFor: 'орфография, настоящее vs выдуманное слово' },
+  { kind: 'odd_one_out', difficulty: 3, bestFor: 'семантические группы по теме' },
+  { kind: 'word_to_image', difficulty: 4, bestFor: 'конкретные существительные' },
+  { kind: 'match_pairs', difficulty: 5, bestFor: 'пары слов/фраз по теме' },
+  { kind: 'choose_reply', difficulty: 6, bestFor: 'мини-диалог, ответная реплика' },
+  { kind: 'what_do_you_say', difficulty: 7, bestFor: 'ситуация → уместная фраза' },
+  { kind: 'drag_word_to_blank', difficulty: 8, bestFor: 'грамматика в контексте, пропуск' },
+  { kind: 'complete_dialogue', difficulty: 9, bestFor: 'диалог с пропуском' },
+  { kind: 'fill_partial_word', difficulty: 10, bestFor: 'дописать форму слова' },
+  { kind: 'type_word_in_blank', difficulty: 11, bestFor: 'активное вспоминание без wordBank' },
+  { kind: 'pick_similar', difficulty: 12, bestFor: 'похожие формы / confusables' },
+  { kind: 'choose_word_form', difficulty: 13, bestFor: 'спряжение, время, согласование' },
+  { kind: 'spot_error', difficulty: 14, bestFor: 'типичная ошибка по теме' },
+  { kind: 'identify_main_idea', difficulty: 15, bestFor: 'главная мысль короткого текста' },
+  { kind: 'sentence_order', difficulty: 16, bestFor: 'порядок слов' },
+  { kind: 'build_from_meaning', difficulty: 17, bestFor: 'смысл UI → собрать L2' },
+  { kind: 'multiple_choice', difficulty: 18, bestFor: 'нюанс, регистр' },
+  { kind: 'voice_recording', difficulty: 19, bestFor: 'произнести фразу из запроса' },
+  { kind: 'write_sentences', difficulty: 20, bestFor: 'свободная продукция' },
 ] as const;
 
 export function hashSeed(seed: string): number {
@@ -40,8 +41,8 @@ export function hashSeed(seed: string): number {
   return h >>> 0;
 }
 
-/** Случайные типы из банка, отсортированные по сложности (для mini-drill). */
-export function pickExerciseKindsForSeed(seed: string, count = MINI_DRILL_SIZE): TeacherExerciseKind[] {
+/** Локальный fallback (основной выбор kinds — на сервере через AI planner). */
+export function pickExerciseKindsForSeed(seed: string, count = DRILL_TASK_COUNT): TeacherExerciseKind[] {
   let s = hashSeed(seed || 'default');
   const rnd = () => {
     s = (Math.imul(s, 1664525) + 1013904223) >>> 0;

@@ -716,27 +716,28 @@ function buildTeacherExerciseSetPrompt(language, lessonTopic, uiLanguage = 'ru')
   return prompt;
 }
 
+/** Банк типов заданий — только отсюда planner и генератор могут брать kind. */
 const EXERCISE_BANK = [
-  { kind: 'choose_translation', difficulty: 1 },
-  { kind: 'read_and_select', difficulty: 2 },
-  { kind: 'odd_one_out', difficulty: 3 },
-  { kind: 'word_to_image', difficulty: 4 },
-  { kind: 'match_pairs', difficulty: 5 },
-  { kind: 'choose_reply', difficulty: 6 },
-  { kind: 'what_do_you_say', difficulty: 7 },
-  { kind: 'drag_word_to_blank', difficulty: 8 },
-  { kind: 'complete_dialogue', difficulty: 9 },
-  { kind: 'fill_partial_word', difficulty: 10 },
-  { kind: 'type_word_in_blank', difficulty: 11 },
-  { kind: 'pick_similar', difficulty: 12 },
-  { kind: 'choose_word_form', difficulty: 13 },
-  { kind: 'spot_error', difficulty: 14 },
-  { kind: 'identify_main_idea', difficulty: 15 },
-  { kind: 'sentence_order', difficulty: 16 },
-  { kind: 'build_from_meaning', difficulty: 17 },
-  { kind: 'multiple_choice', difficulty: 18 },
-  { kind: 'voice_recording', difficulty: 19 },
-  { kind: 'write_sentences', difficulty: 20 },
+  { kind: 'choose_translation', difficulty: 1, bestFor: 'новая лексика / «как переводится»; узнавание значения' },
+  { kind: 'read_and_select', difficulty: 2, bestFor: 'орфография, «настоящее vs выдуманное» слово, узнавание формы' },
+  { kind: 'odd_one_out', difficulty: 3, bestFor: 'семантические группы, тематический словарь запроса' },
+  { kind: 'word_to_image', difficulty: 4, bestFor: 'конкретные существительные (еда, предметы, места)' },
+  { kind: 'match_pairs', difficulty: 5, bestFor: '5–8 пар слов/фраз по теме запроса' },
+  { kind: 'choose_reply', difficulty: 6, bestFor: 'мини-диалог, реплика B после A' },
+  { kind: 'what_do_you_say', difficulty: 7, bestFor: 'ситуация → уместная фраза (кафе, метро, знакомство)' },
+  { kind: 'drag_word_to_blank', difficulty: 8, bestFor: 'грамматика в контексте, collocation, пропуск в предложении' },
+  { kind: 'complete_dialogue', difficulty: 9, bestFor: 'диалог с одним пропуском, разговорная речь' },
+  { kind: 'fill_partial_word', difficulty: 10, bestFor: 'написание/дописывание формы слова' },
+  { kind: 'type_word_in_blank', difficulty: 11, bestFor: 'активное вспоминание слова без подсказок-банка' },
+  { kind: 'pick_similar', difficulty: 12, bestFor: 'похожие формы, confusables (their/there, 买/卖)' },
+  { kind: 'choose_word_form', difficulty: 13, bestFor: 'спряжение, время, согласование (go/goes/went)' },
+  { kind: 'spot_error', difficulty: 14, bestFor: 'типичная ошибка по теме запроса' },
+  { kind: 'identify_main_idea', difficulty: 15, bestFor: 'короткий текст/объявление по теме — главная мысль' },
+  { kind: 'sentence_order', difficulty: 16, bestFor: 'порядок слов, синтаксис L2' },
+  { kind: 'build_from_meaning', difficulty: 17, bestFor: 'смысл на UI-языке → собрать L2' },
+  { kind: 'multiple_choice', difficulty: 18, bestFor: 'нюанс, регистр, ближайший синоним' },
+  { kind: 'voice_recording', difficulty: 19, bestFor: 'произношение, автоматизация фразы из запроса' },
+  { kind: 'write_sentences', difficulty: 20, bestFor: 'свободная продукция по материалу объяснения' },
 ];
 
 const CHOICE_KINDS = new Set([
@@ -761,21 +762,74 @@ function hashExerciseSeed(seed) {
 }
 
 function pickExerciseKindsForSeed(seed, count = DRILL_TASK_COUNT) {
-  let s = hashExerciseSeed(seed || 'default');
+  return pickExerciseKindsRequestAwareFallback({ seed, count });
+}
+
+/** Fallback: разные наборы под разный запрос (не фиксированная «лестница» 1–6). */
+function pickExerciseKindsRequestAwareFallback({
+  userRequest = '',
+  explanation = '',
+  seed = '',
+  count = DRILL_TASK_COUNT,
+  excludeKinds = [],
+}) {
+  const context = `${userRequest}\n${explanation}\n${seed}`.trim() || seed || 'default';
+  let s = hashExerciseSeed(context);
   const rnd = () => {
     s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
     return s / 4294967296;
   };
-  const indices = EXERCISE_BANK.map((_, i) => i);
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [indices[i], indices[j]] = [indices[j], indices[i]];
+  const lower = context.toLowerCase();
+  const exclude = new Set(excludeKinds.filter((k) => ALLOWED_EXERCISE_KINDS.has(k)));
+
+  const scoreKind = (entry) => {
+    let score = rnd();
+    const k = entry.kind;
+    if (/диалог|dialogue|reply|ответ|сказать|say|phrase|фраз|coffee|кафе|заказ|order|hotel|отель/.test(lower)) {
+      if (['choose_reply', 'what_do_you_say', 'complete_dialogue', 'voice_recording'].includes(k)) score += 2.5;
+    }
+    if (/граммат|grammar|время|tense|form|спряж|падеж|article|артикль|present|past|future/.test(lower)) {
+      if (['choose_word_form', 'spot_error', 'pick_similar', 'type_word_in_blank', 'drag_word_to_blank'].includes(k))
+        score += 2.5;
+    }
+    if (/слов|vocab|translation|перевод|lex|лекс|meaning|значен/.test(lower)) {
+      if (['choose_translation', 'match_pairs', 'odd_one_out', 'word_to_image'].includes(k)) score += 2;
+    }
+    if (/ошиб|error|mistake|исправ|wrong|incorrect/.test(lower)) {
+      if (['spot_error', 'pick_similar', 'read_and_select'].includes(k)) score += 2.5;
+    }
+    if (/произнош|pronun|speak|говор|voice|recording/.test(lower)) {
+      if (['voice_recording', 'read_and_select'].includes(k)) score += 2;
+    }
+    if (/порядок|order words|sentence|предложен|syntax|синтакс/.test(lower)) {
+      if (['sentence_order', 'build_from_meaning'].includes(k)) score += 2;
+    }
+    if (/чита|read|text|passage|объявлен|notice/.test(lower)) {
+      if (['identify_main_idea', 'multiple_choice'].includes(k)) score += 1.8;
+    }
+    if (/напиш|write|production|сочин|paragraph/.test(lower)) {
+      if (['write_sentences', 'type_word_in_blank'].includes(k)) score += 2;
+    }
+    return score;
+  };
+
+  const ranked = EXERCISE_BANK.filter((e) => !exclude.has(e.kind))
+    .map((e) => ({ ...e, score: scoreKind(e) }))
+    .sort((a, b) => b.score - a.score || a.difficulty - b.difficulty);
+
+  const picked = [];
+  for (const entry of ranked) {
+    picked.push(entry.kind);
+    if (picked.length >= count) break;
   }
-  return indices
-    .slice(0, count)
-    .map((i) => EXERCISE_BANK[i])
-    .sort((a, b) => a.difficulty - b.difficulty)
-    .map((x) => x.kind);
+  if (picked.length < count) {
+    for (const entry of EXERCISE_BANK) {
+      if (picked.includes(entry.kind) || exclude.has(entry.kind)) continue;
+      picked.push(entry.kind);
+      if (picked.length >= count) break;
+    }
+  }
+  return sortKindsByDifficulty(picked.slice(0, count));
 }
 
 const ALLOWED_EXERCISE_KINDS = new Set(EXERCISE_BANK.map((x) => x.kind));
@@ -789,8 +843,7 @@ function sortKindsByDifficulty(kinds) {
 }
 
 /**
- * Выбирает kinds под конкретный запрос ученика + объяснение учителя
- * (максимальный учебный буст), а не случайный сэмпл из банка.
+ * Planner: выбирает kinds из банка под конкретный запрос (не шаблонный набор).
  */
 async function pickExerciseKindsForLearnerNeed(apiKey, {
   userRequest,
@@ -800,29 +853,59 @@ async function pickExerciseKindsForLearnerNeed(apiKey, {
   seed,
   attempt = 1,
   count = DRILL_TASK_COUNT,
+  recentMistakes = [],
+  avoidKinds = [],
 }) {
   const bankLines = EXERCISE_BANK.map(
-    (x) => `- ${x.kind} (difficulty ${x.difficulty})`,
+    (x) => `- ${x.kind} (difficulty ${x.difficulty}) — ${x.bestFor}`,
   ).join('\n');
+  const mistakesSnippet = Array.isArray(recentMistakes)
+    ? recentMistakes
+        .filter((m) => m && typeof m === 'object')
+        .slice(0, 6)
+        .map((m, i) => {
+          const kind = typeof m.kind === 'string' ? m.kind : '?';
+          const ans = typeof m.learnerAnswer === 'string' ? m.learnerAnswer.slice(0, 80) : '';
+          return `${i + 1}. [${kind}] learner: ${ans}`;
+        })
+        .join('\n')
+    : '';
+  const avoidLine =
+    Array.isArray(avoidKinds) && avoidKinds.length > 0
+      ? `\nAvoid these kinds (already used for this explanation): ${avoidKinds.join(', ')}`
+      : '';
+
   const system =
     'You are a language-pedagogy planner for Tearz drills.\n' +
-    `Pick exactly ${count} exercise kinds that give the learner the HIGHEST skill boost for THEIR specific request right now.\n` +
+    `Pick exactly ${count} DISTINCT exercise kinds from the bank below for THIS learner request.\n` +
     'Rules:\n' +
-    '- Optimize for the user request first, then the teacher explanation.\n' +
-    '- Prefer kinds that practice the bottleneck the learner just hit (vocab / dialogue / grammar form / listening-speaking / reading / production).\n' +
-    '- Mix recognition → production across the set; each kind should add a distinct angle on the same request.\n' +
-    '- Do NOT pick randomly. Do NOT pad with unrelated fun kinds. No duplicate kinds.\n' +
-    '- Order from easier recognition to harder production in your returned list.\n' +
-    `- Return JSON only: {"kinds":["kind1",...],"focus":"one short phrase"} — exactly ${count} kinds.\n` +
+    '1) Read USER REQUEST first — it decides the drill shape (dialogue request → choose_reply/what_do_you_say; grammar → choose_word_form/spot_error; vocab → match_pairs/word_to_image).\n' +
+    '2) Then align with TEACHER EXPLANATION — same topic, not a generic course syllabus.\n' +
+    '3) NEVER return the same default ladder for every request (e.g. choose_translation→read_and_select→odd_one_out→…). Vary kinds when the request varies.\n' +
+    '4) Each kind must add a different skill angle on the SAME request (recognition → controlled practice → production).\n' +
+    '5) Order easy → hard in your list; include at least one production-style kind near the end (write_sentences / voice_recording / type_word_in_blank / build_from_meaning).\n' +
+    '6) Only kinds from the bank. No duplicates.\n' +
+    '7) If recent mistakes are listed — prefer kinds that fix those error patterns.\n' +
+    `- JSON only: {"kinds":["kind1",...],"focus":"≤12 words","why":"one sentence why this mix fits the request"}\n` +
     `Bank:\n${bankLines}`;
 
   const user =
-    `L2 language: ${language}\n` +
+    `L2: ${language}\n` +
     `Lesson topic: ${(typeof lessonTopic === 'string' && lessonTopic.trim()) || '(none)'}\n` +
-    `Variation: ${seed} (attempt ${attempt})\n\n` +
-    `USER REQUEST (what they asked):\n${(userRequest || '').trim() || '(missing — infer from explanation)'}\n\n` +
-    `TEACHER EXPLANATION (what was just taught):\n${(explanation || '').trim().slice(0, 3500)}\n\n` +
-    `Pick ${count} kinds that maximize transfer for THIS request.`;
+    `Variation: ${seed} (attempt ${attempt})${avoidLine}\n\n` +
+    `USER REQUEST:\n${(userRequest || '').trim() || '(infer from explanation)'}\n\n` +
+    `TEACHER EXPLANATION:\n${(explanation || '').trim().slice(0, 3500)}\n` +
+    (mistakesSnippet ? `\nRECENT MISTAKES:\n${mistakesSnippet}\n` : '') +
+    `\nPick ${count} kinds — optimized for THIS request, not a generic template.`;
+
+  const fallback = () =>
+    pickExerciseKindsRequestAwareFallback({
+      userRequest,
+      explanation,
+      seed: `${seed}:${attempt}`,
+      count,
+      excludeKinds: avoidKinds,
+    });
 
   try {
     const openaiRes = await fetch(OPENAI_URL, {
@@ -837,15 +920,15 @@ async function pickExerciseKindsForLearnerNeed(apiKey, {
           { role: 'system', content: system },
           { role: 'user', content: user },
         ],
-        temperature: attempt > 1 ? 0.55 : 0.25,
-        max_tokens: 420,
+        temperature: attempt > 1 ? 0.62 : 0.48,
+        max_tokens: 520,
         response_format: { type: 'json_object' },
       }),
     });
     const data = await openaiRes.json().catch(() => ({}));
     if (!openaiRes.ok) {
       console.warn('[exercise-kinds]', data?.error?.message || openaiRes.status);
-      return pickExerciseKindsForSeed(seed, count);
+      return { kinds: fallback(), focus: '' };
     }
     const content = data?.choices?.[0]?.message?.content;
     let parsed = null;
@@ -860,28 +943,49 @@ async function pickExerciseKindsForLearnerNeed(apiKey, {
       if (typeof k !== 'string') continue;
       const kind = k.trim();
       if (!ALLOWED_EXERCISE_KINDS.has(kind)) continue;
+      if (avoidKinds.includes(kind)) continue;
       if (picked.includes(kind)) continue;
       picked.push(kind);
       if (picked.length >= count) break;
     }
     if (picked.length < count) {
-      const filler = pickExerciseKindsForSeed(`${seed}:fill`, count);
+      const filler = pickExerciseKindsRequestAwareFallback({
+        userRequest,
+        explanation,
+        seed: `${seed}:fill:${attempt}`,
+        count,
+        excludeKinds: [...avoidKinds, ...picked],
+      });
       for (const k of filler) {
         if (!picked.includes(k)) picked.push(k);
         if (picked.length >= count) break;
       }
     }
-    if (picked.length < Math.min(6, count)) return pickExerciseKindsForSeed(seed, count);
+    if (picked.length < Math.min(6, count)) {
+      return { kinds: fallback(), focus: '' };
+    }
     const focus =
       typeof parsed?.focus === 'string' && parsed.focus.trim()
         ? parsed.focus.trim().slice(0, 120)
         : '';
-    if (focus) console.log('[exercise-kinds] focus:', focus);
-    return sortKindsByDifficulty(picked.slice(0, count));
+    const why =
+      typeof parsed?.why === 'string' && parsed.why.trim() ? parsed.why.trim().slice(0, 200) : '';
+    if (focus || why) console.log('[exercise-kinds]', focus || why);
+    // Keep planner order (request-specific arc), do not re-sort by difficulty.
+    return { kinds: picked.slice(0, count), focus };
   } catch (e) {
     console.warn('[exercise-kinds]', e instanceof Error ? e.message : e);
-    return pickExerciseKindsForSeed(seed, count);
+    return { kinds: fallback(), focus: '' };
   }
+}
+
+function exerciseSetMatchesKinds(exercises, selectedKinds) {
+  if (!Array.isArray(exercises) || exercises.length < DRILL_TASK_COUNT) return false;
+  if (!Array.isArray(selectedKinds) || selectedKinds.length < DRILL_TASK_COUNT) return false;
+  for (let i = 0; i < DRILL_TASK_COUNT; i++) {
+    if (exercises[i]?.kind !== selectedKinds[i]) return false;
+  }
+  return true;
 }
 
 function buildFlashcardImagePrompt(correctWord, label, lessonTopic) {
@@ -1487,7 +1591,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.0.0' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.1.0', drillPlanner: 'ai-bank-v2' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */
@@ -2022,7 +2126,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     mistakeList,
   );
 
-  const selectedKinds = await pickExerciseKindsForLearnerNeed(apiKey, {
+  const selectedKindsResult = await pickExerciseKindsForLearnerNeed(apiKey, {
     userRequest,
     explanation: teacherExplanation,
     language: lang,
@@ -2030,11 +2134,20 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     seed,
     attempt,
     count: DRILL_TASK_COUNT,
+    recentMistakes: mistakeList,
   });
+  const selectedKinds = selectedKindsResult.kinds;
+  const drillFocus = selectedKindsResult.focus || '';
   const kindsBlock =
-    `\n\nТипы заданий для этой тренировки (строго ${DRILL_TASK_COUNT}, в этом порядке, от лёгкого к сложному).\n` +
-    `Они уже выбраны под запрос ученика — максимизируй буст именно по ним:\n` +
-    selectedKinds.map((k, i) => `${i + 1}. ${k}`).join('\n');
+    `\n\nТипы заданий для этой тренировки (строго ${DRILL_TASK_COUNT}, в этом порядке).\n` +
+    (drillFocus ? `Фокус: ${drillFocus}\n` : '') +
+    `Подобраны под запрос ученика — не меняй kinds и порядок:\n` +
+    selectedKinds
+      .map((k, i) => {
+        const meta = EXERCISE_BANK.find((x) => x.kind === k);
+        return `${i + 1}. ${k}${meta?.bestFor ? ` — ${meta.bestFor}` : ''}`;
+      })
+      .join('\n');
 
   const baseUserContent =
     `Последний запрос пользователя:\n${userRequest || '(не указан — выведи из контекста диалога выше)'}\n\n` +
@@ -2047,13 +2160,15 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
   try {
     let exercises = [];
     let parsed = null;
-    const maxGenAttempts = lang === 'chinese' ? 2 : 1;
+    const maxGenAttempts = lang === 'chinese' ? 3 : 2;
 
     for (let genAttempt = 1; genAttempt <= maxGenAttempts; genAttempt += 1) {
       const userContent =
         genAttempt === 1
           ? baseUserContent
-          : `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый набор нарушил L2. Для китайского урока selectWord / wordBank / shuffledWords — ТОЛЬКО 汉字, никаких латинских слов вроде prescription. Перегенерируй весь набор.`;
+          : genAttempt === 2 && lang !== 'chinese'
+            ? `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый JSON имел неверное число упражнений или неверные kind. Верни ровно ${DRILL_TASK_COUNT} объектов; exercises[i].kind ДОЛЖЕН совпадать с пунктом ${i + 1} списка kinds.`
+            : `${baseUserContent}\n\nИСПРАВЛЕНИЕ: прошлый набор нарушил L2 или kinds. Для китайского урока selectWord / wordBank / shuffledWords — ТОЛЬКО 汉字. Перегенерируй весь набор с теми же kinds.`;
 
       const messages = [
         { role: 'system', content: systemContent },
@@ -2101,8 +2216,14 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
       }
 
       exercises = normalizeExerciseSetFromModel(parsed);
-      if (exercises.length < 3) {
+      if (exercises.length < DRILL_TASK_COUNT) {
+        if (genAttempt < maxGenAttempts) continue;
         return res.status(502).json({ error: 'Exercise set too short' });
+      }
+
+      if (!exerciseSetMatchesKinds(exercises, selectedKinds) && genAttempt < maxGenAttempts) {
+        console.warn('[teacher-exercise-set] kind mismatch — regenerating');
+        continue;
       }
 
       if (lang === 'chinese' && exerciseSetViolatesChineseL2(exercises) && genAttempt < maxGenAttempts) {
@@ -2117,7 +2238,12 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
 
     const nextTopic = normalizeNextTopicFromModel(parsed);
 
-    return res.json({ exercises, ...(nextTopic ? { nextTopic } : {}) });
+    return res.json({
+      exercises,
+      selectedKinds,
+      ...(drillFocus ? { drillFocus } : {}),
+      ...(nextTopic ? { nextTopic } : {}),
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Network error';
     return res.status(502).json({ error: msg });
