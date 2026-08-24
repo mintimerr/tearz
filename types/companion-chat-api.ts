@@ -108,7 +108,19 @@ export type TeacherExerciseKind =
   /** HelloChinese-style: выбрать среди похожих форм/написаний */
   | 'pick_similar'
   /** HelloChinese-style: дописать реплику в коротком диалоге */
-  | 'complete_dialogue';
+  | 'complete_dialogue'
+  /** Duolingo: UI sentence → pick L2 translation */
+  | 'translate_sentence'
+  /** Memrise/Anki: L2 → pick UI meaning */
+  | 'reverse_translation'
+  /** Duolingo/Babbel cloze: L2 sentence with gap → pick word */
+  | 'select_missing_word'
+  /** Busuu: statement or rule → True/False */
+  | 'true_false'
+  /** Babbel: UI phrase → type L2 translation */
+  | 'type_translation'
+  /** Babbel: pick natural collocation / word partner */
+  | 'collocation_choice';
 
 export type TeacherPartialGap = {
   id: string;

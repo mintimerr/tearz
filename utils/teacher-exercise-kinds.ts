@@ -4,6 +4,11 @@ import type { TeacherExerciseKind } from '@/types/companion-chat-api';
 export const CHOICE_EXERCISE_KINDS: ReadonlySet<TeacherExerciseKind> = new Set([
   'multiple_choice',
   'choose_translation',
+  'translate_sentence',
+  'reverse_translation',
+  'select_missing_word',
+  'true_false',
+  'collocation_choice',
   'choose_reply',
   'odd_one_out',
   'spot_error',

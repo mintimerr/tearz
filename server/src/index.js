@@ -720,31 +720,42 @@ function buildTeacherExerciseSetPrompt(language, lessonTopic, uiLanguage = 'ru')
 
 /** Банк типов заданий — только отсюда planner и генератор могут брать kind. */
 const EXERCISE_BANK = [
-  { kind: 'choose_translation', difficulty: 1, bestFor: 'новая лексика / «как переводится»; узнавание значения' },
-  { kind: 'read_and_select', difficulty: 2, bestFor: 'орфография, «настоящее vs выдуманное» слово, узнавание формы' },
-  { kind: 'odd_one_out', difficulty: 3, bestFor: 'семантические группы, тематический словарь запроса' },
-  { kind: 'word_to_image', difficulty: 4, bestFor: 'конкретные существительные (еда, предметы, места)' },
-  { kind: 'match_pairs', difficulty: 5, bestFor: '5–8 пар слов/фраз по теме запроса' },
-  { kind: 'choose_reply', difficulty: 6, bestFor: 'мини-диалог, реплика B после A' },
-  { kind: 'what_do_you_say', difficulty: 7, bestFor: 'ситуация → уместная фраза (кафе, метро, знакомство)' },
-  { kind: 'drag_word_to_blank', difficulty: 8, bestFor: 'грамматика в контексте, collocation, пропуск в предложении' },
-  { kind: 'complete_dialogue', difficulty: 9, bestFor: 'диалог с одним пропуском, разговорная речь' },
-  { kind: 'fill_partial_word', difficulty: 10, bestFor: 'написание/дописывание формы слова' },
-  { kind: 'type_word_in_blank', difficulty: 11, bestFor: 'активное вспоминание слова без подсказок-банка' },
-  { kind: 'pick_similar', difficulty: 12, bestFor: 'похожие формы, confusables (their/there, 买/卖)' },
-  { kind: 'choose_word_form', difficulty: 13, bestFor: 'спряжение, время, согласование (go/goes/went)' },
-  { kind: 'spot_error', difficulty: 14, bestFor: 'типичная ошибка по теме запроса' },
-  { kind: 'identify_main_idea', difficulty: 15, bestFor: 'короткий текст/объявление по теме — главная мысль' },
-  { kind: 'sentence_order', difficulty: 16, bestFor: 'порядок слов, синтаксис L2' },
-  { kind: 'build_from_meaning', difficulty: 17, bestFor: 'смысл на UI-языке → собрать L2' },
-  { kind: 'multiple_choice', difficulty: 18, bestFor: 'нюанс, регистр, ближайший синоним' },
-  { kind: 'voice_recording', difficulty: 19, bestFor: 'произношение, автоматизация фразы из запроса' },
-  { kind: 'write_sentences', difficulty: 20, bestFor: 'свободная продукция по материалу объяснения' },
+  { kind: 'choose_translation', difficulty: 1, bestFor: 'новая лексика / перевод слова (HelloChinese)' },
+  { kind: 'translate_sentence', difficulty: 2, bestFor: 'UI-предложение → выбрать перевод на L2 (Duolingo)' },
+  { kind: 'reverse_translation', difficulty: 2, bestFor: 'L2 слово/фраза → выбрать значение на UI (Memrise/Anki)' },
+  { kind: 'read_and_select', difficulty: 3, bestFor: 'орфография, «настоящее vs выдуманное» слово (DET)' },
+  { kind: 'odd_one_out', difficulty: 4, bestFor: 'семантические группы, тематический словарь (HelloChinese)' },
+  { kind: 'word_to_image', difficulty: 5, bestFor: 'конкретные существительные — еда, предметы, места' },
+  { kind: 'match_pairs', difficulty: 6, bestFor: '5–8 пар слов/фраз по теме (Memrise)' },
+  { kind: 'true_false', difficulty: 7, bestFor: 'правило или утверждение → True/False (Busuu)' },
+  { kind: 'choose_reply', difficulty: 8, bestFor: 'мини-диалог, реплика B после A (HelloChinese)' },
+  { kind: 'what_do_you_say', difficulty: 9, bestFor: 'ситуация → уместная фраза — кафе, метро (HelloChinese)' },
+  { kind: 'select_missing_word', difficulty: 10, bestFor: 'L2 предложение с ___ → выбрать слово (Duolingo/Babbel)' },
+  { kind: 'collocation_choice', difficulty: 11, bestFor: 'естественное словосочетание / партнёр слова (Babbel)' },
+  { kind: 'drag_word_to_blank', difficulty: 12, bestFor: 'грамматика в контексте, collocation (ProgressMe)' },
+  { kind: 'complete_dialogue', difficulty: 13, bestFor: 'диалог с одним пропуском, разговорная речь' },
+  { kind: 'fill_partial_word', difficulty: 14, bestFor: 'написание/дописывание формы слова' },
+  { kind: 'choose_word_form', difficulty: 15, bestFor: 'спряжение, время, согласование (Babbel)' },
+  { kind: 'pick_similar', difficulty: 16, bestFor: 'похожие формы, confusables (their/there, 买/卖)' },
+  { kind: 'spot_error', difficulty: 17, bestFor: 'типичная ошибка по теме запроса' },
+  { kind: 'type_word_in_blank', difficulty: 18, bestFor: 'активное вспоминание слова без wordBank' },
+  { kind: 'type_translation', difficulty: 19, bestFor: 'UI-фраза → напечатать перевод на L2 (Babbel)' },
+  { kind: 'identify_main_idea', difficulty: 20, bestFor: 'короткий текст/объявление — главная мысль (DET)' },
+  { kind: 'sentence_order', difficulty: 21, bestFor: 'порядок слов, синтаксис L2 (Duolingo)' },
+  { kind: 'build_from_meaning', difficulty: 22, bestFor: 'смысл на UI-языке → собрать L2' },
+  { kind: 'multiple_choice', difficulty: 23, bestFor: 'нюанс, регистр, ближайший синоним' },
+  { kind: 'voice_recording', difficulty: 24, bestFor: 'произношение, автоматизация фразы из запроса' },
+  { kind: 'write_sentences', difficulty: 25, bestFor: 'свободная продукция по материалу объяснения' },
 ];
 
 const CHOICE_KINDS = new Set([
   'multiple_choice',
   'choose_translation',
+  'translate_sentence',
+  'reverse_translation',
+  'select_missing_word',
+  'true_false',
+  'collocation_choice',
   'choose_reply',
   'odd_one_out',
   'spot_error',
@@ -753,6 +764,9 @@ const CHOICE_KINDS = new Set([
 const ORDER_KINDS = new Set(['sentence_order', 'build_from_meaning']);
 const FORM_KINDS = new Set(['choose_word_form', 'pick_similar']);
 const DRAG_BLANK_KINDS = new Set(['drag_word_to_blank', 'complete_dialogue', 'fill_blank']);
+const TYPE_BLANK_KINDS = new Set(['type_word_in_blank', 'type_translation']);
+
+const ALLOWED_EXERCISE_KINDS = new Set(EXERCISE_BANK.map((x) => x.kind));
 
 function hashExerciseSeed(seed) {
   let h = 2166136261;
@@ -761,6 +775,146 @@ function hashExerciseSeed(seed) {
     h = Math.imul(h, 16777619);
   }
   return h >>> 0;
+}
+
+function sortKindsByDifficulty(kinds) {
+  return [...kinds].sort((a, b) => {
+    const da = EXERCISE_BANK.find((x) => x.kind === a)?.difficulty ?? 99;
+    const db = EXERCISE_BANK.find((x) => x.kind === b)?.difficulty ?? 99;
+    return da - db;
+  });
+}
+
+/** Archetype → ideal kind order (recognition → production). */
+const DRILL_ARCHETYPE_SLOTS = {
+  dialogue: [
+    'choose_translation',
+    'reverse_translation',
+    'translate_sentence',
+    'match_pairs',
+    'read_and_select',
+    'choose_reply',
+    'what_do_you_say',
+    'select_missing_word',
+    'collocation_choice',
+    'complete_dialogue',
+    'voice_recording',
+    'build_from_meaning',
+    'write_sentences',
+    'drag_word_to_blank',
+    'odd_one_out',
+    'spot_error',
+  ],
+  grammar: [
+    'choose_translation',
+    'odd_one_out',
+    'true_false',
+    'choose_word_form',
+    'pick_similar',
+    'spot_error',
+    'select_missing_word',
+    'drag_word_to_blank',
+    'type_word_in_blank',
+    'type_translation',
+    'sentence_order',
+    'write_sentences',
+    'multiple_choice',
+    'build_from_meaning',
+  ],
+  vocab: [
+    'word_to_image',
+    'choose_translation',
+    'reverse_translation',
+    'translate_sentence',
+    'match_pairs',
+    'read_and_select',
+    'odd_one_out',
+    'collocation_choice',
+    'select_missing_word',
+    'type_translation',
+    'voice_recording',
+    'write_sentences',
+  ],
+  reading: [
+    'choose_translation',
+    'identify_main_idea',
+    'multiple_choice',
+    'true_false',
+    'spot_error',
+    'select_missing_word',
+    'drag_word_to_blank',
+    'build_from_meaning',
+    'type_word_in_blank',
+    'write_sentences',
+  ],
+  speaking: [
+    'choose_translation',
+    'read_and_select',
+    'choose_reply',
+    'what_do_you_say',
+    'collocation_choice',
+    'complete_dialogue',
+    'select_missing_word',
+    'voice_recording',
+    'build_from_meaning',
+    'write_sentences',
+  ],
+  mixed: null,
+};
+
+function classifyDrillArchetype(userRequest, explanation) {
+  const t = `${userRequest || ''}\n${explanation || ''}`.toLowerCase();
+  if (
+    /диалог|dialogue|reply|ответ|сказать|say|phrase|фраз|заказ|order|coffee|кафе|hotel|отель|what do i say|how do i say|как (?:сказать|заказать|спросить|попросить)/.test(
+      t,
+    )
+  ) {
+    return 'dialogue';
+  }
+  if (
+    /граммат|grammar|tense|время|form|спряж|article|артикль|present|past|perfect|passive|условн|subjunct|plural|singular/.test(
+      t,
+    )
+  ) {
+    return 'grammar';
+  }
+  if (/чита|read|passage|text|объявлен|notice|main idea|понять текст|comprehension|reading/.test(t)) {
+    return 'reading';
+  }
+  if (/произнош|pronun|speak|говор|voice|recording|accent|intonation|say aloud/.test(t)) {
+    return 'speaking';
+  }
+  if (/слов|vocab|translation|перевод|лекс|meaning|значен|новые слова|new words|flashcard/.test(t)) {
+    return 'vocab';
+  }
+  return 'mixed';
+}
+
+function orderKindsForArchetype(kinds, archetype) {
+  const slots = DRILL_ARCHETYPE_SLOTS[archetype];
+  if (!slots) return sortKindsByDifficulty(kinds);
+  const rank = (k) => {
+    const i = slots.indexOf(k);
+    if (i >= 0) return i;
+    const diff = EXERCISE_BANK.find((e) => e.kind === k)?.difficulty ?? 99;
+    return 100 + diff;
+  };
+  return [...kinds].sort((a, b) => rank(a) - rank(b));
+}
+
+function buildArchetypePlannerHint(archetype) {
+  const slots = DRILL_ARCHETYPE_SLOTS[archetype];
+  if (!slots) {
+    return (
+      'Archetype: mixed. Order: recognition (translate/match) → comprehension (dialogue/error) → ' +
+      'controlled (cloze/drag) → production (type/voice/write) last.'
+    );
+  }
+  const top = slots.slice(0, 12).join(' → ');
+  return (
+    `Archetype: ${archetype}. Prefer this progression (adapt to request, pick 10 distinct kinds):\n` +
+    `${top} → … → voice_recording/write_sentences near the end.`
+  );
 }
 
 function pickExerciseKindsForSeed(seed, count = DRILL_TASK_COUNT) {
@@ -788,14 +942,47 @@ function pickExerciseKindsRequestAwareFallback({
     let score = rnd();
     const k = entry.kind;
     if (/диалог|dialogue|reply|ответ|сказать|say|phrase|фраз|coffee|кафе|заказ|order|hotel|отель/.test(lower)) {
-      if (['choose_reply', 'what_do_you_say', 'complete_dialogue', 'voice_recording'].includes(k)) score += 2.5;
+      if (
+        [
+          'choose_reply',
+          'what_do_you_say',
+          'complete_dialogue',
+          'voice_recording',
+          'translate_sentence',
+          'collocation_choice',
+        ].includes(k)
+      ) {
+        score += 2.5;
+      }
     }
     if (/граммат|grammar|время|tense|form|спряж|падеж|article|артикль|present|past|future/.test(lower)) {
-      if (['choose_word_form', 'spot_error', 'pick_similar', 'type_word_in_blank', 'drag_word_to_blank'].includes(k))
+      if (
+        [
+          'choose_word_form',
+          'spot_error',
+          'pick_similar',
+          'type_word_in_blank',
+          'drag_word_to_blank',
+          'true_false',
+          'select_missing_word',
+        ].includes(k)
+      ) {
         score += 2.5;
+      }
     }
     if (/слов|vocab|translation|перевод|lex|лекс|meaning|значен/.test(lower)) {
-      if (['choose_translation', 'match_pairs', 'odd_one_out', 'word_to_image'].includes(k)) score += 2;
+      if (
+        [
+          'choose_translation',
+          'reverse_translation',
+          'translate_sentence',
+          'match_pairs',
+          'odd_one_out',
+          'word_to_image',
+        ].includes(k)
+      ) {
+        score += 2;
+      }
     }
     if (/ошиб|error|mistake|исправ|wrong|incorrect/.test(lower)) {
       if (['spot_error', 'pick_similar', 'read_and_select'].includes(k)) score += 2.5;
@@ -831,17 +1018,10 @@ function pickExerciseKindsRequestAwareFallback({
       if (picked.length >= count) break;
     }
   }
-  return sortKindsByDifficulty(picked.slice(0, count));
-}
-
-const ALLOWED_EXERCISE_KINDS = new Set(EXERCISE_BANK.map((x) => x.kind));
-
-function sortKindsByDifficulty(kinds) {
-  return [...kinds].sort((a, b) => {
-    const da = EXERCISE_BANK.find((x) => x.kind === a)?.difficulty ?? 99;
-    const db = EXERCISE_BANK.find((x) => x.kind === b)?.difficulty ?? 99;
-    return da - db;
-  });
+  return orderKindsForArchetype(
+    picked.slice(0, count),
+    classifyDrillArchetype(userRequest, explanation),
+  );
 }
 
 /**
@@ -877,28 +1057,36 @@ async function pickExerciseKindsForLearnerNeed(apiKey, {
       ? `\nAvoid these kinds (already used for this explanation): ${avoidKinds.join(', ')}`
       : '';
 
+  const archetype = classifyDrillArchetype(userRequest, explanation);
+  const archetypeHint = buildArchetypePlannerHint(archetype);
+
   const system =
     'You are a language-pedagogy planner for Tearz drills.\n' +
     `Pick exactly ${count} DISTINCT exercise kinds from the bank below for THIS learner request.\n` +
     'Rules:\n' +
-    '1) Read USER REQUEST first — it decides the drill shape (dialogue request → choose_reply/what_do_you_say; grammar → choose_word_form/spot_error; vocab → match_pairs/word_to_image).\n' +
+    '1) Read USER REQUEST first — it decides drill archetype (dialogue / grammar / vocab / reading / speaking).\n' +
     '2) Then align with TEACHER EXPLANATION — same topic, not a generic course syllabus.\n' +
-    '3) NEVER return the same default ladder for every request (e.g. choose_translation→read_and_select→odd_one_out→…). Vary kinds when the request varies.\n' +
-    '4) Each kind must add a different skill angle on the SAME request (recognition → controlled practice → production).\n' +
-    '5) Order easy → hard in your list; include at least one production-style kind near the end (write_sentences / voice_recording / type_word_in_blank / build_from_meaning).\n' +
+    '3) NEVER return the same default ladder for every request. Vary kinds when the request varies.\n' +
+    '4) Each kind must add a different skill angle on the SAME request:\n' +
+    '   slots 1–3 recognition (translate/match/image),\n' +
+    '   slots 4–6 comprehension (dialogue/situation/error),\n' +
+    '   slots 7–8 controlled practice (cloze/drag/type),\n' +
+    '   slots 9–10 production (voice/write/build).\n' +
+    '5) Prefer kinds from apps that fit: Duolingo (translate_sentence, select_missing_word), Memrise (reverse_translation, match_pairs), Babbel (collocation_choice, type_translation), Busuu (true_false), HelloChinese (choose_reply, what_do_you_say).\n' +
     '6) Only kinds from the bank. No duplicates.\n' +
     '7) If recent mistakes are listed — prefer kinds that fix those error patterns.\n' +
-    `- JSON only: {"kinds":["kind1",...],"focus":"≤12 words","why":"one sentence why this mix fits the request"}\n` +
+    `- JSON only: {"kinds":["kind1",...],"focus":"≤12 words","why":"one sentence"}\n` +
     `Bank:\n${bankLines}`;
 
   const user =
     `L2: ${language}\n` +
     `Lesson topic: ${(typeof lessonTopic === 'string' && lessonTopic.trim()) || '(none)'}\n` +
-    `Variation: ${seed} (attempt ${attempt})${avoidLine}\n\n` +
+    `Variation: ${seed} (attempt ${attempt})${avoidLine}\n` +
+    `${archetypeHint}\n\n` +
     `USER REQUEST:\n${(userRequest || '').trim() || '(infer from explanation)'}\n\n` +
     `TEACHER EXPLANATION:\n${(explanation || '').trim().slice(0, 3500)}\n` +
     (mistakesSnippet ? `\nRECENT MISTAKES:\n${mistakesSnippet}\n` : '') +
-    `\nPick ${count} kinds — optimized for THIS request, not a generic template.`;
+    `\nPick ${count} kinds — optimized for THIS request. Order in JSON = exercise order (easy→hard, recognition→production).`;
 
   const fallback = () =>
     pickExerciseKindsRequestAwareFallback({
@@ -930,7 +1118,7 @@ async function pickExerciseKindsForLearnerNeed(apiKey, {
     const data = await openaiRes.json().catch(() => ({}));
     if (!openaiRes.ok) {
       console.warn('[exercise-kinds]', data?.error?.message || openaiRes.status);
-      return { kinds: fallback(), focus: '' };
+      return { kinds: fallback(), focus: '', archetype };
     }
     const content = data?.choices?.[0]?.message?.content;
     let parsed = null;
@@ -964,7 +1152,7 @@ async function pickExerciseKindsForLearnerNeed(apiKey, {
       }
     }
     if (picked.length < Math.min(6, count)) {
-      return { kinds: fallback(), focus: '' };
+      return { kinds: fallback(), focus: '', archetype };
     }
     const focus =
       typeof parsed?.focus === 'string' && parsed.focus.trim()
@@ -972,12 +1160,12 @@ async function pickExerciseKindsForLearnerNeed(apiKey, {
         : '';
     const why =
       typeof parsed?.why === 'string' && parsed.why.trim() ? parsed.why.trim().slice(0, 200) : '';
-    if (focus || why) console.log('[exercise-kinds]', focus || why);
-    // Keep planner order (request-specific arc), do not re-sort by difficulty.
-    return { kinds: picked.slice(0, count), focus };
+    if (focus || why) console.log('[exercise-kinds]', archetype, focus || why);
+    const ordered = orderKindsForArchetype(picked.slice(0, count), archetype);
+    return { kinds: ordered, focus, archetype };
   } catch (e) {
     console.warn('[exercise-kinds]', e instanceof Error ? e.message : e);
-    return { kinds: fallback(), focus: '' };
+    return { kinds: fallback(), focus: '', archetype };
   }
 }
 
@@ -1392,6 +1580,7 @@ function normalizeExerciseSetFromModel(raw) {
         kind = wordBank?.length ? 'drag_word_to_blank' : 'type_word_in_blank';
       else if (choices?.length >= 2) kind = 'multiple_choice';
       else if (minSentences) kind = 'write_sentences';
+      else if (typeof item.promptL2 === 'string' || kind === 'type_translation') kind = 'type_translation';
       else kind = 'free_text';
     }
 
@@ -1915,7 +2104,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.1.2', drillPlanner: 'ai-bank-v2', drillSet: 'batch-v3' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.0', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v3' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */
@@ -2493,6 +2682,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     return res.json({
       exercises,
       selectedKinds,
+      ...(selectedKindsResult.archetype ? { drillArchetype: selectedKindsResult.archetype } : {}),
       ...(drillFocus ? { drillFocus } : {}),
       ...(nextTopic ? { nextTopic } : {}),
     });

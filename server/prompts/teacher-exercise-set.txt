@@ -107,6 +107,32 @@ HelloChinese-стиль (обязательно адаптируй под L2)
    Как drag_word_to_blank: короткий диалог A/B в segments с одним blank + wordBank.
    checkText: диалог с «___» на L2.
 
+Duolingo / Memrise / Babbel / Busuu (новые kinds)
+
+21) translate_sentence — перевести предложение (Duolingo)
+   checkText: предложение на UI-языке («Переведи на L2»).
+   choices: 4 полных перевода на L2; correctChoice.
+
+22) reverse_translation — значение слова (Memrise/Anki)
+   checkText: слово или короткая фраза на L2.
+   choices: 4 перевода на UI-языке; correctChoice.
+
+23) select_missing_word — пропуск в предложении (Duolingo/Babbel)
+   checkText: предложение на L2 с «___» или «…».
+   choices: 4 слова на L2; correctChoice.
+
+24) true_false — верно или неверно (Busuu)
+   checkText: утверждение о правиле или фразе на UI-языке.
+   choices: ровно 2 варианта на UI («True»/«False» или локализованные); correctChoice.
+
+25) type_translation — напечатать перевод (Babbel)
+   checkText: фраза на UI-языке.
+   segments: один blank с answer = правильный перевод на L2 (или одно поле free-text через blank).
+
+26) collocation_choice — естественное сочетание (Babbel)
+   checkText: «Какое слово подходит к …?» + контекст на L2.
+   choices: 4 слова на L2; correctChoice = естественное collocation.
+
 ⸻
 
 ПРАВИЛА КОНТЕНТА

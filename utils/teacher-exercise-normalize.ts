@@ -8,6 +8,7 @@ import type {
   TeacherNumberedSentence,
   TeacherPartialGap,
 } from '@/types/companion-chat-api';
+import { DRILL_TASK_COUNT } from '@/constants/teacher-drill';
 import {
   isChoiceExerciseKind,
   isDragBlankExerciseKind,
@@ -110,6 +111,12 @@ const ALL_KINDS: TeacherExerciseKind[] = [
   'build_from_meaning',
   'pick_similar',
   'complete_dialogue',
+  'translate_sentence',
+  'reverse_translation',
+  'select_missing_word',
+  'true_false',
+  'type_translation',
+  'collocation_choice',
 ];
 
 export type MaskedSentencePart =
@@ -446,7 +453,7 @@ export function normalizeTeacherExerciseSet(raw: unknown): TeacherExerciseItem[]
     const item = normalizeTeacherExerciseItem(list[i], i);
     if (item) out.push(item);
   }
-  return out.slice(0, 5);
+  return out.slice(0, DRILL_TASK_COUNT);
 }
 
 export function segmentsToPromptText(segments: TeacherExerciseSegment[]): string {
@@ -696,5 +703,5 @@ export function appendVoiceExerciseIfMissing(
   items: TeacherExerciseItem[],
   _lessonContext: string,
 ): TeacherExerciseItem[] {
-  return items.slice(0, 5);
+  return items.slice(0, DRILL_TASK_COUNT);
 }

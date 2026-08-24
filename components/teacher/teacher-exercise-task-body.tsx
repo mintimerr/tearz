@@ -526,6 +526,7 @@ export function TeacherExerciseTaskBody({
       return renderBlanks(hasWordBank);
 
     case 'type_word_in_blank':
+    case 'type_translation':
       if (!hasBlanks) {
         return (
           <FreeTextAnswer
@@ -921,6 +922,11 @@ export function TeacherExerciseTaskBody({
 
     case 'multiple_choice':
     case 'choose_translation':
+    case 'translate_sentence':
+    case 'reverse_translation':
+    case 'select_missing_word':
+    case 'true_false':
+    case 'collocation_choice':
     case 'choose_reply':
     case 'odd_one_out':
     case 'spot_error':
