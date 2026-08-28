@@ -649,7 +649,12 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
       setAttachOpen(false);
       setZoomed(false);
     },
-    blur: () => zoomOut(),
+    blur: () => {
+      inputRef.current?.blur();
+      Keyboard.dismiss();
+      setZoomed(false);
+      onFocusChange?.(false);
+    },
     setDraft: (text: string) => {
       setDraft(text);
       setAttachOpen(false);

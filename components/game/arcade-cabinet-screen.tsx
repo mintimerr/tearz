@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image, type ImageSource } from 'expo-image';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
   Modal,
@@ -482,6 +482,8 @@ export function ArcadeCabinetScreen() {
   const inputRef = useRef<FocusableInputRef>(null);
   /** true только при намеренном zoomOut — иначе возвращаем фокус после случайного blur */
   const dismissKeyboardRef = useRef(false);
+  /** Урок из списка чатов — CRT не должен забирать фокус/клавиатуру. */
+  const lessonChatOpenRef = useRef(false);
   const prevZoomedRef = useRef(false);
   const crtGlassRef = useRef<View>(null);
 
@@ -702,6 +704,7 @@ export function ArcadeCabinetScreen() {
   }, [gate]);
 
   const openCrt = () => {
+    if (lessonChatOpenRef.current) return;
     if (zoomed) {
       inputRef.current?.focus();
       return;
@@ -740,6 +743,24 @@ export function ArcadeCabinetScreen() {
       dismissKeyboardRef.current = false;
     }, 320);
   };
+
+  const blockCrtForLessonChat = useCallback(() => {
+    lessonChatOpenRef.current = true;
+    dismissKeyboardRef.current = true;
+    setFocused(false);
+    setAttachMenuOpen(false);
+    inputRef.current?.blur();
+    Keyboard.dismiss();
+    setKeyboardH(0);
+    setZoomed(false);
+  }, []);
+
+  const unblockCrtAfterLessonChat = useCallback(() => {
+    lessonChatOpenRef.current = false;
+    setTimeout(() => {
+      dismissKeyboardRef.current = false;
+    }, 480);
+  }, []);
 
   /** Тап в пустоту (не по CRT) — закрыть вложения, клавиатуру или отдалить. */
   const onBlankTap = () => {
@@ -976,6 +997,7 @@ export function ArcadeCabinetScreen() {
                   active
                   keepKeyboard
                   dismissKeyboardRef={dismissKeyboardRef}
+                  lessonChatBlockRef={lessonChatOpenRef}
                   pendingPhotoUri={pendingPhoto?.uri}
                   onAttach={toggleAttachMenu}
                   onClearAttach={() => setPendingPhoto(null)}
@@ -1014,6 +1036,7 @@ export function ArcadeCabinetScreen() {
                   active={false}
                   keepKeyboard={false}
                   dismissKeyboardRef={dismissKeyboardRef}
+                  lessonChatBlockRef={lessonChatOpenRef}
                   pendingPhotoUri={pendingPhoto?.uri}
                   onAttach={toggleAttachMenu}
                   onClearAttach={() => setPendingPhoto(null)}
@@ -1169,6 +1192,7 @@ export function ArcadeCabinetScreen() {
               active
               keepKeyboard
               dismissKeyboardRef={dismissKeyboardRef}
+              lessonChatBlockRef={lessonChatOpenRef}
               pendingPhotoUri={pendingPhoto?.uri}
               onAttach={toggleAttachMenu}
               onClearAttach={() => setPendingPhoto(null)}
@@ -1184,16 +1208,9 @@ export function ArcadeCabinetScreen() {
       <TeacherChatsSheet
         visible={chatsOpen}
         onClose={() => setChatsOpen(false)}
-        onLessonOpen={() => {
-          dismissKeyboardRef.current = true;
-          setFocused(false);
-          inputRef.current?.blur();
-          Keyboard.dismiss();
-          setKeyboardH(0);
-          setTimeout(() => {
-            dismissKeyboardRef.current = false;
-          }, 400);
-        }}
+        lessonLanguage={location.lessonLanguage ?? 'english'}
+        onLessonOpen={blockCrtForLessonChat}
+        onLessonClose={unblockCrtAfterLessonChat}
       />
 
       {gate === 'transit' && (seed || seedImageUri) ? (
@@ -1221,6 +1238,7 @@ type FaceProps = {
   active: boolean;
   keepKeyboard: boolean;
   dismissKeyboardRef: React.RefObject<boolean>;
+  lessonChatBlockRef: React.RefObject<boolean>;
   pendingPhotoUri?: string;
   /** Нормализованный exclusion 0…1 для обтекания фото (Shanghai) */
   photoExclusionNorm?: ExclusionRect | null;
@@ -1248,6 +1266,7 @@ function TerminalFace({
   active,
   keepKeyboard,
   dismissKeyboardRef,
+  lessonChatBlockRef,
   pendingPhotoUri,
   photoExclusionNorm = null,
   inputFillHeight,
@@ -1358,12 +1377,17 @@ function TerminalFace({
     blurOnSubmit: true,
     underlineColorAndroid: 'transparent' as const,
     onFocus: () => {
+      if (lessonChatBlockRef.current) {
+        inputRef.current?.blur();
+        Keyboard.dismiss();
+        return;
+      }
       setFocused(true);
       onOpen();
     },
     onBlur: () => {
       setFocused(false);
-      if (keepKeyboard && !dismissKeyboardRef.current) {
+      if (keepKeyboard && !dismissKeyboardRef.current && !lessonChatBlockRef.current) {
         requestAnimationFrame(() => inputRef.current?.focus());
       }
     },

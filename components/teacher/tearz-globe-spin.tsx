@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, PixelRatio, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-/** 4 кадра hero-sheet (прозрачный фон) + мягкое Mario-покачивание. */
+/** 4 кадра hero-sheet (прозрачный фон) — без rotate/scale, чтобы пиксели не мылись. */
 const FRAMES = [
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('../../assets/images/tearz-mario/tearz-globe-spin-frame-0.png'),
@@ -14,21 +14,27 @@ const FRAMES = [
   require('../../assets/images/tearz-mario/tearz-globe-spin-frame-3.png'),
 ] as const;
 
+const SOURCE_PX = 1024;
 const FRAME_MS = 300;
 const BOB_MS = 920;
 const SWAY_MS = 1240;
-const TILT_MS = 1560;
+
+/** Логический размер ≈ 1:1 с исходником на Retina (1024 / pixelRatio). */
+export function globeSpinDisplaySize(maxLogical = 360): number {
+  const native = Math.round(SOURCE_PX / PixelRatio.get());
+  return Math.min(maxLogical, native);
+}
 
 type Props = {
   size?: number;
   style?: StyleProp<ViewStyle>;
 };
 
-export function TearzGlobeSpin({ size = 280, style }: Props) {
+export function TearzGlobeSpin({ size, style }: Props) {
+  const crispSize = useMemo(() => size ?? globeSpinDisplaySize(), [size]);
   const [frame, setFrame] = useState(0);
   const bob = useRef(new Animated.Value(0)).current;
   const sway = useRef(new Animated.Value(0)).current;
-  const tilt = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let f = 0;
@@ -58,30 +64,30 @@ export function TearzGlobeSpin({ size = 280, style }: Props) {
         ]),
       );
 
-    const loops = [makeLoop(bob, BOB_MS), makeLoop(sway, SWAY_MS), makeLoop(tilt, TILT_MS)];
+    const loops = [makeLoop(bob, BOB_MS), makeLoop(sway, SWAY_MS)];
     loops.forEach((loop) => loop.start());
     return () => loops.forEach((loop) => loop.stop());
-  }, [bob, sway, tilt]);
+  }, [bob, sway]);
 
-  const u = size / 280;
-  const translateY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -7 * u] });
-  const translateX = sway.interpolate({ inputRange: [0, 1], outputRange: [-4 * u, 4 * u] });
-  const rotate = tilt.interpolate({ inputRange: [0, 1], outputRange: ['-1.8deg', '1.8deg'] });
-  const scale = bob.interpolate({ inputRange: [0, 1], outputRange: [1, 1.018] });
+  const u = crispSize / 280;
+  const translateY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, -Math.round(6 * u)] });
+  const translateX = sway.interpolate({ inputRange: [0, 1], outputRange: [-Math.round(3 * u), Math.round(3 * u)] });
 
   return (
-    <View style={[styles.wrap, { width: size, height: size }, style]}>
+    <View style={[styles.wrap, { width: crispSize, height: crispSize }, style]}>
       <Animated.View
         style={{
-          width: size,
-          height: size,
-          transform: [{ translateX }, { translateY }, { rotate }, { scale }],
+          width: crispSize,
+          height: crispSize,
+          transform: [{ translateX }, { translateY }],
         }}>
         <Image
           source={FRAMES[frame]}
-          style={{ width: size, height: size }}
-          contentFit="contain"
+          style={{ width: crispSize, height: crispSize }}
+          contentFit="fill"
           transition={0}
+          cachePolicy="memory-disk"
+          allowDownscaling={false}
         />
       </Animated.View>
     </View>

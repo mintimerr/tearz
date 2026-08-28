@@ -501,9 +501,9 @@ export function TeacherPremiumScreen() {
     composerRef.current?.blur();
     pendingLessonRef.current = lesson;
     setChatsOpen(false);
-    if (Platform.OS === 'android') {
-      InteractionManager.runAfterInteractions(() => revealPendingLesson());
-    }
+    InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => revealPendingLesson());
+    });
   };
 
   const revealPendingLesson = useCallback(() => {
@@ -696,7 +696,9 @@ export function TeacherPremiumScreen() {
         transparent
         animationType="slide"
         onRequestClose={closeChats}
-        onDismiss={revealPendingLesson}>
+        onDismiss={() => {
+          if (pendingLessonRef.current) revealPendingLesson();
+        }}>
         <View style={styles.chatsRoot}>
           <Pressable style={styles.chatsBackdrop} onPress={closeChats} accessibilityLabel="Закрыть" />
           <View

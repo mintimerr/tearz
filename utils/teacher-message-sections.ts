@@ -28,7 +28,7 @@ export function cleanTeacherInline(s: string): string {
  */
 export function parseTeacherBlockLines(
   body: string,
-  opts: { dialogue?: boolean; phrase?: boolean } = {},
+  opts: { dialogue?: boolean; phrase?: boolean; vocabulary?: boolean } = {},
 ): TeacherBodyLine[] {
   const out: TeacherBodyLine[] = [];
   const rawLines = body.split('\n');
@@ -65,6 +65,11 @@ export function parseTeacherBlockLines(
       continue;
     }
 
+    if (opts.vocabulary) {
+      out.push({ kind: 'bullet', text: unbulleted });
+      continue;
+    }
+
     if (opts.phrase) {
       out.push({ kind: 'phrase', text: unbulleted });
       continue;
@@ -79,6 +84,7 @@ export function parseTeacherBlockLines(
 const SIMPLE_LANGUAGE_TITLE = /объясняю простым языком/i;
 const DIALOGUE_TITLE = /диалог|dialogue|对话/i;
 const PHRASE_TITLE = /фраз|phrase|短语|例句/i;
+const VOCABULARY_TITLE = /лексик|vocab|词汇|词语|выражен|слова/i;
 
 const TITLE_LINE = /^([^\n:]{2,48}):\s*(.*)$/;
 
@@ -175,6 +181,10 @@ export function isPhraseTitle(title: string): boolean {
   return PHRASE_TITLE.test(title.trim());
 }
 
+export function isVocabularyTitle(title: string): boolean {
+  return VOCABULARY_TITLE.test(title.trim());
+}
+
 const PRACTICE_TITLE = /практика|practice|练习/i;
 const EXAMPLES_TITLE = /пример|когда использу|употреблен|example/i;
 const CORRECTION_TITLE = /исправ|как лучше|почему|ошибк|вариант|correct/i;
@@ -195,6 +205,7 @@ export function getTeacherSectionIcon(title: string): TeacherSectionIcon {
   const t = title.trim();
   if (SIMPLE_LANGUAGE_TITLE.test(t)) return 'bulb';
   if (PHRASE_TITLE.test(t)) return 'language';
+  if (VOCABULARY_TITLE.test(t)) return 'list';
   if (DIALOGUE_TITLE.test(t)) return 'people';
   if (PRACTICE_TITLE.test(t)) return 'barbell';
   if (CORRECTION_TITLE.test(t)) return 'checkmark-done';

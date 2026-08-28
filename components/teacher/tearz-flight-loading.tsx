@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { TearzGlobeSpin } from '@/components/teacher/tearz-globe-spin';
+import { TearzGlobeSpin, globeSpinDisplaySize } from '@/components/teacher/tearz-globe-spin';
 import { TeacherLessonWindow } from '@/components/teacher/teacher-lesson-window';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useLexicon } from '@/contexts/lexicon-context';
@@ -138,7 +138,7 @@ export function TearzLessonTransit({
   const rootExit = useSharedValue(1);
 
   const clouds = useMemo(() => buildSnakeClouds(), []);
-  const spinSize = Math.min(W * 0.72, 320);
+  const spinSize = globeSpinDisplaySize(Math.min(W * 0.72, 360));
 
   const revealLesson = () => {
     if (replyRef.current) setMessages(replyRef.current);

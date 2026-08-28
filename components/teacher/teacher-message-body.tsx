@@ -12,6 +12,7 @@ import {
   getTeacherSectionIcon,
   isDialogueTitle,
   isPhraseTitle,
+  isVocabularyTitle,
   parseTeacherBlockLines,
   parseTeacherMessageBlocks,
   type TeacherBodyLine,
@@ -132,6 +133,7 @@ function TeacherSection({
       parseTeacherBlockLines(body, {
         dialogue: isDialogueTitle(title),
         phrase: isPhraseTitle(title),
+        vocabulary: isVocabularyTitle(title),
       }),
     [body, title],
   );

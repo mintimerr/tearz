@@ -25,6 +25,7 @@ import {
   useTeacherJourney,
   type TeacherRecentLesson,
 } from '@/contexts/teacher-journey-context';
+import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 import type { CompanionMsg } from '@/types/companion-message';
 
 type Props = {
@@ -32,6 +33,9 @@ type Props = {
   onClose: () => void;
   /** Снять фокус с CRT/доски под оверлеем урока (автомат). */
   onLessonOpen?: () => void;
+  /** Урок закрыт — можно вернуть CRT. */
+  onLessonClose?: () => void;
+  lessonLanguage?: CompanionChatApiLanguage;
 };
 
 const MUTED = 'rgba(26,26,26,0.45)';
@@ -60,7 +64,13 @@ type OpenLessonState = {
 };
 
 /** Шторка истории уроков с преподом — с экрана автомата / учителя. */
-export function TeacherChatsSheet({ visible, onClose, onLessonOpen }: Props) {
+export function TeacherChatsSheet({
+  visible,
+  onClose,
+  onLessonOpen,
+  onLessonClose,
+  lessonLanguage = 'english',
+}: Props) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { locale } = useLocale();
@@ -133,8 +143,9 @@ export function TeacherChatsSheet({ visible, onClose, onLessonOpen }: Props) {
       if (!finished) return;
       setLessonMounted(false);
       setOpenLesson(null);
+      onLessonClose?.();
     });
-  }, [lessonFade]);
+  }, [lessonFade, onLessonClose]);
 
   useEffect(() => {
     return () => {
@@ -201,17 +212,25 @@ export function TeacherChatsSheet({ visible, onClose, onLessonOpen }: Props) {
       </Modal>
 
       {lessonMounted && openLesson ? (
-        <Animated.View
-          style={[styles.lessonOverlay, { opacity: lessonFade }]}
-          pointerEvents="auto">
-          <TeacherLessonWindow
-            key={openLesson.id}
-            lessonId={openLesson.id}
-            lessonTopic={openLesson.title}
-            initialMessages={openLesson.messages}
-            onClose={closeLesson}
-          />
-        </Animated.View>
+        <Modal
+          visible
+          animationType="none"
+          presentationStyle="fullScreen"
+          onRequestClose={closeLesson}
+          onShow={() => {
+            Keyboard.dismiss();
+          }}>
+          <Animated.View style={[styles.lessonModalInner, { opacity: lessonFade }]}>
+            <TeacherLessonWindow
+              key={openLesson.id}
+              lessonId={openLesson.id}
+              lessonTopic={openLesson.title}
+              initialMessages={openLesson.messages}
+              language={lessonLanguage}
+              onClose={closeLesson}
+            />
+          </Animated.View>
+        </Modal>
       ) : null}
     </>
   );
@@ -230,6 +249,10 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 500,
     elevation: 500,
+    backgroundColor: GAME_THEME.color.cream,
+  },
+  lessonModalInner: {
+    flex: 1,
     backgroundColor: GAME_THEME.color.cream,
   },
   sheet: {

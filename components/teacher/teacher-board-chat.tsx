@@ -156,6 +156,7 @@ export function TeacherBoardChat({
   const miniDrillUserId = user?.id ?? '';
 
   const scrollRef = useRef<ScrollView>(null);
+  const composerRef = useRef<TextInput>(null);
   const lessonIdRef = useRef<string | null>(lessonId ?? null);
   const lessonTopicRef = useRef<string>(lessonTopic?.trim() || t('teacher.lessonDefault'));
   const seededRef = useRef(false);
@@ -174,6 +175,16 @@ export function TeacherBoardChat({
   const [drillNotice, setDrillNotice] = useState<string | null>(null);
   const drillNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
+  const [threadViewportH, setThreadViewportH] = useState(0);
+
+  const dismissChatKeyboard = useCallback(() => {
+    composerRef.current?.blur();
+    Keyboard.dismiss();
+  }, []);
+
+  useEffect(() => {
+    dismissChatKeyboard();
+  }, [dismissChatKeyboard]);
 
   const showDrillNotice = useCallback((text: string) => {
     setDrillNotice(text);
@@ -820,43 +831,60 @@ export function TeacherBoardChat({
         <ScrollView
           ref={scrollRef}
           style={styles.flex}
-          contentContainerStyle={[styles.thread, gameChrome && styles.threadGame]}
+          onLayout={(e) => setThreadViewportH(e.nativeEvent.layout.height)}
+          contentContainerStyle={[
+            styles.thread,
+            gameChrome && styles.threadGame,
+            threadViewportH > 0 ? { minHeight: threadViewportH } : null,
+          ]}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
-          onScrollBeginDrag={() => Keyboard.dismiss()}
+          onScrollBeginDrag={dismissChatKeyboard}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
           <Pressable
-            onPress={Keyboard.dismiss}
+            onPress={dismissChatKeyboard}
             accessible={false}
-            style={styles.threadTapDismiss}>
+            style={[
+              styles.threadTapDismiss,
+              threadViewportH > 0 ? { minHeight: threadViewportH } : null,
+            ]}>
             {messages.map((m, idx) => {
             const isMe = m.from === 'me';
             const bubbleVariant = gameChrome ? 'game' : 'default';
             const photo = isImageMsg(m) && Boolean(m.imageUri);
             const caption = m.text.trim();
             const showCaption = caption.length > 0 && caption !== '📷 Фото' && !caption.startsWith('📷 ');
+
+            if (isMe && photo && m.imageUri) {
+              return (
+                <FadeInView key={m.id} delay={idx * 60} offsetY={10} duration={380}>
+                  <View style={styles.photoOnlyWrap}>
+                    <View style={styles.photoBody}>
+                      <ImageMessageBubble uri={m.imageUri} outgoing />
+                      {showCaption ? (
+                        <BoardLessonBubble side="student" compact variant={bubbleVariant}>
+                          <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
+                            {caption}
+                          </BoardStudentText>
+                        </BoardLessonBubble>
+                      ) : null}
+                    </View>
+                  </View>
+                </FadeInView>
+              );
+            }
+
             return (
               <FadeInView key={m.id} delay={idx * 60} offsetY={10} duration={380}>
                 <BoardLessonBubble
                   side={isMe ? 'student' : 'teacher'}
-                  compact={!photo && m.text.length < 56}
+                  compact={m.text.length < 56}
                   variant={bubbleVariant}>
                   {isMe ? (
-                    photo && m.imageUri ? (
-                      <View style={styles.photoBody}>
-                        <ImageMessageBubble uri={m.imageUri} outgoing />
-                        {showCaption ? (
-                          <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
-                            {caption}
-                          </BoardStudentText>
-                        ) : null}
-                      </View>
-                    ) : (
-                      <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
-                        {m.text}
-                      </BoardStudentText>
-                    )
+                    <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
+                      {m.text}
+                    </BoardStudentText>
                   ) : (
                     <TeacherMessageBody
                       text={m.text}
@@ -957,6 +985,7 @@ export function TeacherBoardChat({
             </Pressable>
 
             <TextInput
+              ref={composerRef}
               value={input}
               onChangeText={setInput}
               placeholder={t('teacher.boardChatPlaceholder')}
@@ -1230,8 +1259,15 @@ const styles = StyleSheet.create({
   attachBtnOff: {
     opacity: 0.4,
   },
+  photoOnlyWrap: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginVertical: 8,
+  },
   photoBody: {
     gap: 8,
+    maxWidth: '84%',
+    alignItems: 'flex-end',
   },
   composerInput: {
     flex: 1,

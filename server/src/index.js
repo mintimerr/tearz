@@ -71,6 +71,7 @@ function uiLangMeta(uiRaw) {
       explainLabel: 'English',
       roleTitle: 'Tearz teacher',
       phrases: 'Phrases:',
+      vocabulary: 'Vocabulary:',
       dialogue: 'Dialogue:',
       plain: 'In plain English:',
       practice: 'Practice:',
@@ -115,6 +116,7 @@ function uiLangMeta(uiRaw) {
       explainLabel: 'Chinese (中文)',
       roleTitle: 'Tearz 老师',
       phrases: '句子：',
+      vocabulary: '词汇：',
       dialogue: '对话：',
       plain: '简单说明：',
       practice: '练习：',
@@ -157,6 +159,7 @@ function uiLangMeta(uiRaw) {
     explainLabel: 'русский',
     roleTitle: 'преподаватель Tearz',
     phrases: 'Фразы:',
+    vocabulary: 'Лексика:',
     dialogue: 'Диалог:',
     plain: 'Объясняю простым языком:',
     practice: 'Практика:',
@@ -296,9 +299,11 @@ function buildPracticalQuestionOverride(message, lessonLang, uiLanguage = 'ru') 
   return (
     '\n\n⚠️ ACTIVE REQUEST TYPE: PRACTICAL / SITUATIONAL — LANGUAGE LESSON ONLY\n' +
     'The learner\'s latest message is a "how do I… in real life" question. They are in Tearz to learn WHAT TO SAY, not how life works.\n' +
-    `Phrase examples and dialogue MUST be in: ${targetLabel}. Explanations in ${m.explainLabel}.\n` +
-    `NEVER put ${m.explainLabel} example phrases in «${m.phrases}» / «${m.dialogue}» unless the target language is explicitly that language-as-L2.\n` +
-    `MANDATORY blocks: «${m.phrases}» then «${m.dialogue}» then «${m.plain}».\n` +
+    `Phrase examples MUST be in: ${targetLabel}. Explanations in ${m.explainLabel}.\n` +
+    `NEVER put ${m.explainLabel} example phrases in «${m.phrases}» / «${m.vocabulary}» unless the target language is explicitly that language-as-L2.\n` +
+    `MANDATORY blocks: «${m.phrases}» then «${m.vocabulary}» then «${m.plain}».\n` +
+    `FORBIDDEN in this reply: «${m.dialogue}» block, A/B dialogue scripts, roleplay play-throughs — dialogue practice is in mini-drill buttons, NOT in chat.\n` +
+    `Vocabulary block must be substantial (8–16 items): nouns, verbs, set expressions, polite forms for THIS situation — not just rephrasing the phrases block.\n` +
     'FORBIDDEN in this reply: mobile apps (DiDi, Uber, 滴滴), «скачай/установи», payment setup, maps, VPN, SIM, visas, prices, which service to use, step-by-step logistics without language.\n' +
     'Start immediately with phrases — no travel overview, no app recommendations.' +
     (target === 'chinese' ? CHINESE_PINYIN_CHAT_RULES : '')
@@ -319,21 +324,21 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru') {
   prompt +=
     '\n\n=== UI / NATIVE LANGUAGE (ABSOLUTE — overrides any Russian defaults in this prompt) ===\n' +
     `App language = ${m.explainLabel}. ALL explanations, block titles, declines, scaffolding, and meta text MUST be in ${m.explainLabel}.\n` +
-    `You are «${m.roleTitle}». Prefer block titles like «${m.phrases}», «${m.dialogue}», «${m.plain}», «${m.practice}».\n` +
+    `You are «${m.roleTitle}». Prefer block titles like «${m.phrases}», «${m.vocabulary}», «${m.plain}», «${m.practice}». Do NOT use «${m.dialogue}» in chat — dialogue drills live in training buttons.\n` +
     `Do NOT default to Russian when app language is not Russian. Do NOT teach ${m.explainLabel} as L2.`;
   if (language === 'chinese') {
     prompt +=
-      `\n\nLESSON TARGET LANGUAGE (L2): Chinese (中文). Phrases / examples / dialogue = Chinese. Explanations = ${m.explainLabel}.` +
+      `\n\nLESSON TARGET LANGUAGE (L2): Chinese (中文). Phrases / vocabulary / examples = Chinese. Explanations = ${m.explainLabel}.` +
       CHINESE_PINYIN_CHAT_RULES;
   } else if (language === 'german') {
     prompt +=
-      `\n\nLESSON TARGET LANGUAGE (L2): German (Deutsch). Phrases / examples / dialogue = German. Explanations = ${m.explainLabel}. Useful for ATM, travel, everyday Berlin situations.`;
+      `\n\nLESSON TARGET LANGUAGE (L2): German (Deutsch). Phrases / vocabulary / examples = German. Explanations = ${m.explainLabel}. Useful for ATM, travel, everyday Berlin situations.`;
   } else if (language === 'french') {
     prompt +=
-      `\n\nLESSON TARGET LANGUAGE (L2): French (français). Phrases / examples / dialogue = French. Explanations = ${m.explainLabel}. Useful for Métro, Navigo, café, everyday Paris situations.`;
+      `\n\nLESSON TARGET LANGUAGE (L2): French (français). Phrases / vocabulary / examples = French. Explanations = ${m.explainLabel}. Useful for Métro, Navigo, café, everyday Paris situations.`;
   } else if (language === 'english') {
     prompt +=
-      `\n\nLESSON TARGET LANGUAGE (L2): English. Phrases / examples / dialogue = English. Explanations = ${m.explainLabel}.`;
+      `\n\nLESSON TARGET LANGUAGE (L2): English. Phrases / vocabulary / examples = English. Explanations = ${m.explainLabel}.`;
   } else {
     prompt +=
       '\n\nLESSON TARGET LANGUAGE (L2): Russian as a foreign language (rare). Only when the learner explicitly studies Russian as L2.';
@@ -350,7 +355,7 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru') {
     '\n\nLEVEL & INTENT (apply silently on every message):\n' +
     '- Infer level from conversation history and adapt vocabulary, depth, and example difficulty.\n' +
     '- Language-first lens: every message is either a language lesson, a situational phrase lesson, a brief vocab pivot, or (only if truly off-topic) a short polite decline — never general life advice.\n' +
-    '- Practical questions ("how do I order food") = phrases + dialogue, not apps or logistics.\n' +
+    '- Practical questions ("how do I order food") = phrases + rich vocabulary for the situation — NOT dialogue scripts in chat; dialogue is trained in mini-drill.\n' +
     '- Never label the learner\'s level or say you are adjusting difficulty.';
   prompt +=
     `\n\n=== FINAL CHECK BEFORE YOU WRITE ===\n` +
