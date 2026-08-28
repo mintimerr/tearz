@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   FlatList,
+  Keyboard,
   Modal,
   Pressable,
   StyleSheet,
@@ -27,9 +30,15 @@ import type { CompanionMsg } from '@/types/companion-message';
 type Props = {
   visible: boolean;
   onClose: () => void;
+  /** Снять фокус с CRT/доски под оверлеем урока (автомат). */
+  onLessonOpen?: () => void;
 };
 
 const MUTED = 'rgba(26,26,26,0.45)';
+const LESSON_OPEN_MS = 380;
+const LESSON_CLOSE_MS = 480;
+const LESSON_EASING = Easing.bezier(0.22, 1, 0.36, 1);
+const LESSON_CLOSE_EASING = Easing.bezier(0.4, 0, 0.2, 1);
 
 function formatLessonTime(ts: number, locale: string): string {
   try {
@@ -51,13 +60,17 @@ type OpenLessonState = {
 };
 
 /** Шторка истории уроков с преподом — с экрана автомата / учителя. */
-export function TeacherChatsSheet({ visible, onClose }: Props) {
+export function TeacherChatsSheet({ visible, onClose, onLessonOpen }: Props) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { locale } = useLocale();
   const { lessons } = useTeacherJourney();
   const { chats, getCompanionThread } = useCompanionChats();
   const [openLesson, setOpenLesson] = useState<OpenLessonState | null>(null);
+  const [lessonMounted, setLessonMounted] = useState(false);
+  const lessonOpenRef = useRef(false);
+  const lessonFade = useRef(new Animated.Value(0)).current;
+  const closeRun = useRef<Animated.CompositeAnimation | null>(null);
 
   const teacherChatRows = useMemo(() => {
     const byId = new Map<string, TeacherRecentLesson>();
@@ -81,17 +94,53 @@ export function TeacherChatsSheet({ visible, onClose }: Props) {
   const openLessonChat = useCallback(
     (lesson: TeacherRecentLesson) => {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      onClose();
+      Keyboard.dismiss();
+      onLessonOpen?.();
+      closeRun.current?.stop();
+      lessonOpenRef.current = true;
       setOpenLesson({
         id: lesson.id,
         title: lesson.title,
         messages: getCompanionThread(lesson.id) ?? [],
       });
+      setLessonMounted(true);
+      lessonFade.setValue(0);
+      onClose();
+      requestAnimationFrame(() => {
+        Animated.timing(lessonFade, {
+          toValue: 1,
+          duration: LESSON_OPEN_MS,
+          easing: LESSON_EASING,
+          useNativeDriver: true,
+        }).start();
+      });
     },
-    [getCompanionThread, onClose],
+    [getCompanionThread, lessonFade, onClose, onLessonOpen],
   );
 
-  const closeLesson = useCallback(() => setOpenLesson(null), []);
+  const closeLesson = useCallback(() => {
+    if (!lessonOpenRef.current) return;
+    lessonOpenRef.current = false;
+    void Haptics.selectionAsync();
+    closeRun.current?.stop();
+    closeRun.current = Animated.timing(lessonFade, {
+      toValue: 0,
+      duration: LESSON_CLOSE_MS,
+      easing: LESSON_CLOSE_EASING,
+      useNativeDriver: true,
+    });
+    closeRun.current.start(({ finished }) => {
+      if (!finished) return;
+      setLessonMounted(false);
+      setOpenLesson(null);
+    });
+  }, [lessonFade]);
+
+  useEffect(() => {
+    return () => {
+      closeRun.current?.stop();
+    };
+  }, []);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<TeacherRecentLesson>) => (
@@ -138,6 +187,7 @@ export function TeacherChatsSheet({ visible, onClose }: Props) {
                   { paddingBottom: Math.max(insets.bottom, 12) + 16 },
                 ]}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="always"
                 ItemSeparatorComponent={() => <View style={styles.sep} />}
               />
             ) : (
@@ -150,12 +200,10 @@ export function TeacherChatsSheet({ visible, onClose }: Props) {
         </View>
       </Modal>
 
-      <Modal
-        visible={openLesson != null}
-        animationType="fade"
-        presentationStyle="fullScreen"
-        onRequestClose={closeLesson}>
-        {openLesson ? (
+      {lessonMounted && openLesson ? (
+        <Animated.View
+          style={[styles.lessonOverlay, { opacity: lessonFade }]}
+          pointerEvents="auto">
           <TeacherLessonWindow
             key={openLesson.id}
             lessonId={openLesson.id}
@@ -163,8 +211,8 @@ export function TeacherChatsSheet({ visible, onClose }: Props) {
             initialMessages={openLesson.messages}
             onClose={closeLesson}
           />
-        ) : null}
-      </Modal>
+        </Animated.View>
+      ) : null}
     </>
   );
 }
@@ -177,6 +225,12 @@ const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  lessonOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 500,
+    elevation: 500,
+    backgroundColor: GAME_THEME.color.cream,
   },
   sheet: {
     flex: 1,

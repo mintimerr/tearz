@@ -20,9 +20,13 @@ export type MiniDrillUsage = {
   priorSets: Record<string, string[][]>;
 };
 
+export type MiniDrillLimitReason = 'refreshLimit' | 'lessonLimit';
+
 export type MiniDrillAccess = {
   allowed: boolean;
-  reason?: string;
+  /** i18n key suffix under teacher.drill.* */
+  reasonKey?: MiniDrillLimitReason;
+  reasonCount?: number;
   generationsUsed: number;
   /** Сколько обновлений ещё можно для этого объяснения. */
   refreshesLeft: number;
@@ -91,7 +95,8 @@ export function evaluateMiniDrillAccess(usage: MiniDrillUsage, messageId: string
     if (generationsUsed >= MAX_GENERATIONS_PER_MESSAGE) {
       return {
         allowed: false,
-        reason: `Для этого объяснения уже ${MINI_DRILL_MAX_REFRESHES} обновления — лимит исчерпан.`,
+        reasonKey: 'refreshLimit',
+        reasonCount: MINI_DRILL_MAX_REFRESHES,
         generationsUsed,
         refreshesLeft: 0,
         questionsUsed,
@@ -112,7 +117,8 @@ export function evaluateMiniDrillAccess(usage: MiniDrillUsage, messageId: string
   if (questionsUsed >= MINI_DRILL_MAX_LESSONS) {
     return {
       allowed: false,
-      reason: `Можно пройти не больше ${MINI_DRILL_MAX_LESSONS} мини-тренировок — по разным вопросам в уроке.`,
+      reasonKey: 'lessonLimit',
+      reasonCount: MINI_DRILL_MAX_LESSONS,
       generationsUsed: 0,
       refreshesLeft: MINI_DRILL_MAX_REFRESHES,
       questionsUsed,

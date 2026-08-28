@@ -13,6 +13,16 @@ export const teacherChatStyles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: GAME_THEME.color.cream,
+    position: 'relative',
+  },
+  drillHost: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 900,
+    elevation: 900,
+  },
+  drillModal: {
+    flex: 1,
+    backgroundColor: GAME_THEME.color.cream,
   },
   content: {
     flex: 1,

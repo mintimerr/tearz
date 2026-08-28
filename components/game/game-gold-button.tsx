@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable } from 'react-native-gesture-handler';
 
 import { GAME_THEME } from '@/constants/game-theme';
 
@@ -8,6 +9,7 @@ type Props = {
   label?: string;
   children?: ReactNode;
   onPress: () => void;
+  onPressIn?: () => void;
   disabled?: boolean;
   size?: 'sm' | 'md' | 'lg';
   haptic?: 'light' | 'medium';
@@ -26,6 +28,7 @@ export function GameGoldButton({
   label,
   children,
   onPress,
+  onPressIn,
   disabled,
   size = 'md',
   haptic = 'medium',
@@ -37,6 +40,7 @@ export function GameGoldButton({
   return (
     <Pressable
       disabled={disabled}
+      delayPressIn={0}
       onPress={() => {
         void Haptics.impactAsync(
           haptic === 'light'
@@ -45,6 +49,8 @@ export function GameGoldButton({
         );
         onPress();
       }}
+      onPressIn={onPressIn}
+      hitSlop={8}
       style={({ pressed }) => [
         styles.btn,
         {

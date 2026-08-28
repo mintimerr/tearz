@@ -15,6 +15,7 @@ import { UserProfileProvider } from '@/contexts/user-profile-context';
 import { VocabularyProvider } from '@/contexts/vocabulary-context';
 import { LexiconProvider } from '@/contexts/lexicon-context';
 import { WordAddSheetProvider } from '@/components/word-add-sheet';
+import { TeacherDrillSessionProvider } from '@/components/teacher/teacher-drill-session';
 export const unstable_settings = {
   anchor: '(tabs)',
 };
@@ -47,6 +48,7 @@ export default function RootLayout() {
               <UserProfileProvider>
                 <VocabularyProvider>
                   <LexiconProvider>
+                  <TeacherDrillSessionProvider>
                   <WordAddSheetProvider>
                   <Stack screenOptions={{ headerShown: false, contentStyle: GAME_VOID }}>
                     <Stack.Screen name="index" />
@@ -65,6 +67,7 @@ export default function RootLayout() {
                   </Stack>
                 <StatusBar style="light" />
                   </WordAddSheetProvider>
+                  </TeacherDrillSessionProvider>
                   </LexiconProvider>
                 </VocabularyProvider>
               </UserProfileProvider>

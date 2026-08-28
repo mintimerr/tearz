@@ -1,11 +1,13 @@
-/** Заданий в одной мини-тренировке (UI, промпты, сервер). */
-export const MINI_DRILL_TASK_COUNT = 5;
+/** Заданий в одной тренировке по объяснению (UI, промпты, сервер). */
+export const DRILL_TASK_COUNT = 10;
 
-/** Заданий в полной Plus-тренировке (пока только paywall). */
-export const FULL_WORKOUT_TASK_COUNT = 15;
+/** @deprecated use DRILL_TASK_COUNT */
+export const MINI_DRILL_TASK_COUNT = DRILL_TASK_COUNT;
 
-/** Сколько разных объяснений в уроке можно открыть мини-тренировку.
- *  Временно снят лимит (было 4) — фактически без ограничения. */
+/** @deprecated Plus full workout merged into DRILL_TASK_COUNT */
+export const FULL_WORKOUT_TASK_COUNT = DRILL_TASK_COUNT;
+
+/** Сколько разных объяснений в уроке можно открыть тренировку. */
 export const MINI_DRILL_MAX_LESSONS = 9999;
 
 /** Сколько раз можно обновить набор для одного объяснения (после первого прохода). */

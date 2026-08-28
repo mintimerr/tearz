@@ -585,18 +585,15 @@ export function TeacherExerciseTaskBody({
     case 'word_to_image':
       if (!exercise.imageSlots?.length) {
         return (
-          <FreeTextAnswer
-            exercise={exercise}
-            disabled={disabled}
-            value={state.freeText}
-            onChange={(text) => onStateChange({ freeText: text })}
-          />
+          <View style={styles.section}>
+            <Text style={styles.promptPlain}>{t('teacher.drill.taskFallback')}</Text>
+          </View>
         );
       }
       return (
         <>
           <View style={styles.imageGrid}>
-            {exercise.imageSlots?.map((slot) => {
+            {exercise.imageSlots.map((slot, slotIndex) => {
               const assigned = state.imageAssignments[slot.id];
               return (
                 <Pressable
@@ -612,9 +609,10 @@ export function TeacherExerciseTaskBody({
                   ) : (
                     <View style={styles.imagePlaceholder}>
                       <Ionicons name="image-outline" size={28} color={APP_THEME.color.mutedSoft} />
+                      <Text style={styles.imageSlotIndex}>{slotIndex + 1}</Text>
                     </View>
                   )}
-                  <Text style={styles.imageWord}>{assigned || slot.label || '…'}</Text>
+                  <Text style={styles.imageWord}>{assigned || '…'}</Text>
                 </Pressable>
               );
             })}

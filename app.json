@@ -30,7 +30,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Приложение использует фото для аватара и вложений в чате."
+          "photosPermission": "Приложение использует фото для аватара и вложений в чате.",
+          "cameraPermission": "Камера нужна, чтобы сделать фото и прикрепить его к сообщению."
         }
       ],
       [
@@ -45,9 +46,9 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 280,
+          "imageWidth": 260,
           "resizeMode": "contain",
-          "backgroundColor": "#4691F5",
+          "backgroundColor": "#0B1430",
           "dark": {
             "backgroundColor": "#0B1430"
           }

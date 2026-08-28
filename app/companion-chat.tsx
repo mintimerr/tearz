@@ -791,7 +791,7 @@ function CompanionChatScreenInner() {
       try {
         let transcript: string;
         try {
-          transcript = await postCompanionVoiceTranscribe(audioUri, companionSessionLang);
+          transcript = await postCompanionVoiceTranscribe(audioUri, companionSessionLang, uiLanguage);
         } catch (e) {
           const err = e instanceof Error ? e.message : 'Не удалось распознать речь';
           setMessages((m) =>
@@ -1265,7 +1265,7 @@ function CompanionChatScreenInner() {
         }, 120);
         return;
       }
-      const text = buildFollowUpChatMessage(followUp);
+      const text = buildFollowUpChatMessage(followUp, uiLanguage);
       setTimeout(() => {
         sendRef.current(text);
         scrollRef.current?.scrollToEnd({ animated: true });

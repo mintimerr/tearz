@@ -20,23 +20,16 @@ import type {
   TeacherNextTopicRecommendation,
 } from '@/types/companion-chat-api';
 import { normalizeTeacherExerciseSet } from '@/utils/teacher-exercise-normalize';
-import { buildLocalDrillFollowUp } from '@/utils/teacher-drill-followup';
+import { buildLocalDrillFollowUp, normalizeLearnerRepeatPrompt } from '@/utils/teacher-drill-followup';
 import { defaultOpeningForLang, defaultStatusBio } from '@/utils/companion-ai-fallback-profile';
 
-import { companionApiRequestHeaders, getCompanionChatApiBaseUrl, SERVER_UNREACHABLE_HINT } from '@/utils/companion-api-config';
+import { postCompanionApiJson, warmCompanionApi } from '@/utils/companion-api-fetch';
 
 async function postCompanionChatJson(path: string, body: unknown): Promise<Response> {
-  const url = `${getCompanionChatApiBaseUrl()}${path}`;
-  try {
-    return await fetch(url, {
-      method: 'POST',
-      headers: companionApiRequestHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new Error(`Не удалось подключиться к серверу. ${SERVER_UNREACHABLE_HINT}`);
-  }
+  return postCompanionApiJson(path, body, { timeoutMs: 120_000, retries: 3 });
 }
+
+export { warmCompanionApi };
 
 export async function postCompanionChatReply(body: CompanionChatRequestBody): Promise<string> {
   const res = await postCompanionChatJson('/api/chat', body);
@@ -81,13 +74,7 @@ export async function postTeacherChatReply(body: TeacherChatRequestBody): Promis
 
 /** POST /api/teacher-exercise — генерация практики по конкретному объяснению преподавателя */
 export async function postTeacherExercise(body: TeacherExerciseRequestBody): Promise<string> {
-  const base = getCompanionChatApiBaseUrl();
-  const url = `${base}/api/teacher-exercise`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: companionApiRequestHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(body),
-  });
+  const res = await postCompanionApiJson('/api/teacher-exercise', body);
   const raw = await res.text();
   let json: unknown;
   try {
@@ -119,7 +106,10 @@ function normalizeNextTopic(raw: unknown): TeacherNextTopicRecommendation | unde
   };
 }
 
-function normalizeDrillFollowUp(raw: unknown): TeacherDrillFollowUp | undefined {
+function normalizeDrillFollowUp(
+  raw: unknown,
+  ui: 'ru' | 'en' | 'zh' = 'ru',
+): TeacherDrillFollowUp | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const follow = (raw as { followUp?: unknown }).followUp ?? raw;
   if (!follow || typeof follow !== 'object') return undefined;
@@ -137,12 +127,17 @@ function normalizeDrillFollowUp(raw: unknown): TeacherDrillFollowUp | undefined 
         .filter(Boolean)
         .slice(0, 4)
     : undefined;
+  const repeatPromptRaw = asTrimmedString((follow as { repeatPrompt?: unknown }).repeatPrompt, 600);
+  const repeatPrompt =
+    action === 'repeat_same' || action === 'review_gaps'
+      ? normalizeLearnerRepeatPrompt(repeatPromptRaw || undefined, action, ui, focusAreas, title)
+      : repeatPromptRaw || undefined;
   return {
     action,
     title,
     reason: asTrimmedString((follow as { reason?: unknown }).reason, 500),
     connection: asTrimmedString((follow as { connection?: unknown }).connection, 400) || undefined,
-    repeatPrompt: asTrimmedString((follow as { repeatPrompt?: unknown }).repeatPrompt, 600) || undefined,
+    repeatPrompt: repeatPrompt || undefined,
     ...(focusAreas && focusAreas.length > 0 ? { focusAreas } : {}),
   };
 }
@@ -182,12 +177,9 @@ export async function postTeacherExerciseSet(
 export async function postTeacherExerciseCheck(
   body: TeacherExerciseCheckRequestBody,
 ): Promise<TeacherExerciseCheckSuccessBody> {
-  const base = getCompanionChatApiBaseUrl();
-  const url = `${base}/api/teacher-exercise-check`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: companionApiRequestHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(body),
+  const res = await postCompanionApiJson('/api/teacher-exercise-check', body, {
+    timeoutMs: 60_000,
+    retries: 2,
   });
   const raw = await res.text();
   let json: unknown;
@@ -228,19 +220,22 @@ export async function postTeacherDrillFollowUp(
       const err = json as Partial<CompanionChatErrorBody>;
       throw new Error(err.error || `Ошибка сервера (${res.status})`);
     }
-    const followUp = normalizeDrillFollowUp(json);
+    const ui = body.uiLanguage === 'en' || body.uiLanguage === 'zh' ? body.uiLanguage : 'ru';
+    const followUp = normalizeDrillFollowUp(json, ui);
     if (followUp) return { followUp };
   } catch {
     // fall through to local heuristic
   }
 
   const sessionMistakes = body.sessionMistakes ?? [];
+  const ui = body.uiLanguage === 'en' || body.uiLanguage === 'zh' ? body.uiLanguage : 'ru';
   return {
     followUp: buildLocalDrillFollowUp(
       body.correct,
       body.total,
       sessionMistakes,
       body.nextTopic,
+      ui,
     ),
   };
 }
@@ -256,13 +251,7 @@ function asTrimmedString(x: unknown, max: number): string {
 
 /** POST /api/companion-profile — случайный профиль под язык практики */
 export async function postCompanionProfile(body: CompanionProfileRequestBody): Promise<GeneratedCompanionProfile> {
-  const base = getCompanionChatApiBaseUrl();
-  const url = `${base}/api/companion-profile`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: companionApiRequestHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify(body),
-  });
+  const res = await postCompanionApiJson('/api/companion-profile', body);
   const raw = await res.text();
   let json: unknown;
   try {

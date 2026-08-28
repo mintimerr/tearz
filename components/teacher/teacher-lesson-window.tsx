@@ -1,11 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TeacherBoardChat } from '@/components/teacher/teacher-board-chat';
-import { TeacherDrillOverlayRoot } from '@/components/teacher/teacher-drill-overlay';
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
 import { GAME_THEME } from '@/constants/game-theme';
+import { warmCompanionApi } from '@/services/companion-chat-ai';
 import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 import type { CompanionMsg } from '@/types/companion-message';
 
@@ -34,25 +35,27 @@ export function TeacherLessonWindow({
 }: Props) {
   const insets = useSafeAreaInsets();
 
+  useEffect(() => {
+    void warmCompanionApi();
+  }, []);
+
   return (
-    <TeacherDrillOverlayRoot>
-      <View style={styles.root}>
-        <StatusBar style="dark" />
-        <View style={[styles.statusFill, { height: insets.top }]} />
-        <View style={styles.inner}>
-          <TeacherBoardChat
-            onClose={onClose}
-            seedQuestion={seedQuestion}
-            initialMessages={initialMessages}
-            lessonId={lessonId}
-            lessonTopic={lessonTopic}
-            seedAttachment={seedAttachment}
-            language={language}
-            gameChrome
-          />
-        </View>
+    <View style={styles.root}>
+      <StatusBar style="dark" />
+      <View style={[styles.statusFill, { height: insets.top }]} />
+      <View style={styles.inner}>
+        <TeacherBoardChat
+          onClose={onClose}
+          seedQuestion={seedQuestion}
+          initialMessages={initialMessages}
+          lessonId={lessonId}
+          lessonTopic={lessonTopic}
+          seedAttachment={seedAttachment}
+          language={language}
+          gameChrome
+        />
       </View>
-    </TeacherDrillOverlayRoot>
+    </View>
   );
 }
 

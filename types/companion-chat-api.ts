@@ -298,6 +298,7 @@ export type CompanionTranscribeRequestBody = {
   audioBase64: string;
   mimeType?: string;
   language: CompanionChatApiLanguage;
+  uiLanguage?: 'ru' | 'en' | 'zh';
 };
 
 export type CompanionTranscribeSuccessBody = {

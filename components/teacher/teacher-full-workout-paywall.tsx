@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GameGoldButton } from '@/components/game/game-gold-button';
 import { GAME_THEME } from '@/constants/game-theme';
-import { FULL_WORKOUT_TASK_COUNT, MINI_DRILL_TASK_COUNT } from '@/constants/teacher-drill';
+import { DRILL_TASK_COUNT } from '@/constants/teacher-drill';
 import { useEngagement } from '@/contexts/engagement-context';
 import { useTranslation } from '@/contexts/locale-context';
 import { PLUS_DAY_COIN_COST } from '@/types/lexicon';
@@ -42,7 +42,7 @@ export function TeacherFullWorkoutPaywall({ visible, feature, onClose, onUnlocke
       ? {
           icon: 'barbell-outline' as const,
           title: t('plus.fullWorkoutTitle'),
-          subtitle: t('plus.fullWorkoutSubtitle', { count: MINI_DRILL_TASK_COUNT }),
+          subtitle: t('plus.fullWorkoutSubtitle', { count: DRILL_TASK_COUNT }),
         }
       : {
           icon: 'call-outline' as const,
@@ -51,7 +51,7 @@ export function TeacherFullWorkoutPaywall({ visible, feature, onClose, onUnlocke
         };
 
   const perks = [
-    t('plus.perkWorkout', { count: FULL_WORKOUT_TASK_COUNT }),
+    t('plus.perkWorkout', { count: DRILL_TASK_COUNT }),
     t('plus.perkTypes'),
     t('plus.perkCall'),
     t('plus.perkUnlimited'),

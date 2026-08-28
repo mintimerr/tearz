@@ -329,6 +329,8 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
   const inputRef = useRef<TextInput>(null);
   const selectionRef = useRef({ start: 0, end: 0 });
   const controlsBusyRef = useRef(false);
+  const zoomOutBusyRef = useRef(false);
+  const prevZoomedRef = useRef(false);
   const canSend = (draft.trim().length > 0 || pendingAttachment !== null) && !disabled;
 
   const [chatLayer, setChatLayer] = useState(false);
@@ -421,6 +423,12 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
 
   useEffect(() => {
     if (chatOpen) {
+      controlsBusyRef.current = true;
+      setAttachOpen(false);
+      inputRef.current?.blur();
+      Keyboard.dismiss();
+      setZoomed(false);
+      onFocusChange?.(false);
       setChatLayer(true);
       chatEnter.value = 0;
       decorFade.value = 1;
@@ -429,7 +437,13 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
         decorFade.value = withTiming(0, { duration: CHAT_ENTER_MS * 0.78, easing: CHAT_EASING });
         applyCameraForChat(true, CHAT_ENTER_MS);
       });
-      return () => cancelAnimationFrame(id);
+      const unlock = setTimeout(() => {
+        controlsBusyRef.current = false;
+      }, CHAT_ENTER_MS + 48);
+      return () => {
+        cancelAnimationFrame(id);
+        clearTimeout(unlock);
+      };
     }
 
     if (!chatLayer) return;
@@ -485,9 +499,13 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
   useEffect(() => {
     if (chatOpen || chatLayer) return;
     if (!zoomed) {
-      applyCamera(false);
+      if (prevZoomedRef.current) {
+        prevZoomedRef.current = false;
+        applyCamera(false);
+      }
       return;
     }
+    prevZoomedRef.current = true;
     if (selection.start === 0 && draft.length === 0) {
       applyCamera(true, 0, 0, ZOOM_MS, true);
       return;
@@ -586,6 +604,8 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
   );
 
   const zoomOut = () => {
+    if (!zoomed || zoomOutBusyRef.current) return;
+    zoomOutBusyRef.current = true;
     void Haptics.selectionAsync();
     setZoomed(false);
     setSelection({ start: 0, end: 0 });
@@ -594,6 +614,9 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
     onFocusChange?.(false);
     inputRef.current?.blur();
     Keyboard.dismiss();
+    setTimeout(() => {
+      zoomOutBusyRef.current = false;
+    }, ZOOM_MS + 40);
   };
 
   const openBoard = () => {
@@ -605,6 +628,7 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
   const zoomIn = () => {
     if (disabled) return;
     void Haptics.selectionAsync();
+    prevZoomedRef.current = false;
     draftRef.current = draft;
     setSelection({ start: draft.length, end: draft.length });
     selectionRef.current = { start: draft.length, end: draft.length };
@@ -853,7 +877,7 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
               </>
             ) : null}
 
-            {zoomed ? (
+            {zoomed && !chatOpen && !chatLayer ? (
               <>
                 <Pressable
                   style={styles.zoomDismiss}
@@ -921,7 +945,7 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
                           setInputH(Math.max(LINE_HEIGHT, e.nativeEvent.contentSize.height));
                         }}
                         onBlur={() => {
-                          if (controlsBusyRef.current) return;
+                          if (controlsBusyRef.current || zoomOutBusyRef.current) return;
                           if (zoomed) zoomOut();
                         }}
                         scrollEnabled
@@ -929,7 +953,7 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
                         placeholderTextColor={MARKER_PLACEHOLDER}
                         multiline
                         maxLength={2000}
-                        editable={!disabled}
+                        editable={!disabled && boardInputActive}
                         autoCorrect
                         autoCapitalize="sentences"
                         returnKeyType="default"

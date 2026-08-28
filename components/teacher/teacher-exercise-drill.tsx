@@ -30,6 +30,7 @@ import { TearzThinking } from '@/components/teacher/tearz-thinking';
 import { useTranslation } from '@/contexts/locale-context';
 import { useCompanionVoiceRecorder } from '@/hooks/use-companion-voice-recorder';
 import { postCompanionVoiceTranscribe } from '@/services/companion-voice-transcribe';
+import { teacherUiLanguageFromLocale } from '@/utils/teacher-ui-language';
 import type {
   CompanionChatApiLanguage,
   TeacherDrillFollowUp,
@@ -333,7 +334,8 @@ export function TeacherExerciseDrill({
   onMistakesRecorded,
   onCheck,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const uiLanguage = teacherUiLanguageFromLocale(locale);
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 10);
   const { animatedStyle: keyboardInsetStyle, isOpen: keyboardOpen } = useKeyboardInset(bottomInset);
@@ -466,7 +468,11 @@ export function TeacherExerciseDrill({
     try {
       let answerText = '';
       if (current.kind === 'voice_recording' && answerState.voiceCapture) {
-        const transcript = await postCompanionVoiceTranscribe(answerState.voiceCapture.uri, transcribeLanguage);
+        const transcript = await postCompanionVoiceTranscribe(
+          answerState.voiceCapture.uri,
+          transcribeLanguage,
+          uiLanguage,
+        );
         setVoiceTranscript(transcript);
         answerText = transcript;
       }
@@ -506,6 +512,7 @@ export function TeacherExerciseDrill({
     onCheck,
     t,
     transcribeLanguage,
+    uiLanguage,
   ]);
 
   const handleContinue = useCallback(() => {

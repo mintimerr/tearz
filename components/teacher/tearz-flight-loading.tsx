@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { TearzToyPlane, TEARZ_PLANE_ASPECT } from '@/components/game/tearz-toy-plane';
+import { TearzGlobeSpin } from '@/components/teacher/tearz-globe-spin';
 import { TeacherLessonWindow } from '@/components/teacher/teacher-lesson-window';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useLexicon } from '@/contexts/lexicon-context';
@@ -29,14 +29,13 @@ import {
 } from '@/utils/teacher-ui-language';
 
 const GATHER_MS = 2200;
-const PLANE_IN_MS = 700;
-const MIN_CRUISE_MS = 2800;
-const PART_MS = 1400;
-const LESSON_IN_MS = 850;
-/** Полный проход орбиты */
-const PLANE_LOOP_MS = 8500;
-/** Горизонтальный размах орбиты (доля ширины экрана) */
-const PLANE_ORBIT_X = 0.2;
+const TEARZ_IN_MS = 950;
+const TEARZ_IN_DELAY = Math.round(GATHER_MS * 0.68);
+const MIN_SPIN_AFTER_IN_MS = 2100;
+const PART_MS = 1300;
+const LESSON_IN_MS = 650;
+const CLOSE_EXIT_MS = 640;
+const CLOUD_LOOP_MS = 8500;
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const CITY_BELOW = require('../../assets/images/tearz-mario/tearz-distant-skyline.png');
@@ -48,12 +47,12 @@ const CLOUD_B = require('../../assets/images/tearz-mario/tearz-cloud-fluff-1.png
 const CLOUD_C = require('../../assets/images/tearz-mario/tearz-cloud-fluff-2.png');
 
 const CLOUD_SRCS = [CLOUD_A, CLOUD_B, CLOUD_C] as const;
+const SKY = GAME_THEME.color.sky;
 
 type Props = {
   question: string;
   language?: CompanionChatApiLanguage;
   onClose: () => void;
-  /** Фото с терминала — уходит в vision/OCR вместе с вопросом. */
   imageUri?: string;
 };
 
@@ -67,7 +66,6 @@ type CloudSpec = {
   side: 1 | -1;
   z: number;
   opacity: number;
-  /** 0 = левый верх, 1 = правый низ (порядок змейки) */
   order: number;
   orderNorm: number;
 };
@@ -79,7 +77,6 @@ function formatChatTime(d = new Date()) {
 const CLOUD_COLS = 4;
 const CLOUD_ROWS = 9;
 
-/** Сетка змейкой: L→R, R→L, … заканчивая правым низом */
 function buildSnakeClouds(): CloudSpec[] {
   const list: CloudSpec[] = [];
   let order = 0;
@@ -99,7 +96,7 @@ function buildSnakeClouds(): CloudSpec[] {
         phase: col / (CLOUD_COLS - 1),
         side: (col < CLOUD_COLS / 2 ? -1 : 1) as 1 | -1,
         z: 3 + Math.floor(top * 5),
-        opacity: 0.96,
+        opacity: 0.94,
         order,
         orderNorm: total <= 1 ? 0 : order / (total - 1),
       });
@@ -110,8 +107,8 @@ function buildSnakeClouds(): CloudSpec[] {
 }
 
 /**
- * Облака сгущаются змейкой: левый верх → правый низ.
- * Самолёт — после полной сетки. Затем расходятся → диалог.
+ * Облака сгущаются → Tearz появляется в центре и крутит глобус →
+ * облака расходятся, Tearz улетает вверх → урок.
  */
 export function TearzLessonTransit({
   question,
@@ -131,17 +128,17 @@ export function TearzLessonTransit({
   const readyRef = useRef(false);
   const sequenceDoneRef = useRef(false);
   const partingRef = useRef(false);
+  const closingRef = useRef(false);
 
   const clock = useSharedValue(0);
-  /** Отдельные часы орбиты: стартуют с появлением самолёта из центра (sin=0). */
-  const planeOrbit = useSharedValue(0);
-  const cover = useSharedValue(1);
   const gather = useSharedValue(0);
-  const planeIn = useSharedValue(0);
+  const tearzIn = useSharedValue(0);
   const part = useSharedValue(0);
   const lessonIn = useSharedValue(0);
+  const rootExit = useSharedValue(1);
 
   const clouds = useMemo(() => buildSnakeClouds(), []);
+  const spinSize = Math.min(W * 0.72, 320);
 
   const revealLesson = () => {
     if (replyRef.current) setMessages(replyRef.current);
@@ -150,6 +147,24 @@ export function TearzLessonTransit({
       duration: LESSON_IN_MS,
       easing: Easing.bezier(0.22, 1, 0.36, 1),
     });
+  };
+
+  const finishClose = () => {
+    onClose();
+  };
+
+  const requestClose = () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    const closeEasing = Easing.bezier(0.22, 1, 0.36, 1);
+    lessonIn.value = withTiming(0, { duration: CLOSE_EXIT_MS * 0.55, easing: closeEasing });
+    rootExit.value = withTiming(
+      0,
+      { duration: CLOSE_EXIT_MS, easing: closeEasing },
+      (ok) => {
+        if (ok) runOnJS(finishClose)();
+      },
+    );
   };
 
   const beginParting = () => {
@@ -167,39 +182,29 @@ export function TearzLessonTransit({
 
   useEffect(() => {
     clock.value = withRepeat(
-      withTiming(1, { duration: PLANE_LOOP_MS, easing: Easing.linear }),
+      withTiming(1, { duration: CLOUD_LOOP_MS, easing: Easing.linear }),
       -1,
       false,
     );
 
-    // Облака сгущаются с первого кадра (город уже на экране)
     gather.value = withTiming(1, {
       duration: GATHER_MS,
       easing: Easing.bezier(0.33, 0, 0.2, 1),
     });
 
-    // Самолёт влетает слева → центр; орбита — после влёта, из центра
-    planeIn.value = withDelay(
-      GATHER_MS,
+    tearzIn.value = withDelay(
+      TEARZ_IN_DELAY,
       withTiming(1, {
-        duration: PLANE_IN_MS,
-        easing: Easing.bezier(0.12, 0.85, 0.2, 1),
+        duration: TEARZ_IN_MS,
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
       }),
     );
-    planeOrbit.value = withDelay(
-      GATHER_MS + PLANE_IN_MS,
-      withRepeat(
-        withTiming(1, { duration: PLANE_LOOP_MS, easing: Easing.linear }),
-        -1,
-        false,
-      ),
-    );
 
-    const sequenceMs = GATHER_MS + PLANE_IN_MS;
+    const sequenceMs = TEARZ_IN_DELAY + TEARZ_IN_MS + 80;
     const t = setTimeout(() => {
       sequenceDoneRef.current = true;
       beginParting();
-    }, sequenceMs + 80);
+    }, sequenceMs + MIN_SPIN_AFTER_IN_MS);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -231,9 +236,7 @@ export function TearzLessonTransit({
     void (async () => {
       let assistantMsg: CompanionMsg;
       try {
-        let image:
-          | { base64: string; mimeType: string }
-          | undefined;
+        let image: { base64: string; mimeType: string } | undefined;
         if (imageUri) {
           const { prepareCompanionImageForApi } = await import('@/utils/companion-image-base64');
           image = await prepareCompanionImageForApi(imageUri);
@@ -263,7 +266,8 @@ export function TearzLessonTransit({
         };
       }
 
-      const wait = Math.max(0, MIN_CRUISE_MS - (Date.now() - started));
+      const minTotal = TEARZ_IN_DELAY + TEARZ_IN_MS + MIN_SPIN_AFTER_IN_MS;
+      const wait = Math.max(0, minTotal - (Date.now() - started));
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
       if (cancelled) return;
       readyRef.current = true;
@@ -277,85 +281,58 @@ export function TearzLessonTransit({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ingestTeacherText, language, question, imageUri, uiLanguage]);
 
-  const coverStyle = useAnimatedStyle(() => ({
-    opacity: cover.value,
-  }));
-
   const cityStyle = useAnimatedStyle(() => {
     const g = gather.value;
     const p = part.value;
     return {
-      height: interpolate(g, [0, 0.55, 1], [H * 0.42, H * 0.34, H * 0.28], Extrapolation.CLAMP),
-      opacity: interpolate(p, [0, 0.55, 1], [1, 0.4, 0], Extrapolation.CLAMP),
+      height: interpolate(g, [0, 0.55, 1], [H * 0.38, H * 0.3, H * 0.24], Extrapolation.CLAMP),
+      opacity: interpolate(p, [0, 0.55, 1], [0.55, 0.25, 0], Extrapolation.CLAMP),
       transform: [
-        {
-          translateY: interpolate(g, [0, 1], [0, H * 0.015], Extrapolation.CLAMP),
-        },
-        {
-          scale: interpolate(g, [0, 1], [1.12, 1], Extrapolation.CLAMP),
-        },
+        { translateY: interpolate(g, [0, 1], [0, H * 0.012], Extrapolation.CLAMP) },
+        { scale: interpolate(g, [0, 1], [1.1, 1], Extrapolation.CLAMP) },
       ],
     };
   });
 
-  const planeStyle = useAnimatedStyle(() => {
-    const t = planeOrbit.value * Math.PI * 2;
-    const cos = Math.cos(t);
-    const sin = Math.sin(t);
-    const pin = planeIn.value;
+  const tearzStyle = useAnimatedStyle(() => {
+    const t = tearzIn.value;
     const p = part.value;
 
-    const planeW = 236;
-    const planeH = planeW / TEARZ_PLANE_ASPECT;
-    const cx = W * 0.5 - planeW / 2;
-    /** Примерно середина экрана — не верхнее небо */
-    const cy = H * 0.42 - planeH / 2;
+    const enterOp = interpolate(t, [0, 0.12, 1], [0, 0, 1], Extrapolation.CLAMP);
+    const enterScale = interpolate(t, [0, 0.55, 1], [0.84, 1.035, 1], Extrapolation.CLAMP);
+    const enterY = interpolate(t, [0, 1], [H * 0.055, 0], Extrapolation.CLAMP);
 
-    // Влёт слева (за кадром) → центр; орбита только после pin=1
-    const enterX = interpolate(pin, [0, 1], [-planeW * 1.15, cx], Extrapolation.CLAMP);
-    const x = enterX + sin * W * PLANE_ORBIT_X;
-    const y = cy + Math.sin(t * 2) * H * 0.03 + cos * H * 0.015;
-    // Пока влетает слева — всегда носом вправо
-    const face = pin < 1 || cos >= 0 ? 1 : -1;
-
-    const partOp = interpolate(p, [0, 0.45, 1], [1, 0.45, 0], Extrapolation.CLAMP);
-    // Виден сразу, как только выглядывает слева — не fade из пустоты
-    const enterOp = interpolate(pin, [0, 0.02, 1], [0, 1, 1], Extrapolation.CLAMP);
+    const partOp = interpolate(p, [0, 0.35, 0.85, 1], [1, 1, 0.35, 0], Extrapolation.CLAMP);
+    const partY = interpolate(p, [0, 1], [0, -H * 0.42], Extrapolation.CLAMP);
+    const partScale = interpolate(p, [0, 1], [1, 0.9], Extrapolation.CLAMP);
 
     return {
-      width: planeW,
-      height: planeH,
-      opacity: enterOp * partOp,
+      opacity: enterOp * partOp * rootExit.value,
       transform: [
-        { translateX: x },
-        {
-          translateY: y + interpolate(p, [0, 1], [0, -H * 0.4], Extrapolation.CLAMP),
-        },
-        { scaleX: face },
-        { rotate: `${-sin * 9}deg` },
-        {
-          scale:
-            interpolate(pin, [0, 1], [0.92, 1], Extrapolation.CLAMP) *
-            interpolate(p, [0, 1], [1, 0.75], Extrapolation.CLAMP),
-        },
+        { translateY: enterY + partY },
+        { scale: enterScale * partScale },
       ],
     };
   });
 
   const creamStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(part.value, [0, 0.4, 1], [0, 0.65, 1], Extrapolation.CLAMP),
+    opacity: interpolate(part.value, [0, 0.45, 1], [0, 0.55, 1], Extrapolation.CLAMP),
   }));
 
   const lessonStyle = useAnimatedStyle(() => ({
-    opacity: lessonIn.value,
+    opacity: lessonIn.value * rootExit.value,
     transform: [
       { translateY: interpolate(lessonIn.value, [0, 1], [18, 0], Extrapolation.CLAMP) },
     ],
   }));
 
+  const rootExitStyle = useAnimatedStyle(() => ({
+    opacity: rootExit.value,
+  }));
+
   return (
-    <View style={styles.root}>
-      <Animated.View style={[StyleSheet.absoluteFill, coverStyle]}>
+    <Animated.View style={[styles.root, rootExitStyle]}>
+      <View style={StyleSheet.absoluteFill}>
         <View style={[StyleSheet.absoluteFill, styles.sky]} />
 
         <Animated.View style={[styles.cityWrap, cityStyle]} pointerEvents="none">
@@ -369,34 +346,28 @@ export function TearzLessonTransit({
         </Animated.View>
 
         {clouds.map((c) => (
-          <CloudChip
-            key={c.id}
-            cloud={c}
-            W={W}
-            H={H}
-            clock={clock}
-            gather={gather}
-            part={part}
-          />
+          <CloudChip key={c.id} cloud={c} W={W} H={H} clock={clock} gather={gather} part={part} />
         ))}
 
-        <Animated.View style={[styles.planeTrack, planeStyle]} pointerEvents="none">
-          <TearzToyPlane width={236} spinning />
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.tearzCenter, tearzStyle, { width: W, height: H }]}>
+          <TearzGlobeSpin size={spinSize} />
         </Animated.View>
 
         <Animated.View style={[styles.creamWash, creamStyle]} pointerEvents="none" />
-      </Animated.View>
+      </View>
 
       {showLesson && messages ? (
-        <Animated.View style={[styles.lessonLayer, lessonStyle]}>
+        <Animated.View pointerEvents="box-none" style={[styles.lessonLayer, lessonStyle]}>
           <TeacherLessonWindow
             initialMessages={messages}
             language={language}
-            onClose={onClose}
+            onClose={requestClose}
           />
         </Animated.View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -423,29 +394,27 @@ function CloudChip({
   const style = useAnimatedStyle(() => {
     const g = gather.value;
     const p = part.value;
-    // Волна змейки: локальный прогресс от 0→1 по orderNorm
     const window = 0.28;
     const start = cloud.orderNorm * (1 - window);
     const local = interpolate(g, [start, start + window], [0, 1], Extrapolation.CLAMP);
 
     const sway =
-      Math.sin(clock.value * Math.PI * 2 + cloud.phase * Math.PI * 2) * W * 0.025 * local;
+      Math.sin(clock.value * Math.PI * 2 + cloud.phase * Math.PI * 2) * W * 0.022 * local;
     const bob = Math.sin(clock.value * Math.PI * 4 + cloud.phase * Math.PI * 2) * 4 * local;
 
-    // Появляются сбоку своей половины и встают на место
-    const spread = (1 - local) * 0.7 + p;
-    const spreadX = cloud.side * spread * W * 0.85;
+    const spread = (1 - local) * 0.72 + p;
+    const spreadX = cloud.side * spread * W * 0.88;
 
     const op =
-      interpolate(local, [0, 0.2, 1], [0, 0.75, cloud.opacity], Extrapolation.CLAMP) *
-      interpolate(p, [0, 0.75, 1], [1, 0.28, 0], Extrapolation.CLAMP);
+      interpolate(local, [0, 0.2, 1], [0, 0.72, cloud.opacity], Extrapolation.CLAMP) *
+      interpolate(p, [0, 0.7, 1], [1, 0.22, 0], Extrapolation.CLAMP);
 
     return {
       opacity: op,
       transform: [
         { translateX: homeX + sway + spreadX },
-        { translateY: bob + (1 - local) * H * 0.04 + p * H * 0.03 },
-        { scale: interpolate(local, [0, 1], [0.85, 1.05], Extrapolation.CLAMP) },
+        { translateY: bob + (1 - local) * H * 0.04 + p * H * 0.05 },
+        { scale: interpolate(local, [0, 1], [0.85, 1.06], Extrapolation.CLAMP) },
       ],
     };
   });
@@ -465,11 +434,11 @@ export const TearzFlightLoading = TearzLessonTransit;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#5C94FC',
+    backgroundColor: SKY,
     overflow: 'hidden',
   },
   sky: {
-    backgroundColor: '#5C94FC',
+    backgroundColor: SKY,
   },
   cityWrap: {
     position: 'absolute',
@@ -491,11 +460,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
   },
-  planeTrack: {
+  tearzCenter: {
     position: 'absolute',
     left: 0,
     top: 0,
-    zIndex: 12,
+    zIndex: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   creamWash: {
     ...StyleSheet.absoluteFillObject,

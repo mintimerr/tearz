@@ -1,4 +1,6 @@
 /** Публичный URL бэкенда Tearz (без trailing slash). Задаётся через EXPO_PUBLIC_COMPANION_CHAT_API_URL. */
+const PRODUCTION_API_FALLBACK = 'https://tearz-chat-api.onrender.com';
+
 export function getCompanionChatApiBaseUrl(): string {
   const u = process.env.EXPO_PUBLIC_COMPANION_CHAT_API_URL?.trim();
   if (u) return u.replace(/\/$/, '');
@@ -8,10 +10,12 @@ export function getCompanionChatApiBaseUrl(): string {
     return window.location.origin.replace(/\/$/, '');
   }
 
+  if (!__DEV__) {
+    return PRODUCTION_API_FALLBACK;
+  }
+
   throw new Error(
-    __DEV__
-      ? 'Не задан EXPO_PUBLIC_COMPANION_CHAT_API_URL. Добавьте в .env адрес server (см. docs/PUBLIC_RELEASE.md).'
-      : 'Сервер недоступен: приложение собрано без адреса API. Обновите сборку.',
+    'Не задан EXPO_PUBLIC_COMPANION_CHAT_API_URL. Добавьте в .env адрес server (см. docs/PUBLIC_RELEASE.md).',
   );
 }
 

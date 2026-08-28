@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -86,7 +87,12 @@ export function TeacherDrillOverlayRoot({ children }: { children: ReactNode }) {
       <View style={styles.root}>
         {children}
         {model ? (
-          <View style={styles.host} pointerEvents="box-none">
+          <View
+            style={[
+              styles.host,
+              model.generatingVisible || model.drillVisible ? styles.hostActive : null,
+            ]}
+            pointerEvents={model.generatingVisible || model.drillVisible ? 'auto' : 'box-none'}>
             <TeacherExerciseGenerating visible={model.generatingVisible} />
             <TeacherExerciseDrill
               visible={model.drillVisible}
@@ -108,16 +114,22 @@ export function TeacherDrillOverlayRoot({ children }: { children: ReactNode }) {
   );
 }
 
-export function useTeacherDrillOverlay(model: TeacherDrillOverlayModel | null) {
+export function useTeacherDrillOverlay(model: TeacherDrillOverlayModel) {
   const ctx = useContext(TeacherDrillOverlayContext);
   if (!ctx) {
     throw new Error('TeacherDrillOverlayRoot missing');
   }
 
-  useEffect(() => {
+  // Синхронно до paint — чтобы «метро»/drill не пропускали кадр.
+  useLayoutEffect(() => {
     ctx.setModel(model);
-    return () => ctx.setModel(null);
   }, [ctx, model]);
+
+  useEffect(() => {
+    return () => {
+      ctx.setModel(null);
+    };
+  }, [ctx]);
 }
 
 const styles = StyleSheet.create({
@@ -129,5 +141,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 500,
     elevation: 500,
+  },
+  hostActive: {
+    zIndex: 900,
+    elevation: 900,
   },
 });

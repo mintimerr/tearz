@@ -128,13 +128,19 @@ export function TeacherPremiumScreen() {
   const composerRef = useRef<TeacherHomeComposerRef>(null);
   const [chatsOpen, setChatsOpen] = useState(false);
   const [boardChatOpen, setBoardChatOpen] = useState(false);
+  const [boardChatMounted, setBoardChatMounted] = useState(false);
   const [boardSeed, setBoardSeed] = useState('');
   const [boardLessonId, setBoardLessonId] = useState<string | undefined>();
   const [boardLessonTopic, setBoardLessonTopic] = useState<string | undefined>();
   const [boardInitialMessages, setBoardInitialMessages] = useState<CompanionMsg[] | undefined>();
   const [composerFocused, setComposerFocused] = useState(false);
+  const pendingLessonRef = useRef<TeacherRecentLesson | null>(null);
   const topBarFade = useRef(new Animated.Value(1)).current;
   const chatFade = useRef(new Animated.Value(0)).current;
+  const CHAT_OVERLAY_OPEN_MS = 380;
+  const CHAT_OVERLAY_CLOSE_MS = 480;
+  const CHAT_OPEN_EASING = Easing.bezier(0.22, 1, 0.36, 1);
+  const CHAT_CLOSE_EASING = Easing.bezier(0.4, 0, 0.2, 1);
 
   /** Все чаты с учителем: уроки + любые tl-* из хранилища чатов. */
   const teacherChatRows = useMemo(() => {
@@ -219,21 +225,63 @@ export function TeacherPremiumScreen() {
     }, [heroFade]),
   );
 
+  const clearBoardChatState = useCallback(() => {
+    setBoardSeed('');
+    setBoardLessonId(undefined);
+    setBoardLessonTopic(undefined);
+    setBoardInitialMessages(undefined);
+    composerRef.current?.clear();
+  }, []);
+
   useEffect(() => {
-    Animated.timing(topBarFade, {
-      toValue: boardChatOpen ? 0 : 1,
-      duration: boardChatOpen ? 240 : 360,
-      easing: boardChatOpen ? Easing.out(Easing.cubic) : Easing.out(Easing.quad),
-      useNativeDriver: true,
-    }).start();
-    Animated.timing(chatFade, {
-      toValue: boardChatOpen ? 1 : 0,
-      duration: boardChatOpen ? 420 : 280,
-      delay: boardChatOpen ? 340 : 0,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [boardChatOpen, topBarFade, chatFade]);
+    if (!boardChatOpen) return;
+    Keyboard.dismiss();
+    composerRef.current?.blur();
+  }, [boardChatOpen]);
+
+  useEffect(() => {
+    if (boardChatOpen) {
+      setBoardChatMounted(true);
+      chatFade.setValue(0);
+      Animated.parallel([
+        Animated.timing(topBarFade, {
+          toValue: 0,
+          duration: CHAT_OVERLAY_OPEN_MS,
+          easing: CHAT_OPEN_EASING,
+          useNativeDriver: true,
+        }),
+        Animated.timing(chatFade, {
+          toValue: 1,
+          duration: CHAT_OVERLAY_OPEN_MS,
+          easing: CHAT_OPEN_EASING,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      return;
+    }
+
+    if (!boardChatMounted) return;
+
+    Animated.parallel([
+      Animated.timing(topBarFade, {
+        toValue: 1,
+        duration: CHAT_OVERLAY_CLOSE_MS,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(chatFade, {
+        toValue: 0,
+        duration: CHAT_OVERLAY_CLOSE_MS,
+        easing: CHAT_CLOSE_EASING,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        setBoardChatMounted(false);
+        clearBoardChatState();
+      }
+    });
+  }, [boardChatOpen, boardChatMounted, chatFade, clearBoardChatState, topBarFade]);
 
   // ── Переименование урока ─────────────────────────────────────────────────
   const [renameTarget, setRenameTarget] = useState<TeacherRecentLesson | null>(null);
@@ -297,11 +345,6 @@ export function TeacherPremiumScreen() {
 
   const closeBoardChat = () => {
     setBoardChatOpen(false);
-    setBoardSeed('');
-    setBoardLessonId(undefined);
-    setBoardLessonTopic(undefined);
-    setBoardInitialMessages(undefined);
-    composerRef.current?.clear();
   };
 
   const renameCardMotion = useMemo(
@@ -454,13 +497,27 @@ export function TeacherPremiumScreen() {
 
   const openTeacherLessonChat = (lesson: TeacherRecentLesson) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Keyboard.dismiss();
+    composerRef.current?.blur();
+    pendingLessonRef.current = lesson;
     setChatsOpen(false);
+    if (Platform.OS === 'android') {
+      InteractionManager.runAfterInteractions(() => revealPendingLesson());
+    }
+  };
+
+  const revealPendingLesson = useCallback(() => {
+    const lesson = pendingLessonRef.current;
+    if (!lesson) return;
+    pendingLessonRef.current = null;
+    Keyboard.dismiss();
+    composerRef.current?.blur();
     setBoardSeed('');
     setBoardLessonId(lesson.id);
     setBoardLessonTopic(lesson.title);
     setBoardInitialMessages(getCompanionThread(lesson.id) ?? []);
     setBoardChatOpen(true);
-  };
+  }, [getCompanionThread]);
 
   const beginRenameLesson = useCallback((lesson: TeacherRecentLesson) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -598,6 +655,7 @@ export function TeacherPremiumScreen() {
 
       <KeyboardAvoidingView
         style={styles.flex}
+        pointerEvents={boardChatMounted ? 'none' : 'auto'}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={insets.top + 8}>
         <View style={styles.heroArea}>
@@ -606,7 +664,7 @@ export function TeacherPremiumScreen() {
               ref={composerRef}
               idleBoardPrompt={composerFocused ? undefined : typed}
               idleTapHint={composerFocused ? undefined : t('teacher.boardTapHint')}
-              chatOpen={boardChatOpen}
+              chatOpen={boardChatOpen || boardChatMounted}
               submitOpensChat
               onFocusChange={setComposerFocused}
               onSubmit={handleBoardSubmit}
@@ -615,9 +673,11 @@ export function TeacherPremiumScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {boardChatOpen ? (
-        <View style={styles.boardChatOverlay}>
-          <Animated.View style={[styles.boardChatLayer, { opacity: chatFade }]}>
+      {boardChatMounted ? (
+        <Animated.View
+          style={[styles.boardChatOverlay, { opacity: chatFade }]}
+          pointerEvents={boardChatOpen ? 'auto' : 'none'}>
+          <View style={styles.boardChatLayer}>
             <TeacherLessonWindow
               key={boardLessonId ?? (boardSeed || 'new-lesson')}
               seedQuestion={boardSeed || undefined}
@@ -626,8 +686,8 @@ export function TeacherPremiumScreen() {
               lessonTopic={boardLessonTopic}
               onClose={closeBoardChat}
             />
-          </Animated.View>
-        </View>
+          </View>
+        </Animated.View>
       ) : null}
 
       {/* ── Список чатов ─────────────────────────────────────────────── */}
@@ -635,7 +695,8 @@ export function TeacherPremiumScreen() {
         visible={chatsOpen}
         transparent
         animationType="slide"
-        onRequestClose={closeChats}>
+        onRequestClose={closeChats}
+        onDismiss={revealPendingLesson}>
         <View style={styles.chatsRoot}>
           <Pressable style={styles.chatsBackdrop} onPress={closeChats} accessibilityLabel="Закрыть" />
           <View
@@ -665,7 +726,7 @@ export function TeacherPremiumScreen() {
                 style={styles.flex}
                 contentContainerStyle={styles.chatsListContent}
                 showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="always"
                 initialNumToRender={14}
                 windowSize={8}
               />
@@ -768,8 +829,8 @@ const styles = StyleSheet.create({
   },
   boardChatOverlay: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 80,
-    elevation: 80,
+    zIndex: 200,
+    elevation: 200,
     backgroundColor: GAME_THEME.color.cream,
   },
   root: {

@@ -5,15 +5,13 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
-  InteractionManager,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -30,12 +28,30 @@ import { useVocabulary } from '@/contexts/vocabulary-context';
 import { detectWordLang } from '@/utils/detect-word-lang';
 import { fetchCardSuggestion, instantCardFields } from '@/utils/card-suggestion';
 import { isAbortError } from '@/utils/abort-error';
-import { localeLangLabel } from '@/utils/locale-lang-label';
-
-const { height: WIN_H } = Dimensions.get('window');
+import {
+  BUILTIN_FOLDER_EN,
+  BUILTIN_FOLDER_ZH,
+  buildFolderViews,
+  resolveFolderMeta,
+} from '@/utils/vocab-folders';
 
 type WordAddSheetContextValue = {
   openWord: (word: string) => void;
+  registerHost: () => () => void;
+  hostCount: number;
+  visible: boolean;
+  savedToastVisible: boolean;
+  sheetWord: string | null;
+  folderId: string;
+  sheetDuplicate: boolean;
+  adding: boolean;
+  sheetErr: string | null;
+  prefetching: boolean;
+  prefetchedTr: string | null;
+  prefetchedPy: string | null;
+  closeSheet: (after?: () => void) => void;
+  confirmAdd: () => void;
+  setFolderId: (id: string) => void;
 };
 
 const WordAddSheetContext = createContext<WordAddSheetContextValue | null>(null);
@@ -43,16 +59,183 @@ const WordAddSheetContext = createContext<WordAddSheetContextValue | null>(null)
 export function useWordAddSheet() {
   const ctx = useContext(WordAddSheetContext);
   if (!ctx) throw new Error('WordAddSheetProvider missing');
+  return { openWord: ctx.openWord };
+}
+
+function useSheetContext() {
+  const ctx = useContext(WordAddSheetContext);
+  if (!ctx) throw new Error('WordAddSheetProvider missing');
   return ctx;
+}
+
+function folderForWord(word: string): string {
+  return detectWordLang(word) === 'zh' ? BUILTIN_FOLDER_ZH : BUILTIN_FOLDER_EN;
+}
+
+function WordAddSheetPanel() {
+  const {
+    visible,
+    sheetWord,
+    folderId,
+    sheetDuplicate,
+    adding,
+    sheetErr,
+    prefetching,
+    prefetchedTr,
+    prefetchedPy,
+    closeSheet,
+    confirmAdd,
+    setFolderId,
+  } = useSheetContext();
+  const { t } = useTranslation();
+  const { customFolders, entries } = useVocabulary();
+
+  const folders = useMemo(
+    () => buildFolderViews(customFolders, entries, t('vocabulary.fallbackTranslation'), t),
+    [customFolders, entries, t],
+  );
+
+  if (!visible || !sheetWord) return null;
+
+  return (
+    <View style={styles.barWrap}>
+      <View style={styles.bar}>
+        <View style={styles.barTop}>
+          <View style={styles.barCopy}>
+            <Text style={styles.barWord} numberOfLines={2}>
+              {sheetWord}
+            </Text>
+            {prefetching && !prefetchedTr ? (
+              <View style={styles.prefetchRow}>
+                <ActivityIndicator color="rgba(26,26,26,0.45)" size="small" />
+                <Text style={styles.prefetchText}>{t('vocabulary.fetchingTranslation')}</Text>
+              </View>
+            ) : (
+              <>
+                {prefetchedPy ? <Text style={styles.pinyin}>{prefetchedPy}</Text> : null}
+                {prefetchedTr ? (
+                  <Text style={styles.translation} numberOfLines={3}>
+                    {prefetchedTr}
+                  </Text>
+                ) : (
+                  <Text style={styles.translationMuted}>{t('vocabulary.translationPending')}</Text>
+                )}
+              </>
+            )}
+          </View>
+          <Pressable
+            onPress={() => closeSheet()}
+            hitSlop={10}
+            style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.cancel')}>
+            <Ionicons name="close" size={18} color={GAME_THEME.color.ink} />
+          </Pressable>
+        </View>
+
+        {sheetErr ? <Text style={styles.sheetErr}>{sheetErr}</Text> : null}
+
+        {sheetDuplicate ? (
+          <View style={styles.dupBadge}>
+            <Ionicons name="bookmark" size={13} color={GAME_THEME.color.ink} />
+            <Text style={styles.dupText}>{t('vocabulary.alreadyInFolder')}</Text>
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.folderRow}
+            keyboardShouldPersistTaps="handled">
+            {folders.map((folder) => {
+              const on = folder.id === folderId;
+              return (
+                <Pressable
+                  key={folder.id}
+                  onPress={() => setFolderId(folder.id)}
+                  style={({ pressed }) => [
+                    styles.folderChip,
+                    on && styles.folderChipOn,
+                    pressed && styles.folderChipPressed,
+                  ]}>
+                  <View style={[styles.folderDot, { backgroundColor: folder.color }]} />
+                  <Text style={[styles.folderChipText, on && styles.folderChipTextOn]} numberOfLines={1}>
+                    {folder.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        <PremiumButton
+          variant="primary"
+          onPress={sheetDuplicate ? () => closeSheet() : () => confirmAdd()}
+          disabled={adding}
+          label={
+            adding
+              ? undefined
+              : sheetDuplicate
+                ? t('vocabulary.studyClose')
+                : t('vocabulary.addShort')
+          }
+          style={styles.addBtn}>
+          {adding ? <ActivityIndicator color="#000000" size="small" /> : null}
+        </PremiumButton>
+      </View>
+    </View>
+  );
+}
+
+function WordAddToast() {
+  const { savedToastVisible } = useSheetContext();
+  const { t } = useTranslation();
+  if (!savedToastVisible) return null;
+  return (
+    <View style={styles.toastSlot} pointerEvents="none">
+      <View style={styles.toastPill} accessibilityLabel={t('vocabulary.savedWord')}>
+        <View style={styles.toastIcon}>
+          <Ionicons name="checkmark" size={16} color="#000000" />
+        </View>
+        <Text style={styles.toastText}>{t('vocabulary.savedWord')}</Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Плашка внутри чата (не второй Modal — на iOS он всплывает только после закрытия урока).
+ */
+export function WordAddSheetHost() {
+  const { registerHost, visible, savedToastVisible, closeSheet } = useSheetContext();
+  const closeSheetRef = useRef(closeSheet);
+  closeSheetRef.current = closeSheet;
+
+  useEffect(() => {
+    const unregister = registerHost();
+    return () => {
+      closeSheetRef.current();
+      unregister();
+    };
+  }, [registerHost]);
+
+  if (!visible && !savedToastVisible) return null;
+
+  return (
+    <View>
+      <WordAddSheetPanel />
+      <WordAddToast />
+    </View>
+  );
 }
 
 export function WordAddSheetProvider({ children }: { children: ReactNode }) {
   const { t, locale } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const { addWord, hasWord, entries } = useVocabulary();
+  const { addWord, hasWord, entries, customFolders, addCardToFolder, hasCardInFolder } = useVocabulary();
 
+  const [hostCount, setHostCount] = useState(0);
   const [visible, setVisible] = useState(false);
   const [sheetWord, setSheetWord] = useState<string | null>(null);
+  const [folderId, setFolderId] = useState(BUILTIN_FOLDER_EN);
   const [sheetDuplicate, setSheetDuplicate] = useState(false);
   const [adding, setAdding] = useState(false);
   const [sheetErr, setSheetErr] = useState<string | null>(null);
@@ -62,8 +245,17 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
   const [savedToastVisible, setSavedToastVisible] = useState(false);
   const addCancelled = useRef(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sheetWordRef = useRef<string | null>(null);
+  const visibleRef = useRef(false);
+
+  const registerHost = useCallback(() => {
+    setHostCount((c) => c + 1);
+    return () => setHostCount((c) => Math.max(0, c - 1));
+  }, []);
 
   const resetSheetState = useCallback(() => {
+    sheetWordRef.current = null;
+    visibleRef.current = false;
     setSheetWord(null);
     setSheetDuplicate(false);
     setSheetErr(null);
@@ -74,32 +266,59 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
     setVisible(false);
   }, []);
 
-  const closeSheet = useCallback((after?: () => void) => {
-    addCancelled.current = true;
-    setVisible(false);
-    resetSheetState();
-    after?.();
-  }, [resetSheetState]);
+  const closeSheet = useCallback(
+    (after?: () => void) => {
+      addCancelled.current = true;
+      setVisible(false);
+      resetSheetState();
+      after?.();
+    },
+    [resetSheetState],
+  );
+
+  const isDuplicate = useCallback(
+    (word: string, id: string) => {
+      const meta = resolveFolderMeta(id, customFolders);
+      if (meta.isBuiltin) return hasWord(word);
+      return hasCardInFolder(id, word);
+    },
+    [customFolders, hasCardInFolder, hasWord],
+  );
 
   const openWord = useCallback(
     (raw: string) => {
       const w = raw.trim();
       if (!w) return;
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      InteractionManager.runAfterInteractions(() => {
-        addCancelled.current = false;
-        setSheetErr(null);
+      const prev = sheetWordRef.current;
+      const wasOpen = visibleRef.current;
+      if (w === prev && wasOpen) return;
+
+      addCancelled.current = false;
+      setSheetErr(null);
+
+      const nextFolder =
+        wasOpen && prev && detectWordLang(w) === detectWordLang(prev) ? folderId : folderForWord(w);
+      setFolderId(nextFolder);
+
+      const dup = isDuplicate(w, nextFolder);
+      setSheetDuplicate(dup);
+      setPrefetching(!dup);
+      if (w !== prev) {
         setPrefetchedTr(null);
         setPrefetchedPy(null);
-        const dup = hasWord(w);
-        setSheetDuplicate(dup);
-        setPrefetching(!dup);
-        setSheetWord(w);
-        setVisible(true);
-      });
+      }
+      sheetWordRef.current = w;
+      visibleRef.current = true;
+      setSheetWord(w);
+      setVisible(true);
     },
-    [hasWord],
+    [folderId, isDuplicate],
   );
+
+  useEffect(() => {
+    if (!sheetWord) return;
+    setSheetDuplicate(isDuplicate(sheetWord, folderId));
+  }, [folderId, isDuplicate, sheetWord]);
 
   useEffect(() => {
     if (!sheetWord || sheetDuplicate) {
@@ -151,17 +370,10 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
     };
   }, [savedToastVisible]);
 
-  const sheetWordLang = sheetWord ? detectWordLang(sheetWord) : null;
-  const sameLangAsApp = sheetWordLang === locale;
-  const targetLangLabel = localeLangLabel(locale, t);
-  const sheetHint = sameLangAsApp
-    ? t('vocabulary.addFromChatSameLang', { lang: targetLangLabel })
-    : t('vocabulary.addFromChatHint', { lang: targetLangLabel });
-
   const confirmAdd = useCallback(async () => {
     if (!sheetWord) return;
     const w = sheetWord.trim();
-    if (!w || hasWord(w)) return;
+    if (!w || isDuplicate(w, folderId)) return;
     setAdding(true);
     setSheetErr(null);
     const lang = detectWordLang(w);
@@ -182,7 +394,14 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
         setAdding(false);
         return;
       }
-      const ok = addWord(w, { translation: tr, pinyin: py ?? undefined, lang });
+      const meta = resolveFolderMeta(folderId, customFolders);
+      const ok = meta.isBuiltin
+        ? addWord(w, { translation: tr, pinyin: py ?? undefined, lang })
+        : addCardToFolder(folderId, {
+            front: w,
+            back: tr,
+            pinyin: py ?? undefined,
+          });
       if (!ok) {
         setSheetDuplicate(true);
         setAdding(false);
@@ -195,178 +414,149 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
     } finally {
       setAdding(false);
     }
-  }, [addWord, closeSheet, entries, hasWord, locale, prefetchedPy, prefetchedTr, sheetWord, t]);
+  }, [
+    addCardToFolder,
+    addWord,
+    closeSheet,
+    customFolders,
+    entries,
+    folderId,
+    isDuplicate,
+    locale,
+    prefetchedPy,
+    prefetchedTr,
+    sheetWord,
+    t,
+  ]);
+
+  const value = useMemo<WordAddSheetContextValue>(
+    () => ({
+      openWord,
+      registerHost,
+      hostCount,
+      visible,
+      savedToastVisible,
+      sheetWord,
+      folderId,
+      sheetDuplicate,
+      adding,
+      sheetErr,
+      prefetching,
+      prefetchedTr,
+      prefetchedPy,
+      closeSheet,
+      confirmAdd: () => {
+        void confirmAdd();
+      },
+      setFolderId,
+    }),
+    [
+      adding,
+      closeSheet,
+      confirmAdd,
+      folderId,
+      hostCount,
+      openWord,
+      prefetching,
+      prefetchedPy,
+      prefetchedTr,
+      registerHost,
+      savedToastVisible,
+      sheetDuplicate,
+      sheetErr,
+      sheetWord,
+      visible,
+    ],
+  );
+
+  const insets = useSafeAreaInsets();
+  const useRootOverlay = hostCount === 0;
 
   return (
-    <WordAddSheetContext.Provider value={{ openWord }}>
-      {children}
-
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={() => closeSheet()}>
-        <View style={styles.sheetRoot}>
-          <Pressable style={styles.sheetDim} onPress={() => closeSheet()} />
-
-          <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
-            <View style={styles.handle} />
-
-            <ScrollView
-              bounces={false}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.sheetScroll}>
-              <Text style={styles.sheetEyebrow}>{t('vocabulary.title')}</Text>
-              <Text style={styles.sheetWord}>{sheetWord}</Text>
-
-              {sheetDuplicate ? (
-                <View style={styles.dupBlock}>
-                  <View style={styles.dupBadge}>
-                    <Ionicons name="bookmark" size={14} color={GAME_THEME.color.ink} />
-                    <Text style={styles.dupText}>{t('vocabulary.alreadyInList')}</Text>
-                  </View>
-                  <PremiumButton
-                    label={t('vocabulary.studyClose')}
-                    variant="primary"
-                    onPress={() => closeSheet()}
-                    style={styles.soloBtn}
-                  />
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.sheetHint}>{sheetHint}</Text>
-
-                  <View style={styles.translationCard}>
-                    {prefetching && !prefetchedTr ? (
-                      <View style={styles.prefetchRow}>
-                        <ActivityIndicator color="rgba(26,26,26,0.45)" size="small" />
-                        <Text style={styles.prefetchText}>{t('vocabulary.fetchingTranslation')}</Text>
-                      </View>
-                    ) : null}
-
-                    {prefetchedPy ? <Text style={styles.pinyin}>{prefetchedPy}</Text> : null}
-
-                    {prefetchedTr ? (
-                      <Text style={styles.translation} numberOfLines={5}>
-                        {prefetchedTr}
-                      </Text>
-                    ) : !prefetching ? (
-                      <Text style={styles.translationMuted}>{t('vocabulary.translationPending')}</Text>
-                    ) : null}
-                  </View>
-
-                  {sheetErr ? <Text style={styles.sheetErr}>{sheetErr}</Text> : null}
-
-                  <View style={styles.actions}>
-                    <PremiumButton
-                      label={t('common.cancel')}
-                      variant="ghost"
-                      onPress={() => closeSheet()}
-                      disabled={adding}
-                      style={styles.actionBtn}
-                    />
-                    <PremiumButton
-                      variant="primary"
-                      onPress={() => void confirmAdd()}
-                      disabled={adding}
-                      style={styles.actionBtn}
-                      label={adding ? undefined : t('vocabulary.addShort')}>
-                      {adding ? <ActivityIndicator color="#000000" size="small" /> : null}
-                    </PremiumButton>
-                  </View>
-                </>
-              )}
-            </ScrollView>
+    <WordAddSheetContext.Provider value={value}>
+      <View style={styles.providerRoot}>
+        {children}
+        {useRootOverlay && (visible || savedToastVisible) ? (
+          <View
+            style={[styles.rootOverlay, { paddingBottom: Math.max(insets.bottom, 10) }]}
+            pointerEvents="box-none">
+            <WordAddSheetPanel />
+            <WordAddToast />
           </View>
-        </View>
-      </Modal>
-
-      <Modal visible={savedToastVisible} transparent animationType="fade" statusBarTranslucent>
-        <View style={styles.toastRoot} pointerEvents="none">
-          <View style={styles.toastPill} accessibilityLabel={t('vocabulary.savedWord')}>
-            <View style={styles.toastIcon}>
-              <Ionicons name="checkmark" size={16} color="#000000" />
-            </View>
-            <Text style={styles.toastText}>{t('vocabulary.savedWord')}</Text>
-          </View>
-        </View>
-      </Modal>
+        ) : null}
+      </View>
     </WordAddSheetContext.Provider>
   );
 }
 
 const styles = StyleSheet.create({
-  sheetRoot: {
+  providerRoot: {
     flex: 1,
-    justifyContent: 'flex-end',
   },
-  sheetDim: {
+  rootOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.62)',
+    justifyContent: 'flex-end',
+    zIndex: 1000,
+    elevation: 1000,
   },
-  sheet: {
-    maxHeight: Math.min(WIN_H * 0.82, 520),
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    backgroundColor: GAME_THEME.color.cream,
-    borderWidth: GAME_THEME.border.thick,
-    borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 0,
-    paddingHorizontal: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -8 },
-        shadowOpacity: 0.35,
-        shadowRadius: 24,
-      },
-      android: { elevation: 16 },
-    }),
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: GAME_THEME.color.ink,
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  sheetScroll: {
+  barWrap: {
+    paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 8,
   },
-  sheetEyebrow: {
-    fontSize: GAME_THEME.type.micro,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: 'rgba(26,26,26,0.45)',
-    marginBottom: 4,
+  bar: {
+    borderRadius: 10,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: GAME_THEME.border.thick,
+    borderColor: GAME_THEME.color.ink,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
+    gap: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.18,
+        shadowRadius: 16,
+      },
+      android: { elevation: 12 },
+    }),
   },
-  sheetWord: {
-    fontSize: GAME_THEME.type.title,
+  barTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  barCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  barWord: {
+    fontSize: 20,
     fontWeight: '900',
     color: GAME_THEME.color.ink,
-    marginBottom: 16,
+    letterSpacing: -0.3,
   },
-  sheetHint: {
-    fontSize: GAME_THEME.type.body,
-    lineHeight: 22,
-    fontWeight: '600',
-    color: 'rgba(26,26,26,0.55)',
-    marginBottom: 12,
-  },
-  translationCard: {
-    padding: 14,
-    minHeight: 72,
-    marginBottom: 12,
-    borderRadius: GAME_THEME.radius.panel,
+  closeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: GAME_THEME.color.paperWarm,
-    borderWidth: GAME_THEME.border.thin,
+    borderWidth: 2,
     borderColor: GAME_THEME.color.ink,
+  },
+  closeBtnPressed: {
+    opacity: 0.7,
   },
   prefetchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginTop: 4,
   },
   prefetchText: {
     fontSize: 12,
@@ -374,52 +564,78 @@ const styles = StyleSheet.create({
     color: 'rgba(26,26,26,0.45)',
   },
   pinyin: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: -0.2,
     color: 'rgba(26,26,26,0.55)',
-    marginBottom: 4,
+    marginTop: 2,
   },
   translation: {
     fontSize: GAME_THEME.type.body,
     fontWeight: '700',
-    lineHeight: 24,
+    lineHeight: 20,
     color: GAME_THEME.color.ink,
+    marginTop: 2,
   },
   translationMuted: {
-    fontSize: GAME_THEME.type.body,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '600',
     color: 'rgba(26,26,26,0.45)',
+    marginTop: 2,
   },
   sheetErr: {
     fontSize: 12,
     fontWeight: '700',
     color: GAME_THEME.color.danger,
-    marginBottom: 12,
   },
-  actions: {
+  folderRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    marginTop: 4,
+    paddingRight: 4,
   },
-  actionBtn: {
-    flex: 1,
+  folderChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: GAME_THEME.radius.pill,
+    backgroundColor: GAME_THEME.color.paperWarm,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    maxWidth: 180,
   },
-  dupBlock: {
-    gap: 16,
-    paddingTop: 4,
+  folderChipOn: {
+    backgroundColor: GAME_THEME.color.ink,
+  },
+  folderChipPressed: {
+    opacity: 0.8,
+  },
+  folderDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  folderChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
+  },
+  folderChipTextOn: {
+    color: '#FFFFFF',
   },
   dupBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: GAME_THEME.radius.pill,
     backgroundColor: GAME_THEME.color.paperWarm,
-    borderWidth: GAME_THEME.border.thin,
+    borderWidth: 2,
     borderColor: GAME_THEME.color.ink,
   },
   dupText: {
@@ -427,14 +643,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: GAME_THEME.color.ink,
   },
-  soloBtn: {
+  addBtn: {
     alignSelf: 'stretch',
   },
-  toastRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
+  toastSlot: {
     alignItems: 'center',
-    paddingBottom: 96,
+    paddingBottom: 8,
   },
   toastPill: {
     flexDirection: 'row',
@@ -446,15 +660,6 @@ const styles = StyleSheet.create({
     backgroundColor: GAME_THEME.color.cream,
     borderWidth: GAME_THEME.border.thin,
     borderColor: GAME_THEME.color.ink,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.28,
-        shadowRadius: 16,
-      },
-      android: { elevation: 12 },
-    }),
   },
   toastIcon: {
     width: 22,

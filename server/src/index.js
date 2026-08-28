@@ -1,6 +1,7 @@
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
+import { File } from 'node:buffer';
 import fs from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
@@ -461,7 +462,14 @@ function tryDeterministicExerciseCheck(item, answer, learnerAnswers, uiLanguage 
   const ok = (correct, ideal) => ({
     correct,
     title: correct ? m.praiseOk : m.praiseAlmost,
-    feedback: correct ? m.checkOk : m.checkRetry,
+    feedback: buildExerciseCheckFeedback({
+      correct,
+      kind,
+      item,
+      ideal,
+      uiLanguage,
+      answer: ans,
+    }),
     idealAnswer: ideal || '',
   });
 
@@ -767,6 +775,194 @@ const DRAG_BLANK_KINDS = new Set(['drag_word_to_blank', 'complete_dialogue', 'fi
 const TYPE_BLANK_KINDS = new Set(['type_word_in_blank', 'type_translation']);
 
 const ALLOWED_EXERCISE_KINDS = new Set(EXERCISE_BANK.map((x) => x.kind));
+
+/** Короткая цитата ответа для тёплого фидбэка (не «совпадает с ключом»). */
+function feedbackQuote(text, maxLen = 52) {
+  const t = typeof text === 'string' ? text.trim().replace(/\s+/g, ' ') : '';
+  if (!t) return '';
+  if (t.length <= maxLen) return `«${t}»`;
+  return `«${t.slice(0, maxLen - 1)}…»`;
+}
+
+function pickFeedbackVariant(seed, variants) {
+  if (!Array.isArray(variants) || variants.length === 0) return '';
+  const h = hashExerciseSeed(String(seed));
+  const v = variants[h % variants.length];
+  return typeof v === 'function' ? v : String(v);
+}
+
+/**
+ * Живой комментарий после проверки — особенно для детерминированных choice/blank задач.
+ * @param {{ correct: boolean, kind?: string, item?: object, ideal?: string, uiLanguage?: string, answer?: string }} opts
+ */
+function buildExerciseCheckFeedback(opts) {
+  const { correct, kind = '', item, ideal = '', uiLanguage = 'ru', answer = '' } = opts ?? {};
+  const ui = normalizeUiLanguage(uiLanguage);
+  const m = uiLangMeta(ui);
+  if (!correct) return m.checkRetry;
+
+  const seed = `${kind}|${item?.id ?? ''}|${ideal}|${answer}`;
+  const q = feedbackQuote(ideal);
+  const qPlain = q.replace(/^«|»$/g, '');
+
+  /** @type {Record<string, Record<string, Array<(ctx: { q: string, qPlain: string, item?: object }) => string>>>} */
+  const pools = {
+    ru: {
+      choice: [
+        ({ qPlain: p }) => (p ? `Верный вариант — ${feedbackQuote(p)}.` : 'Вы выбрали правильный ответ.'),
+        ({ qPlain: p }) => (p ? `Да, ${feedbackQuote(p)} — то, что нужно.` : 'Точно — так и надо.'),
+        () => 'Верно. Эта формулировка здесь уместна.',
+        () => 'Правильно — вы хорошо уловили смысл вопроса.',
+      ],
+      form: [
+        () => 'Формы слов подобраны верно — грамматика сходится.',
+        ({ q }) => (q ? `Да, ${q} — нужные формы.` : 'Все формы на месте.'),
+        () => 'Верно расставили формы — так и должно быть.',
+      ],
+      image: [
+        () => 'Картинки подписаны верно — слова и образы совпали.',
+        ({ q }) => (q ? `Верно: ${q} на своих местах.` : 'Каждое слово к своей картинке.'),
+        () => 'Отлично — визуальные связи уловили правильно.',
+      ],
+      match: [
+        () => 'Все пары сопоставлены правильно.',
+        () => 'Связки верные — лексика держится.',
+        ({ q }) => (q ? `Да, пары ${q} — верно.` : 'Пары сложились как надо.'),
+      ],
+      order: [
+        ({ q }) => (q ? `Порядок верный — ${q} звучит естественно.` : 'Порядок слов правильный.'),
+        () => 'Да, предложение читается без сбоя.',
+        () => 'Фраза собрана верно — так и говорят.',
+      ],
+      blank: [
+        ({ q }) => (q ? `Пропуски заполнены верно: ${q}.` : 'Слова в контексте стоят правильно.'),
+        () => 'Верно — слова ложатся в предложение как надо.',
+        ({ qPlain: p }) => (p ? `${feedbackQuote(p.split(/[,;]/)[0]?.trim() ?? p)} — подходящий выбор.` : 'Контекст угадан верно.'),
+      ],
+      partial: [
+        () => 'Буквы восстановлены верно — слово читается.',
+        ({ q }) => (q ? `Да, ${q} — так и пишется.` : 'Пропущенные части слова угаданы правильно.'),
+      ],
+      read_select: [
+        ({ item: it }) => {
+          const word =
+            typeof it?.selectWord === 'string' && it.selectWord.trim()
+              ? feedbackQuote(it.selectWord.trim())
+              : 'это слово';
+          return it?.selectIsReal
+            ? `${word} — настоящее слово, вы верно определили.`
+            : `${word} — выдумка, вы верно заметили.`;
+        },
+        ({ item: it }) =>
+          it?.selectIsReal
+            ? 'Да, это реальное слово в языке — хороший глаз.'
+            : 'Верно: такого слова нет — вы не попались на ложный вариант.',
+      ],
+      generic: [
+        ({ q }) => (q ? `Верно — ${q}.` : 'Ответ верный, продолжаем.'),
+        () => 'Так и нужно было — двигаемся дальше.',
+        () => 'Правильно — материал усваивается.',
+      ],
+    },
+    en: {
+      choice: [
+        ({ qPlain: p }) => (p ? `That's the right option — ${feedbackQuote(p)}.` : 'You picked the correct answer.'),
+        () => 'Exactly — that wording fits here.',
+        () => 'Correct — you caught the nuance.',
+      ],
+      form: [
+        () => 'Word forms are spot on — grammar checks out.',
+        ({ q }) => (q ? `Yes — ${q} are the forms you need.` : 'All forms are in the right place.'),
+      ],
+      image: [
+        () => 'Every picture is labeled correctly.',
+        () => 'Nice — words and images line up.',
+      ],
+      match: [
+        () => 'All pairs match correctly.',
+        () => 'Good links — vocabulary is holding.',
+      ],
+      order: [
+        ({ q }) => (q ? `Word order works — ${q} reads naturally.` : 'The sentence order is correct.'),
+        () => 'Yes — the phrase flows the way it should.',
+      ],
+      blank: [
+        ({ q }) => (q ? `Blanks filled correctly: ${q}.` : 'The words fit the context.'),
+        () => 'Right words in the right slots.',
+      ],
+      partial: [
+        () => 'Missing letters restored — the word reads correctly.',
+        ({ q }) => (q ? `Yes — ${q} is how it’s spelled.` : 'You guessed the missing pieces.'),
+      ],
+      read_select: [
+        ({ item: it }) =>
+          it?.selectIsReal
+            ? 'Real word — you identified it correctly.'
+            : 'Made-up word — you spotted the fake.',
+      ],
+      generic: [
+        ({ q }) => (q ? `Correct — ${q}.` : 'Right answer — keep going.'),
+        () => 'That’s what we needed — moving on.',
+      ],
+    },
+    zh: {
+      choice: [
+        ({ qPlain: p }) => (p ? `选对啦——${feedbackQuote(p)}。` : '你选对了。'),
+        () => '没错，这个表述在这里很合适。',
+      ],
+      form: [
+        () => '词形都对——语法没问题。',
+        ({ q }) => (q ? `是的，${q} 形式正确。` : '各词形位置正确。'),
+      ],
+      image: [
+        () => '每张图都标对了。',
+        () => '词和图片对应得很好。',
+      ],
+      match: [
+        () => '所有配对都正确。',
+        () => '连线准确——词汇掌握不错。',
+      ],
+      order: [
+        ({ q }) => (q ? `语序正确——${q} 读起来自然。` : '词序对了。'),
+      ],
+      blank: [
+        ({ q }) => (q ? `填空正确：${q}。` : '词放进上下文很合适。'),
+      ],
+      partial: [
+        () => '字母补全正确——单词读得通。',
+      ],
+      read_select: [
+        ({ item: it }) => (it?.selectIsReal ? '真词——你判断对了。' : '假词——你看出来了。'),
+      ],
+      generic: [
+        ({ q }) => (q ? `正确——${q}。` : '答对了，继续。'),
+        () => '就是这样——继续下一题。',
+      ],
+    },
+  };
+
+  let bucket = 'generic';
+  if (kind === 'read_and_select') bucket = 'read_select';
+  else if (kind === 'fill_partial_word') bucket = 'partial';
+  else if (kind === 'word_to_image') bucket = 'image';
+  else if (kind === 'match_pairs') bucket = 'match';
+  else if (ORDER_KINDS.has(kind)) bucket = 'order';
+  else if (DRAG_BLANK_KINDS.has(kind) || kind === 'type_word_in_blank' || TYPE_BLANK_KINDS.has(kind))
+    bucket = 'blank';
+  else if (FORM_KINDS.has(kind)) bucket = 'form';
+  else if (CHOICE_KINDS.has(kind) || kind === 'identify_main_idea') bucket = 'choice';
+
+  const langPools = pools[ui] ?? pools.ru;
+  const variants = langPools[bucket] ?? langPools.generic;
+  return pickFeedbackVariant(seed, variants)({ q, qPlain, item });
+}
+
+function isGenericCheckOkFeedback(text, uiLanguage) {
+  const t = typeof text === 'string' ? text.trim() : '';
+  if (!t) return true;
+  const m = uiLangMeta(uiLanguage);
+  return t === m.checkOk;
+}
 
 function hashExerciseSeed(seed) {
   let h = 2166136261;
@@ -1350,7 +1546,75 @@ function formatMistakesBlock(label, mistakes) {
   );
 }
 
-function normalizeDrillFollowUpFromModel(raw, fallbackNextTopic) {
+function isTeacherVoiceRepeatPrompt(text) {
+  const t = typeof text === 'string' ? text.trim() : '';
+  if (!t) return true;
+  if (/\b(давайте|let['']s|让我们|我们一起)\b/iu.test(t)) return true;
+  if (/\b(повторим упражн|пройдите|выполните|сделайте упражн|complete the|do the exercise)\b/iu.test(t)) return true;
+  if (/\b(вам нужно|чтобы вы|you need to|you should|你应该)\b/iu.test(t)) return true;
+  if (/\b(лучше запомнить|не путать|remember not to)\b/iu.test(t) && !/\b(я |мне |мои |my |I )\b/iu.test(t)) return true;
+  if (/^давай\b/iu.test(t) && !/\b(мои|мне|я)\b/iu.test(t)) return true;
+  return false;
+}
+
+function focusSnippetFromAreas(focusAreas, max = 2) {
+  const parts = (Array.isArray(focusAreas) ? focusAreas : [])
+    .filter((line) => typeof line === 'string' && line.trim())
+    .map((line) => line.trim())
+    .slice(0, max);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]}; ${parts[1]}`;
+}
+
+function defaultLearnerRepeatPrompt(action, ui, focusAreas, title = '') {
+  const focus = focusSnippetFromAreas(focusAreas);
+  const topic = typeof title === 'string' ? title.trim() : '';
+
+  if (action === 'review_gaps') {
+    if (ui === 'en') {
+      if (focus) {
+        return `I made mistakes in practice (${focus}). Can you walk me through what I got wrong and show the correct version?`;
+      }
+      return 'Can you review my mistakes from the last drill and explain the correct answers?';
+    }
+    if (ui === 'zh') {
+      if (focus) {
+        return `我在练习里出错了（${focus}）。能帮我看看哪里错了吗，并讲一下正确说法？`;
+      }
+      return '能帮我分析一下上次练习的错误，并讲解正确答案吗？';
+    }
+    if (focus) {
+      return `Я ошибся в тренировке (${focus}). Можешь разобрать, где я ошибся, и показать правильный вариант?`;
+    }
+    return 'Можешь разобрать мои ошибки из последней тренировки и объяснить, как правильно?';
+  }
+
+  if (ui === 'en') {
+    if (topic) {
+      return `I didn’t do well on «${topic}». Can you review my mistakes and give me another short drill?`;
+    }
+    return 'I want to practice this topic again. Can you review my mistakes and give me a new drill?';
+  }
+  if (ui === 'zh') {
+    if (topic) {
+      return `«${topic}» 这题我做得不好。能帮我分析错误，再给我一组短练习吗？`;
+    }
+    return '我想再练一次这个主题。能帮我分析错误并给新的练习吗？';
+  }
+  if (topic) {
+    return `С темой «${topic}» у меня не очень. Можешь разобрать ошибки и дать ещё одну короткую тренировку?`;
+  }
+  return 'Хочу ещё раз потренировать эту тему. Можешь разобрать мои ошибки и дать новую тренировку?';
+}
+
+function normalizeLearnerRepeatPrompt(repeatPrompt, action, ui, focusAreas, title) {
+  const raw = typeof repeatPrompt === 'string' ? repeatPrompt.trim() : '';
+  if (raw && !isTeacherVoiceRepeatPrompt(raw)) return raw.slice(0, 600);
+  return defaultLearnerRepeatPrompt(action, ui, focusAreas, title);
+}
+
+function normalizeDrillFollowUpFromModel(raw, fallbackNextTopic, ui = 'ru') {
   if (!raw || typeof raw !== 'object') return null;
   const actionRaw = raw.action;
   const action =
@@ -1365,16 +1629,20 @@ function normalizeDrillFollowUpFromModel(raw, fallbackNextTopic) {
     typeof raw.connection === 'string' && raw.connection.trim()
       ? raw.connection.trim().slice(0, 400)
       : '';
-  const repeatPrompt =
-    typeof raw.repeatPrompt === 'string' && raw.repeatPrompt.trim()
-      ? raw.repeatPrompt.trim().slice(0, 600)
-      : '';
   const focusAreas = Array.isArray(raw.focusAreas)
     ? raw.focusAreas
         .filter((line) => typeof line === 'string' && line.trim())
         .map((line) => line.trim().slice(0, 120))
         .slice(0, 4)
     : [];
+  const repeatPromptRaw =
+    typeof raw.repeatPrompt === 'string' && raw.repeatPrompt.trim()
+      ? raw.repeatPrompt.trim().slice(0, 600)
+      : '';
+  const repeatPrompt =
+    action === 'repeat_same' || action === 'review_gaps'
+      ? normalizeLearnerRepeatPrompt(repeatPromptRaw, action, ui, focusAreas, title)
+      : repeatPromptRaw || undefined;
 
   if (!title) {
     if (action === 'advance' && fallbackNextTopic?.title) {
@@ -1398,6 +1666,116 @@ function normalizeDrillFollowUpFromModel(raw, fallbackNextTopic) {
     focusAreas: focusAreas.length > 0 ? focusAreas : undefined,
     repeatPrompt: repeatPrompt || undefined,
   };
+}
+
+const INSTRUCTION_ECHO_RE =
+  /соедини|картинк|match|picture|connect|material|материал|выбер|choose|tap the|нажми/i;
+
+function isPlausibleExerciseWord(word, instruction = '', checkText = '') {
+  const w = String(word || '').trim();
+  if (w.length < 2 || w.length > 32) return false;
+  const words = w.split(/\s+/).filter(Boolean);
+  if (words.length > 3) return false;
+  if (/[.!?;:…]/.test(w) && words.length > 1) return false;
+  const norm = w.toLowerCase();
+  const instr = String(instruction || '').trim().toLowerCase();
+  const check = String(checkText || '').trim().toLowerCase();
+  if (instr && norm === instr) return false;
+  if (check && norm === check) return false;
+  if (INSTRUCTION_ECHO_RE.test(w) && w.length > 18) return false;
+  return true;
+}
+
+function extractVocabularyCandidates(...sources) {
+  const out = [];
+  for (const source of sources) {
+    if (!source || !String(source).trim()) continue;
+    const text = String(source);
+    const quoted = [
+      ...text.matchAll(/["«「『]([^"»」』]{2,32})["»」』]/g),
+      ...text.matchAll(/\(([^()]{2,32})\)/g),
+    ].map((m) => (m[1] || '').trim());
+    const tokens = text.match(/[\p{L}][\p{L}'-]{1,24}/gu) || [];
+    for (const token of [...quoted, ...tokens]) {
+      if (isPlausibleExerciseWord(token)) out.push(token);
+    }
+  }
+  return [...new Set(out)];
+}
+
+function buildImageSlotsFromWords(words) {
+  return words.slice(0, 4).map((word, i) => ({
+    id: `img${i + 1}`,
+    correctWord: word,
+    label: word,
+  }));
+}
+
+function mergeWordBank(slots, bank) {
+  const merged = slots.map((s) => s.correctWord);
+  for (const word of bank || []) {
+    if (!merged.some((w) => w.toLowerCase() === String(word).toLowerCase())) merged.push(word);
+  }
+  return merged.slice(0, 8);
+}
+
+function coerceWordToImageExercise(ex, context = {}) {
+  if (ex?.kind !== 'word_to_image') return ex;
+
+  const instruction = typeof ex.instruction === 'string' ? ex.instruction.trim() : '';
+  const checkText = typeof ex.checkText === 'string' ? ex.checkText.trim() : '';
+
+  let imageSlots = Array.isArray(ex.imageSlots)
+    ? ex.imageSlots.filter((s) => s && isPlausibleExerciseWord(s.correctWord, instruction, checkText))
+    : [];
+  let wordBank = Array.isArray(ex.wordBank)
+    ? ex.wordBank.filter((w) => isPlausibleExerciseWord(w, instruction, checkText))
+    : [];
+
+  if (imageSlots.length < 2) {
+    const choiceWords = Array.isArray(ex.choices)
+      ? ex.choices.filter((w) => isPlausibleExerciseWord(w, instruction, checkText))
+      : [];
+    const contextWords = extractVocabularyCandidates(
+      checkText,
+      instruction,
+      context.drillFocus,
+      context.lessonTopic,
+      context.teacherExplanation,
+    );
+    const pool = [
+      ...wordBank,
+      ...choiceWords,
+      ...contextWords,
+      ...imageSlots.map((s) => s.correctWord),
+    ];
+    const unique = [...new Set(pool.map((w) => String(w).trim()).filter(Boolean))].filter((w) =>
+      isPlausibleExerciseWord(w, instruction, checkText),
+    );
+    if (unique.length >= 2) {
+      imageSlots = buildImageSlotsFromWords(unique.slice(0, Math.min(4, unique.length)));
+      wordBank = unique;
+    }
+  }
+
+  if (imageSlots.length < 2) return null;
+
+  return {
+    ...ex,
+    imageSlots,
+    wordBank: mergeWordBank(imageSlots, wordBank),
+    checkText: imageSlots.map((s) => s.correctWord).join(' · '),
+    instruction: instruction || undefined,
+  };
+}
+
+function coerceExerciseSet(exercises, context = {}) {
+  const out = [];
+  for (const ex of exercises || []) {
+    const coerced = coerceWordToImageExercise(ex, context);
+    if (coerced) out.push(coerced);
+  }
+  return out;
 }
 
 function normalizeExerciseSetFromModel(raw) {
@@ -1470,24 +1848,37 @@ function normalizeExerciseSetFromModel(raw) {
       : undefined;
     const imageSlots = Array.isArray(item.imageSlots)
       ? item.imageSlots
-          .filter(
-            (s) =>
-              s &&
-              typeof s === 'object' &&
-              typeof s.correctWord === 'string' &&
-              s.correctWord.trim(),
-          )
+          .flatMap((s, idx) => {
+            if (typeof s === 'string' && s.trim()) {
+              return [
+                {
+                  id: `img${idx + 1}`,
+                  correctWord: s.trim().slice(0, 48),
+                },
+              ];
+            }
+            if (!s || typeof s !== 'object') return [];
+            const correctWord =
+              typeof s.correctWord === 'string' && s.correctWord.trim()
+                ? s.correctWord.trim()
+                : typeof s.word === 'string' && s.word.trim()
+                  ? s.word.trim()
+                  : '';
+            if (!correctWord) return [];
+            return [
+              {
+                id: typeof s.id === 'string' && s.id.trim() ? s.id.trim() : `img${idx + 1}`,
+                correctWord: correctWord.slice(0, 48),
+                ...(typeof s.label === 'string' && s.label.trim()
+                  ? { label: s.label.trim().slice(0, 80) }
+                  : {}),
+                ...(typeof s.imageUrl === 'string' && s.imageUrl.trim()
+                  ? { imageUrl: s.imageUrl.trim().slice(0, IMAGE_DATA_URL_MAX) }
+                  : {}),
+              },
+            ];
+          })
           .slice(0, 4)
-          .map((s, idx) => ({
-            id: typeof s.id === 'string' && s.id.trim() ? s.id.trim() : `img${idx + 1}`,
-            correctWord: s.correctWord.trim().slice(0, 48),
-            ...(typeof s.label === 'string' && s.label.trim()
-              ? { label: s.label.trim().slice(0, 80) }
-              : {}),
-            ...(typeof s.imageUrl === 'string' && s.imageUrl.trim()
-              ? { imageUrl: s.imageUrl.trim().slice(0, IMAGE_DATA_URL_MAX) }
-              : {}),
-          }))
       : undefined;
     const pairs = Array.isArray(item.pairs)
       ? item.pairs
@@ -1847,6 +2238,7 @@ async function generateTeacherExerciseSetFull(apiKey, opts) {
     selectedKinds,
     lang,
     attempt,
+    lessonTopic,
   } = opts;
 
   const temperature = attempt > 1 ? 0.72 : 0.62;
@@ -1860,6 +2252,12 @@ async function generateTeacherExerciseSetFull(apiKey, opts) {
     avoidBlock,
     mistakesBlock,
     drillFocus,
+    lessonTopic,
+  };
+  const coerceContext = {
+    drillFocus,
+    lessonTopic,
+    teacherExplanation,
   };
 
   async function runBatches(extraVariation = '') {
@@ -1912,6 +2310,7 @@ async function generateTeacherExerciseSetFull(apiKey, opts) {
   }
 
   exercises = alignExerciseKinds(exercises, selectedKinds).slice(0, DRILL_TASK_COUNT);
+  exercises = coerceExerciseSet(exercises, coerceContext).slice(0, DRILL_TASK_COUNT);
 
   if (lang === 'chinese' && exerciseSetViolatesChineseL2(exercises)) {
     console.warn('[teacher-exercise-set] Chinese L2 violation — retry batches');
@@ -1919,7 +2318,10 @@ async function generateTeacherExerciseSetFull(apiKey, opts) {
       '\n\nИСПРАВЛЕНИЕ: selectWord / wordBank / shuffledWords — ТОЛЬКО 汉字, без латиницы в L2.',
     );
     if (retry.exercises.length >= DRILL_TASK_COUNT && !exerciseSetViolatesChineseL2(retry.exercises)) {
-      exercises = alignExerciseKinds(retry.exercises, selectedKinds).slice(0, DRILL_TASK_COUNT);
+      exercises = coerceExerciseSet(
+        alignExerciseKinds(retry.exercises, selectedKinds).slice(0, DRILL_TASK_COUNT),
+        coerceContext,
+      ).slice(0, DRILL_TASK_COUNT);
       parsed = retry.parsed;
     }
   }
@@ -1931,6 +2333,7 @@ async function generateTeacherExerciseSetFull(apiKey, opts) {
   if (!exerciseSetMatchesKinds(exercises, selectedKinds)) {
     exercises = alignExerciseKinds(exercises, selectedKinds);
   }
+  exercises = coerceExerciseSet(exercises, coerceContext).slice(0, DRILL_TASK_COUNT);
 
   return { ok: true, exercises, parsed };
 }
@@ -2096,6 +2499,61 @@ function whisperLanguageHint(language) {
   if (language === 'chinese') return 'zh';
   if (language === 'russian') return 'ru';
   return 'en';
+}
+
+function sniffAudioUpload(buffer, mimeHint = '') {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 16) {
+    return { ext: 'm4a', mime: 'audio/mp4', valid: false };
+  }
+  if (buffer.slice(4, 8).toString('ascii') === 'ftyp') {
+    return { ext: 'm4a', mime: 'audio/mp4', valid: true };
+  }
+  if (buffer.slice(0, 4).toString('ascii') === 'RIFF' && buffer.slice(8, 12).toString('ascii') === 'WAVE') {
+    return { ext: 'wav', mime: 'audio/wav', valid: true };
+  }
+  if (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0) {
+    return { ext: 'mp3', mime: 'audio/mpeg', valid: true };
+  }
+  if (buffer.slice(0, 4).toString('ascii') === 'OggS') {
+    return { ext: 'ogg', mime: 'audio/ogg', valid: true };
+  }
+  if (buffer.slice(0, 4).toString('ascii') === 'fLaC') {
+    return { ext: 'flac', mime: 'audio/flac', valid: true };
+  }
+  if (buffer[0] === 0x1a && buffer[1] === 0x45 && buffer[2] === 0xdf && buffer[3] === 0xa3) {
+    return { ext: 'webm', mime: 'audio/webm', valid: true };
+  }
+  if (buffer.slice(0, 4).toString('ascii') === 'caff') {
+    return { ext: 'caf', mime: 'audio/x-caf', valid: false, unsupported: true };
+  }
+
+  const hint = typeof mimeHint === 'string' ? mimeHint.toLowerCase() : '';
+  if (hint.includes('mpeg') || hint.includes('mp3')) return { ext: 'mp3', mime: 'audio/mpeg', valid: true };
+  if (hint.includes('wav')) return { ext: 'wav', mime: 'audio/wav', valid: true };
+  if (hint.includes('webm')) return { ext: 'webm', mime: 'audio/webm', valid: true };
+  if (hint.includes('ogg')) return { ext: 'ogg', mime: 'audio/ogg', valid: true };
+  if (hint.includes('m4a') || hint.includes('mp4') || hint.includes('aac')) {
+    return { ext: 'm4a', mime: 'audio/mp4', valid: true };
+  }
+  return { ext: 'm4a', mime: 'audio/mp4', valid: false };
+}
+
+function localizeTranscribeError(message, uiLanguage) {
+  const ui = normalizeUiLanguage(uiLanguage);
+  const msg = typeof message === 'string' ? message.trim() : '';
+  if (/could not be decoded|format is not supported|invalid file format/i.test(msg)) {
+    if (ui === 'ru') return 'Не удалось прочитать запись. Запиши ещё раз — удерживай микрофон 1–2 секунды.';
+    if (ui === 'zh') return '无法识别录音。请再试一次——按住麦克风 1–2 秒。';
+    return 'Could not read the recording. Try again — hold the mic for 1–2 seconds.';
+  }
+  if (/too short|recording too short/i.test(msg)) {
+    if (ui === 'ru') return 'Запись слишком короткая — скажи фразу чуть дольше.';
+    if (ui === 'zh') return '录音太短——请再说长一点。';
+    return 'Recording too short — speak a little longer.';
+  }
+  if (ui === 'ru') return msg || 'Не удалось распознать речь';
+  if (ui === 'zh') return msg || '无法识别语音';
+  return msg || 'Transcription failed';
 }
 
 const app = express();
@@ -2291,33 +2749,44 @@ app.post('/api/transcribe', express.json({ limit: '12mb' }), async (req, res) =>
     return res.status(500).json({ error: 'Server misconfiguration: OPENAI_API_KEY is not set' });
   }
 
-  const { audioBase64, mimeType, language } = req.body ?? {};
+  const { audioBase64, mimeType, language, uiLanguage } = req.body ?? {};
   if (typeof audioBase64 !== 'string' || !audioBase64.trim()) {
     return res.status(400).json({ error: 'audioBase64 must be a non-empty string' });
   }
   if (language !== 'english' && language !== 'chinese' && language !== 'russian') {
     return res.status(400).json({ error: 'language must be "english", "chinese", or "russian"' });
   }
+  const ui = normalizeUiLanguage(uiLanguage);
 
   let buffer;
   try {
     buffer = Buffer.from(audioBase64, 'base64');
   } catch {
-    return res.status(400).json({ error: 'Invalid audioBase64' });
+    return res.status(400).json({ error: localizeTranscribeError('Invalid audioBase64', ui) });
   }
   if (buffer.length < 200) {
-    return res.status(400).json({ error: 'Recording too short' });
+    return res.status(400).json({ error: localizeTranscribeError('Recording too short', ui) });
   }
   if (buffer.length > 10 * 1024 * 1024) {
-    return res.status(400).json({ error: 'Recording too large (max 10 MB)' });
+    return res.status(400).json({ error: localizeTranscribeError('Recording too large', ui) });
   }
 
-  const mime = typeof mimeType === 'string' && mimeType.trim() ? mimeType.trim() : 'audio/mp4';
-  const ext = mime.includes('mpeg') || mime.includes('mp3') ? 'mp3' : mime.includes('wav') ? 'wav' : 'm4a';
+  const mimeHint = typeof mimeType === 'string' && mimeType.trim() ? mimeType.trim() : 'audio/m4a';
+  const sniffed = sniffAudioUpload(buffer, mimeHint);
+  if (sniffed.unsupported) {
+    return res.status(400).json({
+      error: localizeTranscribeError('The audio file could not be decoded or its format is not supported.', ui),
+    });
+  }
+  if (!sniffed.valid) {
+    return res.status(400).json({
+      error: localizeTranscribeError('The audio file could not be decoded or its format is not supported.', ui),
+    });
+  }
 
   try {
     const form = new FormData();
-    form.append('file', new Blob([buffer], { type: mime }), `voice.${ext}`);
+    form.append('file', new File([buffer], `voice.${sniffed.ext}`, { type: sniffed.mime }));
     form.append('model', 'whisper-1');
     form.append('language', whisperLanguageHint(language));
 
@@ -2332,23 +2801,25 @@ app.post('/api/transcribe', express.json({ limit: '12mb' }), async (req, res) =>
     try {
       data = raw ? JSON.parse(raw) : {};
     } catch {
-      return res.status(502).json({ error: 'Invalid response from OpenAI' });
+      return res.status(502).json({ error: localizeTranscribeError('Invalid response from OpenAI', ui) });
     }
 
     if (!whisperRes.ok) {
       const errMsg = data?.error?.message || data?.error || `OpenAI HTTP ${whisperRes.status}`;
-      return res.status(502).json({ error: typeof errMsg === 'string' ? errMsg : 'Whisper request failed' });
+      return res.status(502).json({
+        error: localizeTranscribeError(typeof errMsg === 'string' ? errMsg : 'Whisper request failed', ui),
+      });
     }
 
     const text = typeof data?.text === 'string' ? data.text.trim() : '';
     if (!text) {
-      return res.status(502).json({ error: 'Empty transcription' });
+      return res.status(502).json({ error: localizeTranscribeError('Empty transcription', ui) });
     }
 
     return res.json({ text });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Network error';
-    return res.status(502).json({ error: msg });
+    return res.status(502).json({ error: localizeTranscribeError(msg, ui) });
   }
 });
 
@@ -2666,6 +3137,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
       selectedKinds,
       lang,
       attempt,
+      lessonTopic,
     });
 
     if (!genResult.ok) {
@@ -2791,10 +3263,24 @@ app.post('/api/teacher-exercise-check', async (req, res) => {
         : correct
           ? m.praiseOk
           : m.praiseAlmost;
-    const feedback =
+    const feedbackRaw =
       typeof parsed?.feedback === 'string' && parsed.feedback.trim()
         ? parsed.feedback.trim().slice(0, 1200)
-        : m.checkOk;
+        : '';
+    const feedback =
+      feedbackRaw && !isGenericCheckOkFeedback(feedbackRaw, ui)
+        ? feedbackRaw
+        : buildExerciseCheckFeedback({
+            correct,
+            kind: typeof item?.kind === 'string' ? item.kind : '',
+            item: item && typeof item === 'object' ? item : undefined,
+            ideal:
+              typeof parsed?.idealAnswer === 'string' && parsed.idealAnswer.trim()
+                ? parsed.idealAnswer.trim()
+                : '',
+            uiLanguage: ui,
+            answer: answer.trim(),
+          });
     const idealAnswer =
       typeof parsed?.idealAnswer === 'string' && parsed.idealAnswer.trim()
         ? parsed.idealAnswer.trim().slice(0, 800)
@@ -2868,12 +3354,11 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
               ? '错误较多 — 先巩固本主题再继续。'
               : 'Много ошибок — лучше повторить эту тему, прежде чем идти дальше.',
         focusAreas: sessionList.slice(0, 3).map((item) => item.checkText),
-        repeatPrompt:
-          ui === 'en'
-            ? 'Let’s practice this topic again. Review my mistakes and give a new drill.'
-            : ui === 'zh'
-              ? '我们再练一次这个主题。请分析我的错误并给新的练习。'
-              : 'Давай ещё раз потренируем эту тему. Разбери мои ошибки и дай новую тренировку.',
+        repeatPrompt: defaultLearnerRepeatPrompt(
+          'repeat_same',
+          ui,
+          sessionList.slice(0, 3).map((item) => item.checkText),
+        ),
       };
     }
     if (wrong > 0) {
@@ -2890,12 +3375,11 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
                 ? '还有几处需要巩固，再继续新主题。'
                 : 'Есть точечные ошибки — разберём их перед новой темой.',
         focusAreas: sessionList.slice(0, 4).map((item) => item.checkText),
-        repeatPrompt:
-          ui === 'en'
-            ? 'Review my mistakes from the last drill and explain the correct forms. Then suggest a short practice on my weak spots.'
-            : ui === 'zh'
-              ? '请分析我上次练习的错误并讲解正确用法，然后给针对薄弱点的短练习。'
-              : 'Разбери мои ошибки из последней тренировки и объясни, как правильно. Потом предложи короткую тренировку на слабые места.',
+        repeatPrompt: defaultLearnerRepeatPrompt(
+          'review_gaps',
+          ui,
+          sessionList.slice(0, 4).map((item) => item.checkText),
+        ),
       };
     }
     if (normalizedNextTopic) {
@@ -2915,12 +3399,7 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
           : ui === 'zh'
             ? '再巩固一遍。'
             : 'Закрепим материал ещё одним проходом.',
-      repeatPrompt:
-        ui === 'en'
-          ? 'Let’s practice this topic again.'
-          : ui === 'zh'
-            ? '我们再练一次这个主题。'
-            : 'Давай ещё раз потренируем эту тему.',
+      repeatPrompt: defaultLearnerRepeatPrompt('repeat_same', ui),
     };
   };
 
@@ -2984,7 +3463,7 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
       return res.json({ followUp: localFallback() });
     }
 
-    const followUp = normalizeDrillFollowUpFromModel(parsed, normalizedNextTopic) || localFallback();
+    const followUp = normalizeDrillFollowUpFromModel(parsed, normalizedNextTopic, ui) || localFallback();
     return res.json({ followUp });
   } catch {
     return res.json({ followUp: localFallback() });

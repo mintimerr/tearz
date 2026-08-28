@@ -6,6 +6,12 @@ import type { TerminalThemeId } from '@/constants/terminal-theme';
 const TERMINAL_LAST_KEY = 'terminal-location-last';
 
 /**
+ * Полочка: в START только эти города. Данные остальных локаций не трогаем.
+ * Вернуть все готовые экраны: поставь `null`.
+ */
+export const TERMINAL_SHELF_ONLY: TerminalLocationId[] | null = ['shanghai_metro_bund'];
+
+/**
  * Локации «терминала» после START.
  * Каждый раз можно выпасть в другой world-object с вводом на его экране.
  */
@@ -76,7 +82,7 @@ const ASIA_ARCADE_SCENE = require('../assets/images/tearz-mario/tearz-arcade-all
 const EUROPE_ATM_SCENE = require('../assets/images/tearz-mario/tearz-atm-mech-scene.png');
 const SEOUL_PHOTO_BOOTH_SCENE = require('../assets/images/tearz-mario/tearz-seoul-photo-booth-scene.png');
 const PARIS_METRO_SCENE = require('../assets/images/tearz-mario/tearz-paris-metro-scene.png');
-const SHANGHAI_METRO_SCENE = require('../assets/images/tearz-mario/tearz-shanghai-metro-scene.png');
+const SHANGHAI_METRO_SCENE = require('../assets/images/tearz-mario/tearz-shanghai-metro-scene-level.png');
 const LONDON_PHONE_BOX_SCENE = require('../assets/images/tearz-mario/tearz-london-phonebox-scene.png');
 
 /**
@@ -177,8 +183,8 @@ const EUROPE_ATM_KEY_SPRITES: ImageSource[] = [
 
 /**
  * LCD / экран 인생네컷-будки — Hongik-ro night.
- * Стекло арта ≈ 0.379×0.411 / 0.183×0.199; CRT чуть внутрь безеля.
- * Зум считает fill по CRT — чёрное стекло на весь телефон, UI не вылезает.
+ * Стекло ≈ 0.379×0.411 / 0.183×0.199; CRT чуть внутрь безеля.
+ * FOCUS — средний план корпуса (не улица целиком, не «в упор» в LCD).
  */
 const SEOUL_BOOTH_CRT = {
   left: 0.390,
@@ -186,11 +192,12 @@ const SEOUL_BOOTH_CRT = {
   width: 0.160,
   height: 0.174,
 };
+/** Будка + чуть неона по краям — удобный средний зум */
 const SEOUL_BOOTH_FOCUS = {
-  left: 0.382,
-  top: 0.416,
-  width: 0.176,
-  height: 0.190,
+  left: 0.335,
+  top: 0.255,
+  width: 0.315,
+  height: 0.435,
 };
 const SEOUL_BOOTH_NEON: TerminalNormRect[] = [
   { left: 0.62, top: 0.12, width: 0.2, height: 0.18 },
@@ -218,20 +225,20 @@ const PARIS_METRO_NEON: TerminalNormRect[] = [
 ];
 
 /**
- * LCD автомата Shanghai Metro · Bund / East Nanjing Rd.
- * Стекло арта ≈ 0.352×0.456 / 0.292×0.131; CRT inset внутри безеля.
+ * LCD Shanghai — арт выровнен (scene-level.png, +3.5°), UI без skew/rotate.
+ * Стекло ≈ 0.349×0.453 / 0.292×0.154; CRT inset внутрь безеля.
  */
 const SHANGHAI_METRO_CRT = {
-  left: 0.3623,
-  top: 0.4629,
-  width: 0.2705,
-  height: 0.1178,
+  left: 0.361,
+  top: 0.463,
+  width: 0.268,
+  height: 0.134,
 };
 const SHANGHAI_METRO_FOCUS = {
-  left: 0.34,
-  top: 0.44,
-  width: 0.315,
-  height: 0.165,
+  left: 0.335,
+  top: 0.438,
+  width: 0.32,
+  height: 0.18,
 };
 const SHANGHAI_METRO_NEON: TerminalNormRect[] = [
   { left: 0.55, top: 0.06, width: 0.3, height: 0.16 },
@@ -239,18 +246,19 @@ const SHANGHAI_METRO_NEON: TerminalNormRect[] = [
   { left: 0.72, top: 0.28, width: 0.16, height: 0.12 },
 ];
 
-/** LCD внутри красной будки · Parliament Street — маленький экран автомата */
+/** LCD payphone — только чёрное стекло (не безель и не металл над экраном). */
 const LONDON_PHONE_CRT = {
-  left: 0.4863,
-  top: 0.4049,
-  width: 0.0996,
-  height: 0.0501,
+  left: 0.488,
+  top: 0.408,
+  width: 0.098,
+  height: 0.045,
 };
+/** Зум: сам телефонный аппарат в открытой двери + чуть красной рамы */
 const LONDON_PHONE_FOCUS = {
-  left: 0.4746,
-  top: 0.3945,
-  width: 0.123,
-  height: 0.071,
+  left: 0.40,
+  top: 0.28,
+  width: 0.30,
+  height: 0.46,
 };
 const LONDON_PHONE_NEON: TerminalNormRect[] = [
   { left: 0.08, top: 0.1, width: 0.22, height: 0.18 },
@@ -309,13 +317,13 @@ export const TERMINAL_LOCATIONS: TerminalLocation[] = [
     crt: SEOUL_BOOTH_CRT,
     focus: SEOUL_BOOTH_FOCUS,
     neon: SEOUL_BOOTH_NEON,
-    suggestions: ['인생네컷', '카페', '길찾기'],
+    suggestions: [],
     /** Пока в API нет korean — tourist English; Hangul в саджестах задаёт вайб. */
     lessonLanguage: 'english',
     phosphor: 'transparent',
+    /** LCD на весь safe-area; при клавиатуре — над ней, чтобы «+» был виден */
     zoomFill: 'crt',
-    /** По центру будки, без сдвига — зум ровно в стекло */
-    cameraIdle: { panX: 0, scale: 1 },
+    cameraIdle: { panX: 0.02, scale: 1.05 },
   },
   {
     id: 'paris_metro_guimard',
@@ -347,7 +355,7 @@ export const TERMINAL_LOCATIONS: TerminalLocation[] = [
     crt: SHANGHAI_METRO_CRT,
     focus: SHANGHAI_METRO_FOCUS,
     neon: SHANGHAI_METRO_NEON,
-    suggestions: ['单程票', '怎么走？', '点餐'],
+    suggestions: [],
     lessonLanguage: 'chinese',
     phosphor: 'transparent',
     zoomFill: 'crt',
@@ -393,8 +401,12 @@ export const TERMINAL_LOCATIONS: TerminalLocation[] = [
     suggestions: ['Oyster', 'Tube map', 'Where is…?'],
     lessonLanguage: 'english',
     phosphor: 'transparent',
+    /**
+     * crt по увеличенной панели аппарата: читаемый UI на лицевой стороне,
+     * зум сильнее «среднего плана будки», но не в упор в 5%-LCD.
+     */
     zoomFill: 'crt',
-    cameraIdle: { panX: 0, scale: 1 },
+    cameraIdle: { panX: -0.03, scale: 1.06 },
   },
   {
     id: 'uae_metro',
@@ -407,18 +419,29 @@ export const TERMINAL_LOCATIONS: TerminalLocation[] = [
 ];
 
 export function getTerminalLocation(id: TerminalLocationId): TerminalLocation {
-  return TERMINAL_LOCATIONS.find((l) => l.id === id) ?? TERMINAL_LOCATIONS[0];
+  const loc = TERMINAL_LOCATIONS.find((l) => l.id === id) ?? TERMINAL_LOCATIONS[0];
+  const shelf = TERMINAL_SHELF_ONLY;
+  if (shelf?.length && !shelf.includes(loc.id)) {
+    return TERMINAL_LOCATIONS.find((l) => l.id === shelf[0]) ?? loc;
+  }
+  return loc;
+}
+
+function rotationOrder(readyOnly: boolean): TerminalLocationId[] {
+  const shelf = TERMINAL_SHELF_ONLY;
+  const base = shelf ?? READY_TERMINAL_ORDER;
+  return base.filter((id) => {
+    const loc = TERMINAL_LOCATIONS.find((l) => l.id === id);
+    return loc != null && (!readyOnly || loc.ready);
+  });
 }
 
 /** Следующая готовая локация — строго по кругу (arcade → atm → seoul → paris → …). */
 export async function pickTerminalLocation(readyOnly = true): Promise<TerminalLocation> {
-  const order = READY_TERMINAL_ORDER.filter((id) => {
-    const loc = getTerminalLocation(id);
-    return !readyOnly || loc.ready;
-  });
+  const order = rotationOrder(readyOnly);
 
   if (order.length <= 1) {
-    return getTerminalLocation(order[0] ?? 'asia_arcade');
+    return getTerminalLocation(order[0] ?? 'shanghai_metro_bund');
   }
 
   const last = (await AsyncStorage.getItem(TERMINAL_LAST_KEY)) as TerminalLocationId | null;

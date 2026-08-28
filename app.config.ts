@@ -7,9 +7,10 @@ const base = appJson.expo;
 export default ({ config }: ConfigContext): ExpoConfig => {
   const apiUrl = process.env.EXPO_PUBLIC_COMPANION_CHAT_API_URL?.trim();
   const privacyPolicyUrl =
-    process.env.EXPO_PUBLIC_PRIVACY_URL?.trim() || 'https://tearz.app/privacy';
+    process.env.EXPO_PUBLIC_PRIVACY_URL?.trim() ||
+    'https://tearz-chat-api.onrender.com/privacy';
   const termsOfServiceUrl =
-    process.env.EXPO_PUBLIC_TERMS_URL?.trim() || 'https://tearz.app/terms';
+    process.env.EXPO_PUBLIC_TERMS_URL?.trim() || 'https://tearz-chat-api.onrender.com/terms';
 
   if (process.env.EAS_BUILD === 'true' && !apiUrl) {
     const msg =
@@ -41,7 +42,24 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...base.android,
       package: 'com.tearz.app',
-      // versionCode managed remotely by EAS when using appVersionSource: remote
+      versionCode: 1,
+      // versionCode дальше поднимает EAS (appVersionSource: remote)
+      softwareKeyboardLayoutMode: 'resize',
+      allowBackup: false,
+      permissions: [
+        'android.permission.RECORD_AUDIO',
+        'android.permission.MODIFY_AUDIO_SETTINGS',
+        'android.permission.CAMERA',
+        'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.POST_NOTIFICATIONS',
+        'android.permission.VIBRATE',
+      ],
+      blockedPermissions: [
+        // Не просим точную геолокацию / контакты — меньше вопросов в Data safety
+        'android.permission.ACCESS_FINE_LOCATION',
+        'android.permission.ACCESS_COARSE_LOCATION',
+        'android.permission.READ_CONTACTS',
+      ],
     },
     extra: {
       eas: {

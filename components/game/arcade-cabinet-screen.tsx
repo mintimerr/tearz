@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { Image, type ImageSource } from 'expo-image';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useLocalSearchParams } from 'expo-router';
@@ -19,6 +20,7 @@ import {
 import Animated, {
   Easing,
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -30,6 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GameBackButton } from '@/components/game/game-back-button';
 import { GameTeacherChatsButton } from '@/components/game/game-teacher-chats-button';
 import { GAME_THEME } from '@/constants/game-theme';
+import { TeacherAttachGallery } from '@/components/teacher/teacher-attach-gallery';
 import { TeacherChatsSheet } from '@/components/teacher/teacher-chats-sheet';
 import { TearzLessonTransit } from '@/components/teacher/tearz-flight-loading';
 import { getTerminalTheme, type TerminalThemeConfig } from '@/constants/terminal-theme';
@@ -42,7 +45,6 @@ import {
 import { useEngagement } from '@/contexts/engagement-context';
 import { useTranslation } from '@/contexts/locale-context';
 import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
-import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
 import {
   ExclusionTextInput,
   type ExclusionRect,
@@ -137,9 +139,9 @@ function useCoverLayout(
     const focusH = drawH * focus.height;
 
     const padTop = insets.top + 36;
-    /** При открытой клавиатуре оставляем стекло над ней — «+» не перекрывается */
+    /** kbPad — только для UI (полоса вложений); scale камеры не прыгает при закрытии клавиатуры */
     const kbPad = fillCrt && keyboardH > 48 ? Math.round(keyboardH * 0.92) : 0;
-    const padBottom = Math.max(insets.bottom, 10) + 8 + kbPad;
+    const padBottom = Math.max(insets.bottom, 10) + 8;
     const safeW = screenW - 16;
     const safeH = Math.max(screenH - padTop - padBottom, 120);
     /**
@@ -480,6 +482,8 @@ export function ArcadeCabinetScreen() {
   const inputRef = useRef<FocusableInputRef>(null);
   /** true только при намеренном zoomOut — иначе возвращаем фокус после случайного blur */
   const dismissKeyboardRef = useRef(false);
+  const prevZoomedRef = useRef(false);
+  const crtGlassRef = useRef<View>(null);
 
   const [query, setQuery] = useState('');
   const [zoomed, setZoomed] = useState(false);
@@ -489,8 +493,16 @@ export function ArcadeCabinetScreen() {
   const [seed, setSeed] = useState('');
   const [seedImageUri, setSeedImageUri] = useState<string | undefined>();
   const [pendingPhoto, setPendingPhoto] = useState<{ uri: string; name?: string } | null>(null);
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [attachMenuMounted, setAttachMenuMounted] = useState(false);
   const [focused, setFocused] = useState(false);
   const [keyboardH, setKeyboardH] = useState(0);
+  /** Экранные bounds CRT после zoom — для полосы вложений по низу стекла */
+  const [crtScreenBox, setCrtScreenBox] = useState<{
+    left: number;
+    width: number;
+    bottom: number;
+  } | null>(null);
 
   const layout = useCoverLayout(crt, focus, fillCrt, zoomed ? keyboardH : 0);
   /** Явная высота поля = CRT минус паддинги — иначе Expo native view схлопывается (марка «внизу», текст уезжает вверх) */
@@ -514,9 +526,82 @@ export function ArcadeCabinetScreen() {
   const drift = useSharedValue(0);
   const breathe = useSharedValue(0);
   const zoomedSv = useSharedValue(0);
+  const attachTray = useSharedValue(0);
 
   /** После тапа/зума — только строка ввода (+), без TAP TO START и меню предложений. */
   const showHints = false;
+
+  const hideAttachTrayLayer = () => setAttachMenuMounted(false);
+
+  useEffect(() => {
+    if (attachMenuOpen) {
+      setAttachMenuMounted(true);
+      attachTray.value = withTiming(1, {
+        duration: 320,
+        easing: Easing.bezier(0.22, 1, 0.36, 1),
+      });
+      return;
+    }
+    if (!attachMenuMounted) return;
+    attachTray.value = withTiming(
+      0,
+      { duration: 260, easing: Easing.bezier(0.4, 0, 0.2, 1) },
+      (ok) => {
+        if (ok) runOnJS(hideAttachTrayLayer)();
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachMenuOpen]);
+
+  const attachTrayStyle = useAnimatedStyle(() => ({
+    opacity: attachTray.value,
+    transform: [
+      {
+        translateY: interpolate(attachTray.value, [0, 1], [18, 0]),
+      },
+    ],
+  }));
+
+  /**
+   * Полоса снаружи cameraLayer (иначе zoom раздувает превью).
+   * Позиция — measureInWindow по реальному низу CRT после трансформа.
+   */
+  const syncCrtScreenBox = () => {
+    crtGlassRef.current?.measureInWindow((x, y, width, height) => {
+      if (width < 8 || height < 8) return;
+      const insetRight = Math.round(Math.min(26, Math.max(14, width * 0.065)));
+      /** Левый край чуть сильнее подрезан */
+      const insetLeft = insetRight + 10;
+      /** Чуть выше нижнего края стекла */
+      const lift = 20;
+      setCrtScreenBox({
+        left: x + insetLeft,
+        width: Math.max(0, width - insetLeft - insetRight),
+        bottom: Math.max(0, layout.screenH - (y + height) + lift),
+      });
+    });
+  };
+
+  useEffect(() => {
+    if (!zoomed || !attachMenuMounted) {
+      setCrtScreenBox(null);
+      return;
+    }
+    const t0 = requestAnimationFrame(syncCrtScreenBox);
+    const t1 = setTimeout(syncCrtScreenBox, 40);
+    const t2 = setTimeout(syncCrtScreenBox, ZOOM_MS + 40);
+    return () => {
+      cancelAnimationFrame(t0);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoomed, attachMenuMounted, keyboardH, layout.zoomScale, layout.screenH, layout.screenW]);
+
+  const closeAttachMenu = () => {
+    void Haptics.selectionAsync();
+    setAttachMenuOpen(false);
+  };
 
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -568,17 +653,27 @@ export function ArcadeCabinetScreen() {
     zoomedSv.value = withTiming(inZoom ? 1 : 0, { duration: ZOOM_MS, easing: ZOOM_EASING });
     zoom.value = withTiming(scale, { duration: ZOOM_MS, easing: ZOOM_EASING });
     panX.value = withTiming(tx, { duration: ZOOM_MS, easing: ZOOM_EASING });
-    panY.value = withTiming(ty, { duration: inZoom && kbHeight > 0 ? 220 : ZOOM_MS, easing: ZOOM_EASING });
+    panY.value = withTiming(ty, {
+      duration: inZoom && kbHeight > 0 ? 220 : ZOOM_MS,
+      easing: ZOOM_EASING,
+    });
   };
 
   useEffect(() => {
     if (zoomed) {
+      prevZoomedRef.current = true;
       applyCamera(true, keyboardH);
+      return;
+    }
+    if (prevZoomedRef.current) {
+      prevZoomedRef.current = false;
+      applyCamera(false, 0);
       return;
     }
     panX.value = layout.screenW * idlePanXNorm;
     panY.value = layout.screenH * idlePanYNorm;
     zoom.value = idleScale;
+    zoomedSv.value = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync camera to layout / zoom / keyboard
   }, [
     idlePanXNorm,
@@ -621,17 +716,43 @@ export function ArcadeCabinetScreen() {
     dismissKeyboardRef.current = true;
     Keyboard.dismiss();
     setFocused(false);
-    setZoomed(false);
-    applyCamera(false);
+    setAttachMenuOpen(false);
+    const hadKeyboard = keyboardH > 48 || focused;
+    const finishZoomOut = () => {
+      setZoomed(false);
+      setTimeout(() => {
+        dismissKeyboardRef.current = false;
+      }, 320);
+    };
+    if (hadKeyboard) {
+      setTimeout(finishZoomOut, 300);
+    } else {
+      finishZoomOut();
+    }
+  };
+
+  const dismissKeyboardOnly = () => {
+    dismissKeyboardRef.current = true;
+    setFocused(false);
+    inputRef.current?.blur();
+    Keyboard.dismiss();
     setTimeout(() => {
       dismissKeyboardRef.current = false;
     }, 320);
   };
 
-  /** Тап в пустоту (не по CRT) — только отдалить, без кнопок. */
+  /** Тап в пустоту (не по CRT) — закрыть вложения, клавиатуру или отдалить. */
   const onBlankTap = () => {
     if (!zoomed) return;
+    if (attachMenuOpen || attachMenuMounted) {
+      closeAttachMenu();
+      return;
+    }
     void Haptics.selectionAsync();
+    if (keyboardH > 48 || focused) {
+      dismissKeyboardOnly();
+      return;
+    }
     zoomOut();
   };
 
@@ -650,6 +771,7 @@ export function ArcadeCabinetScreen() {
     setSeed(q || 'Фото');
     setSeedImageUri(pendingPhoto?.uri);
     setPendingPhoto(null);
+    setAttachMenuOpen(false);
 
     // keepKeyboard иначе мгновенно возвращает фокус после Keyboard.dismiss()
     dismissKeyboardRef.current = true;
@@ -675,10 +797,8 @@ export function ArcadeCabinetScreen() {
     zoomOut();
   };
 
-  const attachPhoto = async () => {
-    void Haptics.selectionAsync();
-    openCrt();
-    const picked = await pickCompanionPhoto();
+  const applyPickedPhoto = async (picked: { uri: string; name?: string } | null) => {
+    setAttachMenuOpen(false);
     if (!picked) return;
     let uri = picked.uri;
     try {
@@ -692,6 +812,21 @@ export function ArcadeCabinetScreen() {
     }
     setPendingPhoto({ uri, name: picked.name });
     requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const toggleAttachMenu = () => {
+    void Haptics.selectionAsync();
+    if (!zoomed) {
+      openCrt();
+      Keyboard.dismiss();
+      setAttachMenuOpen(true);
+      return;
+    }
+    setAttachMenuOpen((open) => {
+      const next = !open;
+      if (next) Keyboard.dismiss();
+      return next;
+    });
   };
 
   const cameraStyle = useAnimatedStyle(() => {
@@ -790,6 +925,7 @@ export function ArcadeCabinetScreen() {
         })}
 
         <View
+          ref={crtGlassRef}
           style={[
             styles.crtGlass,
             isBooth && styles.crtGlassBooth,
@@ -804,7 +940,10 @@ export function ArcadeCabinetScreen() {
               opacity: floatTerminalUi && zoomed ? 0.22 : 1,
             },
           ]}
-          pointerEvents={floatTerminalUi && zoomed ? 'none' : 'auto'}>
+          pointerEvents={floatTerminalUi && zoomed ? 'none' : 'auto'}
+          onLayout={() => {
+            if (zoomed && attachMenuMounted) syncCrtScreenBox();
+          }}>
           {theme.scanlines ? (
             <CrtScanlines />
           ) : isShanghai ? (
@@ -838,7 +977,7 @@ export function ArcadeCabinetScreen() {
                   keepKeyboard
                   dismissKeyboardRef={dismissKeyboardRef}
                   pendingPhotoUri={pendingPhoto?.uri}
-                  onAttach={attachPhoto}
+                  onAttach={toggleAttachMenu}
                   onClearAttach={() => setPendingPhoto(null)}
                   onOpen={openCrt}
                   onPick={pickSuggestion}
@@ -876,7 +1015,7 @@ export function ArcadeCabinetScreen() {
                   keepKeyboard={false}
                   dismissKeyboardRef={dismissKeyboardRef}
                   pendingPhotoUri={pendingPhoto?.uri}
-                  onAttach={attachPhoto}
+                  onAttach={toggleAttachMenu}
                   onClearAttach={() => setPendingPhoto(null)}
                   onOpen={openCrt}
                   onPick={pickSuggestion}
@@ -921,9 +1060,9 @@ export function ArcadeCabinetScreen() {
               </View>
             </Pressable>
           ) : null}
-          {zoomed && !floatTerminalUi ? (
+          {zoomed && !floatTerminalUi && !attachMenuMounted ? (
             <Pressable
-              onPress={attachPhoto}
+              onPress={toggleAttachMenu}
               hitSlop={isCallbox ? 8 : isShanghai ? 10 : 14}
               accessibilityRole="button"
               accessibilityLabel="Прикрепить фото"
@@ -945,6 +1084,7 @@ export function ArcadeCabinetScreen() {
                             ? 'rgba(255, 92, 92, 0.42)'
                             : 'rgba(138, 255, 168, 0.5)',
                   opacity: pressed ? 0.72 : 1,
+                  zIndex: 20,
                 },
               ]}>
               <Text
@@ -983,6 +1123,29 @@ export function ArcadeCabinetScreen() {
       </Animated.View>
 
       {/*
+        Полоса фото — поверх камеры, в экранных px по низу CRT (не внутри zoom).
+      */}
+      {zoomed && attachMenuMounted && gate === 'idle' && !floatTerminalUi && crtScreenBox ? (
+        <View
+          style={styles.attachTrayScreen}
+          pointerEvents={attachMenuOpen ? 'box-none' : 'none'}>
+          <Pressable
+            style={styles.attachTrayScreenScrim}
+            onPress={closeAttachMenu}
+            accessibilityLabel="Закрыть вложения"
+          />
+          <Animated.View style={[styles.attachTrayCardScreen, crtScreenBox, attachTrayStyle]}>
+            <TeacherAttachGallery
+              visible={attachMenuMounted}
+              tone="game"
+              onClose={closeAttachMenu}
+              onPhotoSelected={(uri) => void applyPickedPhoto({ uri })}
+            />
+          </Animated.View>
+        </View>
+      ) : null}
+
+      {/*
         Chrome выше камеры по zIndex: при fillCrt-зуме (Seoul/Paris/London)
         transform на cameraLayer иначе рисуется поверх кнопок.
       */}
@@ -1007,7 +1170,7 @@ export function ArcadeCabinetScreen() {
               keepKeyboard
               dismissKeyboardRef={dismissKeyboardRef}
               pendingPhotoUri={pendingPhoto?.uri}
-              onAttach={attachPhoto}
+              onAttach={toggleAttachMenu}
               onClearAttach={() => setPendingPhoto(null)}
               onOpen={openCrt}
               onPick={pickSuggestion}
@@ -1018,7 +1181,20 @@ export function ArcadeCabinetScreen() {
         </View>
       ) : null}
 
-      <TeacherChatsSheet visible={chatsOpen} onClose={() => setChatsOpen(false)} />
+      <TeacherChatsSheet
+        visible={chatsOpen}
+        onClose={() => setChatsOpen(false)}
+        onLessonOpen={() => {
+          dismissKeyboardRef.current = true;
+          setFocused(false);
+          inputRef.current?.blur();
+          Keyboard.dismiss();
+          setKeyboardH(0);
+          setTimeout(() => {
+            dismissKeyboardRef.current = false;
+          }, 400);
+        }}
+      />
 
       {gate === 'transit' && (seed || seedImageUri) ? (
         <View style={styles.transitLayer} pointerEvents="auto">
@@ -2151,6 +2327,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'transparent',
     marginLeft: 2,
+  },
+  attachBtnOpen: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  /** Оверлей поверх сцены — компактная полоса по низу CRT в экранных координатах. */
+  attachTrayScreen: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 120,
+    elevation: 120,
+  },
+  attachTrayScreenScrim: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  attachTrayCardScreen: {
+    position: 'absolute',
+    overflow: 'hidden',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(26,26,26,0.28)',
+    backgroundColor: 'rgba(250, 248, 243, 0.98)',
   },
   attachBtnGlass: {
     borderColor: 'rgba(210, 218, 235, 0.35)',

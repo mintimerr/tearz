@@ -3,15 +3,15 @@ import Constants from 'expo-constants';
 /**
  * Публичные URL Privacy / Terms.
  * Переопределение: EXPO_PUBLIC_PRIVACY_URL / EXPO_PUBLIC_TERMS_URL (EAS env или .env).
- * Черновики HTML: docs/legal/*.html — залейте на tearz.app или GitHub Pages перед сабмитом.
+ * Дефолт — Render (tearz.app пока без DNS); HTML: docs/legal/*.html
  */
 const extra = (Constants.expoConfig?.extra ?? {}) as {
   privacyPolicyUrl?: string | null;
   termsOfServiceUrl?: string | null;
 };
 
-const DEFAULT_PRIVACY = 'https://tearz.app/privacy';
-const DEFAULT_TERMS = 'https://tearz.app/terms';
+const DEFAULT_PRIVACY = 'https://tearz-chat-api.onrender.com/privacy';
+const DEFAULT_TERMS = 'https://tearz-chat-api.onrender.com/terms';
 
 export function getPrivacyPolicyUrl(): string {
   return (

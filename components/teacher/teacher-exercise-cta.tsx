@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
-import { ActivityIndicator, Animated, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { GameGoldButton } from '@/components/game/game-gold-button';
 import { GAME_THEME } from '@/constants/game-theme';
-import { MINI_DRILL_TASK_COUNT } from '@/constants/teacher-drill';
+import { DRILL_TASK_COUNT } from '@/constants/teacher-drill';
+import { useTranslation } from '@/contexts/locale-context';
 
 type Props = {
   loading?: boolean;
@@ -12,6 +13,7 @@ type Props = {
   refreshesLeft?: number;
   isRepeat?: boolean;
   onPress: () => void;
+  onPressIn?: () => void;
 };
 
 export function TeacherExerciseCta({
@@ -21,104 +23,82 @@ export function TeacherExerciseCta({
   refreshesLeft,
   isRepeat,
   onPress,
+  onPressIn,
 }: Props) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const inactive = disabled || loading || exhausted;
-  const filled = !inactive;
-
-  useEffect(() => {
-    if (loading) scale.setValue(1);
-  }, [loading, scale]);
-
-  const pressIn = () => {
-    if (inactive) return;
-    Animated.spring(scale, {
-      toValue: 0.97,
-      friction: 8,
-      tension: 320,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const pressOut = () => {
-    Animated.spring(scale, {
-      toValue: 1,
-      friction: 7,
-      tension: 240,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const tint = filled ? GAME_THEME.color.ink : 'rgba(26,26,26,0.42)';
+  const { t } = useTranslation();
+  const inactive = disabled || loading;
+  const showExhausted = exhausted && !loading;
 
   return (
-    <Pressable
+    <GameGoldButton
       onPress={onPress}
-      onPressIn={pressIn}
-      onPressOut={pressOut}
+      onPressIn={onPressIn}
       disabled={inactive}
-      accessibilityRole="button"
-      accessibilityLabel="Мини-тренировка по этому объяснению"
-      accessibilityState={{ disabled: inactive, busy: loading }}>
-      <Animated.View
-        style={[
-          styles.shell,
-          filled ? styles.shellFilled : styles.shellMuted,
-          { transform: [{ scale }] },
-        ]}>
-        {loading ? (
-          <ActivityIndicator size="small" color={tint} style={styles.spinner} />
-        ) : (
-          <Ionicons name="barbell" size={14} color={tint} />
-        )}
-        <Text style={[styles.label, { color: tint }]}>
-          {loading ? 'Готовлю…' : exhausted ? 'Лимит' : `Мини · ${MINI_DRILL_TASK_COUNT}`}
-        </Text>
-        {!loading && !exhausted && isRepeat && typeof refreshesLeft === 'number' ? (
-          <Text style={[styles.refresh, { color: tint }]}>↻{refreshesLeft}</Text>
-        ) : null}
-      </Animated.View>
-    </Pressable>
+      size="sm"
+      haptic="light"
+      accessibilityLabel={t('teacher.drill.ctaA11y')}
+      style={styles.btn}>
+      {loading ? (
+        <ActivityIndicator size="small" color={GAME_THEME.color.ink} />
+      ) : (
+        <View style={styles.row}>
+          <Ionicons name="barbell" size={16} color={GAME_THEME.color.ink} />
+          <Text style={styles.label}>
+            {showExhausted ? t('teacher.drill.ctaLimit') : t('teacher.drill.ctaLabel')}
+          </Text>
+          {!showExhausted ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{DRILL_TASK_COUNT}</Text>
+            </View>
+          ) : null}
+          {!loading && !showExhausted && isRepeat && typeof refreshesLeft === 'number' ? (
+            <Text style={styles.refresh}>↻{refreshesLeft}</Text>
+          ) : null}
+        </View>
+      )}
+    </GameGoldButton>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: {
+  btn: {
+    alignSelf: 'stretch',
+    width: '100%',
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    minHeight: 34,
-    paddingHorizontal: 13,
-    borderRadius: GAME_THEME.radius.button,
-  },
-  shellFilled: {
-    backgroundColor: GAME_THEME.color.paperWarm,
-    borderWidth: 3,
-    borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 5,
-    borderBottomColor: GAME_THEME.color.goldLip,
-    minHeight: 40,
-    paddingHorizontal: 16,
-  },
-  shellMuted: {
-    backgroundColor: GAME_THEME.color.creamSoft,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
-    opacity: 0.72,
-  },
-  spinner: {
-    transform: [{ scale: 0.82 }],
+    gap: 8,
   },
   label: {
     fontSize: 14,
     fontWeight: '900',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
+    color: GAME_THEME.color.ink,
+  },
+  badge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
+    fontVariant: ['tabular-nums'],
   },
   refresh: {
     fontSize: 11,
     fontWeight: '800',
-    marginLeft: 1,
+    color: GAME_THEME.color.ink,
+    opacity: 0.72,
   },
 });

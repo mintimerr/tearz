@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Image as RNImage,
-  Modal,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -23,9 +22,16 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
+import { useTranslation } from '@/contexts/locale-context';
 
 const STEP_MS = 900;
-const STEPS = ['Разбор', 'Лексика', 'Упражнения', 'Варианты', 'Готово'] as const;
+const STATION_KEYS = [
+  'teacher.drillStationParse',
+  'teacher.drillStationVocab',
+  'teacher.drillStationExercises',
+  'teacher.drillStationChoices',
+  'teacher.drillStationDone',
+] as const;
 
 type NormBox = { left: number; top: number; width: number; height: number };
 
@@ -217,13 +223,18 @@ function TunnelMotion({ style }: { style?: StyleProp<ViewStyle> }) {
 }
 
 function DoorBoard({ activeStep }: { activeStep: number }) {
+  const { t } = useTranslation();
+  const steps = useMemo(
+    () => STATION_KEYS.map((key) => t(key)),
+    [t],
+  );
   const pulse = useSharedValue(0);
-  const current = STEPS[Math.min(activeStep, STEPS.length - 1)];
-  const progress = activeStep / Math.max(STEPS.length - 1, 1);
+  const current = steps[Math.min(activeStep, steps.length - 1)];
+  const progress = activeStep / Math.max(steps.length - 1, 1);
 
   const stationTimes = useMemo(() => {
     const start = Date.now();
-    return STEPS.map((_, i) => formatClock(new Date(start + (i + 1) * STATION_GAP_MS)));
+    return STATION_KEYS.map((_, i) => formatClock(new Date(start + (i + 1) * STATION_GAP_MS)));
   }, []);
 
   const eta = stationTimes[Math.min(activeStep, stationTimes.length - 1)];
@@ -276,13 +287,13 @@ function DoorBoard({ activeStep }: { activeStep: number }) {
 
             <View style={styles.boardTopRow}>
               <View style={styles.boardTitleBlock}>
-                <Text style={styles.boardEyebrow}>МАРШРУТ УРОКА</Text>
+                <Text style={styles.boardEyebrow}>{t('teacher.drillMetroRoute').toUpperCase()}</Text>
                 <Animated.Text style={[styles.boardTitle, titleGlow]} numberOfLines={1}>
                   {current.toUpperCase()}
                 </Animated.Text>
               </View>
               <View style={styles.boardEtaBlock}>
-                <Text style={styles.boardEtaLabel}>ПРИБЫТИЕ</Text>
+                <Text style={styles.boardEtaLabel}>{t('teacher.drillMetroArrival').toUpperCase()}</Text>
                 <Animated.Text style={[styles.boardEtaTime, titleGlow]}>{eta}</Animated.Text>
               </View>
             </View>
@@ -291,11 +302,11 @@ function DoorBoard({ activeStep }: { activeStep: number }) {
               <View style={styles.boardRail} />
               <View style={[styles.boardRailFill, { width: `${Math.max(progress, 0.04) * 100}%` }]} />
               <View style={styles.boardStations}>
-                {STEPS.map((label, i) => {
+                {steps.map((label, i) => {
                   const done = i < activeStep;
                   const active = i === activeStep;
                   return (
-                    <View key={label} style={styles.stationCol}>
+                    <View key={STATION_KEYS[i]} style={styles.stationCol}>
                       <Text
                         numberOfLines={1}
                         style={[
@@ -486,7 +497,7 @@ export function TeacherExerciseGenerating({ visible }: Props) {
       return;
     }
     const timer = setInterval(() => {
-      setActiveStep((i) => Math.min(i + 1, STEPS.length - 1));
+      setActiveStep((i) => Math.min(i + 1, STATION_KEYS.length - 1));
     }, STEP_MS);
     return () => clearInterval(timer);
   }, [visible]);
@@ -537,7 +548,7 @@ export function TeacherExerciseGenerating({ visible }: Props) {
   const tearzSize = typeof tearzBox.width === 'number' ? tearzBox.width : Math.round(screenW * 0.16);
 
   return (
-    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" statusBarTranslucent>
+    <View style={styles.overlay}>
       <View style={styles.root}>
         <View
           style={styles.wagonShell}
@@ -606,11 +617,14 @@ export function TeacherExerciseGenerating({ visible }: Props) {
           ) : null}
         </View>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
   root: {
     flex: 1,
     backgroundColor: '#2A2A2A',

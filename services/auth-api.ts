@@ -1,7 +1,8 @@
 type AuthErrorBody = { error?: string };
 type SendCodeSuccess = { ok: true; devCode?: string; delivery?: 'dev' | 'email' };
 
-import { companionApiRequestHeaders, getCompanionChatApiBaseUrl } from '@/utils/companion-api-config';
+import { getCompanionChatApiBaseUrl } from '@/utils/companion-api-config';
+import { postCompanionApiJson, warmCompanionApi } from '@/utils/companion-api-fetch';
 
 function getApiBaseUrl(): string {
   try {
@@ -28,17 +29,14 @@ async function authFetch(path: string, body: unknown): Promise<Response> {
     throw e instanceof Error ? e : new Error('auth.errorServer');
   }
 
-  const url = `${base}${path}`;
   try {
-    return await fetch(url, {
-      method: 'POST',
-      headers: companionApiRequestHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify(body),
-    });
+    return await postCompanionApiJson(path, body, { timeoutMs: 45_000, retries: 3 });
   } catch {
     throw new Error(`auth.errorServerUnreachable|${base}`);
   }
 }
+
+export { warmCompanionApi };
 
 export async function postAuthSendCode(
   email: string,

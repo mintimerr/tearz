@@ -23,12 +23,12 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { GAME_THEME } from '@/constants/game-theme';
-import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
+import { pickCompanionPhoto, takeCompanionPhoto } from '@/utils/pick-companion-photo';
 
 const THUMB = 76;
 const THUMB_GAP = 8;
 const RECENT_COUNT = 20;
-const SHEET_OPEN_H = 168;
+const SHEET_OPEN_H = 228;
 
 type RecentPhoto = { id: string; uri: string };
 
@@ -122,6 +122,12 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
     pickPhoto(picked.uri);
   }, [pickPhoto]);
 
+  const openCamera = useCallback(async () => {
+    const picked = await takeCompanionPhoto();
+    if (!picked) return;
+    pickPhoto(picked.uri);
+  }, [pickPhoto]);
+
   return (
     <Animated.View style={[styles.shell, shellStyle]} pointerEvents={visible ? 'auto' : 'none'}>
       <View style={styles.panel}>
@@ -141,12 +147,20 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
         ) : denied || photos.length === 0 ? (
           <Animated.View entering={FadeIn.duration(240)} style={styles.emptyRow}>
             <Pressable
+              onPress={() => void openCamera()}
+              style={({ pressed }) => [styles.pickPhotoBtn, pressed && styles.pickPhotoBtnPressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Сделать фото">
+              <Ionicons name="camera-outline" size={22} color={GAME_THEME.color.ink} />
+              <Text style={styles.pickPhotoLabel}>Камера</Text>
+            </Pressable>
+            <Pressable
               onPress={() => void openPhotoPicker()}
               style={({ pressed }) => [styles.pickPhotoBtn, pressed && styles.pickPhotoBtnPressed]}
               accessibilityRole="button"
               accessibilityLabel="Выбрать фото">
               <Ionicons name="image-outline" size={22} color={GAME_THEME.color.ink} />
-              <Text style={styles.pickPhotoLabel}>Выбрать фото</Text>
+              <Text style={styles.pickPhotoLabel}>Галерея</Text>
             </Pressable>
           </Animated.View>
         ) : (
@@ -155,6 +169,16 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.thumbStrip}
             keyboardShouldPersistTaps="handled">
+            <Animated.View entering={FadeInRight.duration(280).easing(Easing.out(Easing.cubic))}>
+              <Pressable
+                onPress={() => void openCamera()}
+                style={({ pressed }) => [styles.cameraTile, pressed && styles.thumbPressed]}
+                accessibilityRole="button"
+                accessibilityLabel="Сделать фото">
+                <Ionicons name="camera" size={28} color={GAME_THEME.color.ink} />
+                <Text style={styles.cameraLabel}>Камера</Text>
+              </Pressable>
+            </Animated.View>
             {photos.map((photo, index) => (
               <Animated.View
                 key={photo.id}
@@ -175,8 +199,19 @@ export function CompanionAttachmentSheet({ visible, onPhotoSelected, onBrowseFil
 
         <Animated.View entering={FadeIn.delay(120).duration(300)}>
           <Pressable
-            onPress={() => void openPhotoPicker()}
+            onPress={() => void openCamera()}
             style={({ pressed }) => [styles.browsePill, pressed && styles.browsePillPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Сделать фото">
+            <View style={styles.browseIconWrap}>
+              <Ionicons name="camera-outline" size={20} color={GAME_THEME.color.ink} />
+            </View>
+            <Text style={styles.browseLabel}>Камера</Text>
+            <Ionicons name="chevron-forward" size={18} color="rgba(26,26,26,0.4)" />
+          </Pressable>
+          <Pressable
+            onPress={() => void openPhotoPicker()}
+            style={({ pressed }) => [styles.browsePill, styles.browsePillSecondary, pressed && styles.browsePillPressed]}
             accessibilityRole="button"
             accessibilityLabel="Выбрать фото из галереи">
             <View style={styles.browseIconWrap}>
@@ -258,17 +293,36 @@ const styles = StyleSheet.create({
   },
   emptyRow: {
     minHeight: THUMB,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     paddingHorizontal: 8,
   },
+  cameraTile: {
+    width: THUMB,
+    height: THUMB,
+    borderRadius: 10,
+    backgroundColor: GAME_THEME.color.sky,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  cameraLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
+  },
   pickPhotoBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 12,
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     borderRadius: GAME_THEME.radius.button,
     backgroundColor: GAME_THEME.color.cream,
     borderWidth: 2,

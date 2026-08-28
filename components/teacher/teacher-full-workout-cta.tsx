@@ -4,6 +4,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GAME_THEME } from '@/constants/game-theme';
 import { FULL_WORKOUT_TASK_COUNT } from '@/constants/teacher-drill';
+import { useTranslation } from '@/contexts/locale-context';
 
 type Props = {
   disabled?: boolean;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function TeacherFullWorkoutCta({ disabled, onPress }: Props) {
+  const { t } = useTranslation();
   const scale = useRef(new Animated.Value(1)).current;
 
   const pressIn = () => {
@@ -39,7 +41,7 @@ export function TeacherFullWorkoutCta({ disabled, onPress }: Props) {
       onPressOut={pressOut}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={`Plus тренировка, ${FULL_WORKOUT_TASK_COUNT} заданий, доступно с подпиской`}>
+      accessibilityLabel={t('teacher.drill.plusA11y', { count: FULL_WORKOUT_TASK_COUNT })}>
       <Animated.View
         style={[styles.shell, disabled && styles.shellDisabled, { transform: [{ scale }] }]}>
         <View style={styles.seal}>
@@ -47,7 +49,7 @@ export function TeacherFullWorkoutCta({ disabled, onPress }: Props) {
         </View>
         <View style={styles.copy}>
           <Text style={styles.label}>Plus</Text>
-          <Text style={styles.count}>{FULL_WORKOUT_TASK_COUNT} заданий</Text>
+          <Text style={styles.count}>{t('teacher.drill.plusTasks', { count: FULL_WORKOUT_TASK_COUNT })}</Text>
         </View>
       </Animated.View>
     </Pressable>

@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LongPressWordText } from '@/components/long-press-word-text';
 import { GAME_THEME } from '@/constants/game-theme';
 import { APP_THEME } from '@/constants/theme';
+import { useTranslation } from '@/contexts/locale-context';
 import {
   cleanTeacherInline,
   formatTeacherSectionLabel,
@@ -164,6 +165,7 @@ function TeacherSection({
 }
 
 export function TeacherMessageBody({ text, messageId, textStyle, variant = 'default', practiceActions }: Props) {
+  const { t } = useTranslation();
   const blocks = useMemo(() => parseTeacherMessageBlocks(text), [text]);
   const game = variant === 'game';
 
@@ -197,7 +199,7 @@ export function TeacherMessageBody({ text, messageId, textStyle, variant = 'defa
             <View style={[styles.headerIcon, game && styles.headerIconGame]}>
               <Ionicons name="barbell-outline" size={13} color={GAME_THEME.color.ink} />
             </View>
-            <Text style={[styles.label, game && styles.labelGame]}>Практика</Text>
+            <Text style={[styles.label, game && styles.labelGame]}>{t('teacher.drill.practiceLabel')}</Text>
           </View>
           <View style={styles.practiceSlot}>{practiceActions}</View>
         </View>

@@ -25,9 +25,9 @@ export type DailyXpEntry = {
 export const XP_HISTORY_MAX_DAYS = 21;
 
 export type EngagementState = {
-  /** Последняя активность, засчитываемая для streak и nudge (ms epoch). */
+  /** Последняя активность, засчитываемая для streak (ms epoch). */
   lastQualifyingActivityAt: number | null;
-  /** Последнее сообщение пользователя (ms epoch). */
+  /** Последнее отправленное сообщение — якорь для push (24ч / 7д). */
   lastMessageSentAt: number | null;
   lastAppForegroundAt: number | null;
   dailyStreak: number;

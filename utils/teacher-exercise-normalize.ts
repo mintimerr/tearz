@@ -88,6 +88,99 @@ function coerceDragWordToBlankItem(item: TeacherExerciseItem): TeacherExerciseIt
   return { ...item, segments, numberedSentences };
 }
 
+const INSTRUCTION_ECHO_RE =
+  /соедини|картинк|match|picture|connect|material|материал|выбер|choose|tap the|нажми/i;
+
+function isPlausibleExerciseWord(word: string, instruction = '', checkText = ''): boolean {
+  const w = word.trim();
+  if (w.length < 2 || w.length > 32) return false;
+  const words = w.split(/\s+/).filter(Boolean);
+  if (words.length > 3) return false;
+  if (/[.!?;:…]/.test(w) && words.length > 1) return false;
+  const norm = w.toLowerCase();
+  const instr = instruction.trim().toLowerCase();
+  const check = checkText.trim().toLowerCase();
+  if (instr && norm === instr) return false;
+  if (check && norm === check) return false;
+  if (INSTRUCTION_ECHO_RE.test(w) && w.length > 18) return false;
+  return true;
+}
+
+function extractVocabularyCandidates(...sources: Array<string | undefined>): string[] {
+  const out: string[] = [];
+  for (const source of sources) {
+    if (!source?.trim()) continue;
+    const quoted = [
+      ...source.matchAll(/["«「『]([^"»」』]{2,32})["»」』]/g),
+      ...source.matchAll(/\(([^()]{2,32})\)/g),
+    ].map((m) => m[1]?.trim() ?? '');
+    const tokens = source.match(/[\p{L}][\p{L}'-]{1,24}/gu) ?? [];
+    for (const token of [...quoted, ...tokens]) {
+      if (isPlausibleExerciseWord(token)) out.push(token);
+    }
+  }
+  return [...new Set(out)];
+}
+
+function buildImageSlotsFromWords(words: string[]): TeacherImageSlot[] {
+  return words.slice(0, 4).map((word, i) => ({
+    id: `img${i + 1}`,
+    correctWord: word,
+    label: word,
+  }));
+}
+
+function mergeWordBank(slots: TeacherImageSlot[], bank: string[] | undefined): string[] {
+  const correct = slots.map((s) => s.correctWord);
+  const merged = [...correct];
+  for (const word of bank ?? []) {
+    if (!merged.some((w) => w.toLowerCase() === word.toLowerCase())) merged.push(word);
+  }
+  return merged.slice(0, 8);
+}
+
+function coerceWordToImageItem(item: TeacherExerciseItem): TeacherExerciseItem | null {
+  if (item.kind !== 'word_to_image') return item;
+
+  const instruction = item.instruction?.trim() ?? '';
+  const checkText = item.checkText?.trim() ?? '';
+
+  let imageSlots =
+    item.imageSlots?.filter((s) => isPlausibleExerciseWord(s.correctWord, instruction, checkText)) ??
+    [];
+  let wordBank = (item.wordBank ?? []).filter((w) =>
+    isPlausibleExerciseWord(w, instruction, checkText),
+  );
+
+  if (imageSlots.length < 2) {
+    const choiceWords = (item.choices ?? []).filter((w) =>
+      isPlausibleExerciseWord(w, instruction, checkText),
+    );
+    const contextWords = extractVocabularyCandidates(checkText, instruction);
+    const pool = [...wordBank, ...choiceWords, ...contextWords, ...imageSlots.map((s) => s.correctWord)];
+    const unique = [...new Set(pool.map((w) => w.trim()).filter(Boolean))].filter((w) =>
+      isPlausibleExerciseWord(w, instruction, checkText),
+    );
+    if (unique.length >= 2) {
+      imageSlots = buildImageSlotsFromWords(unique.slice(0, Math.min(4, unique.length)));
+      wordBank = unique;
+    }
+  }
+
+  if (imageSlots.length < 2) {
+    return null;
+  }
+
+  const bank = mergeWordBank(imageSlots, wordBank);
+  return {
+    ...item,
+    imageSlots,
+    wordBank: bank,
+    checkText: imageSlots.map((s) => s.correctWord).join(' · '),
+    instruction: instruction || undefined,
+  };
+}
+
 const ALL_KINDS: TeacherExerciseKind[] = [
   'drag_word_to_blank',
   'type_word_in_blank',
@@ -274,12 +367,19 @@ function normalizeImageSlots(raw: unknown): TeacherImageSlot[] | undefined {
   const out: TeacherImageSlot[] = [];
   for (let i = 0; i < raw.length; i++) {
     const item = raw[i];
+    if (typeof item === 'string') {
+      const correctWord = asString(item, 48);
+      if (!correctWord) continue;
+      out.push({ id: `img${i + 1}`, correctWord });
+      continue;
+    }
     if (!item || typeof item !== 'object') continue;
-    const correctWord = asString((item as { correctWord?: unknown }).correctWord, 48);
+    const row = item as { correctWord?: unknown; word?: unknown; id?: unknown; label?: unknown; imageUrl?: unknown };
+    const correctWord = asString(row.correctWord, 48) || asString(row.word, 48);
     if (!correctWord) continue;
-    const id = asString((item as { id?: unknown }).id, 16) || `img${i + 1}`;
-    const label = asString((item as { label?: unknown }).label, 80) || undefined;
-    const imageUrl = asString((item as { imageUrl?: unknown }).imageUrl, 1_800_000) || undefined;
+    const id = asString(row.id, 16) || `img${i + 1}`;
+    const label = asString(row.label, 80) || undefined;
+    const imageUrl = asString(row.imageUrl, 1_800_000) || undefined;
     out.push({ id, correctWord, ...(label ? { label } : {}), ...(imageUrl ? { imageUrl } : {}) });
   }
   return out.length > 0 ? out.slice(0, 4) : undefined;
@@ -414,9 +514,13 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     (kind === 'match_pairs' ? 'Сопоставь слова и переводы' : '') ||
     (isOrderExerciseKind(kind) ? 'Составь предложение из слов' : '') ||
     (isChoiceExerciseKind(kind) ? 'Выбери правильный вариант' : '') ||
+    (kind === 'word_to_image' && imageSlots?.length
+      ? imageSlots.map((s) => s.correctWord).join(' · ')
+      : '') ||
     segmentsToPromptText(segments);
 
-  return coerceDragWordToBlankItem({
+  const normalized = coerceWordToImageItem(
+    coerceDragWordToBlankItem({
     id: asString(obj.id, 32) || `ex-${index + 1}`,
     kind,
     instruction: isFormExerciseKind(kind) ? normalizeFormInstruction(instruction) : instruction,
@@ -441,7 +545,9 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     correctChoice:
       isChoiceExerciseKind(kind) || kind === 'identify_main_idea' ? correctChoice : undefined,
     checkText: resolvedCheckText,
-  });
+    }),
+  );
+  return normalized;
 }
 
 export function normalizeTeacherExerciseSet(raw: unknown): TeacherExerciseItem[] {

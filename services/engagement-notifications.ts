@@ -164,9 +164,9 @@ export async function scheduleFinalReengagementNotice(params: {
   });
 }
 
-/** Push 24ч + финальный push на 7-й день — только через ОС, без in-app UI. */
+/** Push 24ч после последнего сообщения + финальный push на 7-й день — только через ОС. */
 export async function scheduleReengagementSeries(params: {
-  lastActivityAt: number;
+  lastMessageSentAt: number;
   language: NativeLanguage;
   streakDays: number;
   lastMessagePreview?: string;
@@ -181,7 +181,7 @@ export async function scheduleReengagementSeries(params: {
   await cancelReengagementNotifications();
 
   const nudgeAt = await scheduleReengagementNudge({
-    fireAt: params.lastActivityAt + MS_24H,
+    fireAt: params.lastMessageSentAt + MS_24H,
     language: params.language,
     streakDays: params.streakDays,
     lastMessagePreview: params.lastMessagePreview,
@@ -190,7 +190,7 @@ export async function scheduleReengagementSeries(params: {
   });
 
   const finalAt = await scheduleFinalReengagementNotice({
-    fireAt: params.lastActivityAt + MS_7D,
+    fireAt: params.lastMessageSentAt + MS_7D,
     language: params.language,
   });
 

@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 import { GAME_THEME } from '@/constants/game-theme';
+import { APP_THEME } from '@/constants/theme';
 
 /** Game-world drill palette — ink outlines, paper surfaces, SNES bevel. */
 export const DRILL = {
@@ -305,6 +306,12 @@ export const drillTaskStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: DRILL.well,
+    gap: 6,
+  },
+  imageSlotIndex: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: APP_THEME.color.mutedSoft,
   },
   imageWord: {
     paddingVertical: 10,

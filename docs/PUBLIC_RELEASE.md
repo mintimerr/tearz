@@ -2,6 +2,9 @@
 
 Soft launch checklist for App Store and Google Play. **v1.0 non-goals:** IAP/subscriptions, remote push (APNs/FCM), unfinished world locations, server-synced coins/streak.
 
+> **Только Play (проще стартовать без Apple):** [PLAY.md](./PLAY.md) → `npm run finish:play`  
+> **Только TestFlight:** [TESTFLIGHT.md](./TESTFLIGHT.md) → `npm run finish:testflight`
+
 ## 1. Production API (required)
 
 Use a permanent **HTTPS** URL (Render / Railway / VPS). Do **not** ship ngrok.

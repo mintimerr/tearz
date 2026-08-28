@@ -211,6 +211,16 @@ build_from_meaning:
 "shuffledWords": ["tea", "I", "love"],
 "correctOrder": ["I", "love", "tea"]
 
+word_to_image:
+"instruction": "(UI) Match each word to its picture",
+"checkText": "apple · coffee · book",
+"imageSlots": [
+  {"id":"img1","correctWord":"apple"},
+  {"id":"img2","correctWord":"coffee"},
+  {"id":"img3","correctWord":"book"}
+],
+"wordBank": ["apple","coffee","book","train","house"]
+
 pick_similar:
 "formSlots": [{"id":"f1","prompt":"请___坐。","options":["请","清","情"],"correct":"请"}]
 

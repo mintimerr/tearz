@@ -28,6 +28,14 @@
         "resourceClass": "m-medium"
       }
     },
+    "play": {
+      "distribution": "store",
+      "autoIncrement": true,
+      "environment": "production",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
     "production": {
       "extends": "testflight",
       "android": {
@@ -38,6 +46,12 @@
   "submit": {
     "testflight": {
       "ios": {}
+    },
+    "play": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
     },
     "production": {
       "ios": {},

@@ -18,30 +18,30 @@ import { companionApiRequestHeaders, getCompanionChatApiBaseUrl } from '@/utils/
 const FALLBACK: Record<EngagementNotificationKind, Record<NativeLanguage, EngagementNotificationCopy>> = {
   reengagement: {
     ru: {
-      title: 'Минута практики?',
-      body: 'Прошло 24 часа — собеседник ждёт короткое сообщение от тебя.',
+      title: 'Минута в чате?',
+      body: 'Прошло 24 часа с последнего сообщения — напиши одно, собеседник ждёт.',
     },
     en: {
-      title: 'Quick practice?',
-      body: '24 hours since your last message — drop in for a minute.',
+      title: 'Quick reply?',
+      body: "24 hours since your last message — drop one line in the chat.",
     },
     zh: {
-      title: '练一下？',
+      title: '回一句？',
       body: '距上次发消息已经24小时了，来聊一句吧。',
     },
   },
   final: {
     ru: {
-      title: 'Больше не будем напоминать',
-      body: 'Похоже, уведомления не работают — мы перестанем их слать. Вернёшься, когда будет удобно.',
+      title: 'Больше не будем слать',
+      body: 'Нам кажется, пора перестать присылать уведомления — они не работают.',
     },
     en: {
-      title: "We'll stop reminding you",
-      body: "Looks like notifications aren't working — we won't send more. Come back whenever you're ready.",
+      title: "We'll stop notifying you",
+      body: "We think it's time to stop sending notifications — they clearly aren't working.",
     },
     zh: {
       title: '我们不再提醒了',
-      body: '看起来通知对你没用——之后不会再发。想练的时候随时回来。',
+      body: '看来通知对你没用——我们不再发送了。',
     },
   },
 };

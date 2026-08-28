@@ -63,7 +63,7 @@ import { isImageMsg, type CompanionMsg } from '@/types/companion-message';
 import { persistCompanionAttachment } from '@/utils/companion-attachment-storage';
 import { prepareCompanionImageForApi } from '@/utils/companion-image-base64';
 import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
-import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
+import { pickCompanionPhoto, takeCompanionPhoto } from '@/utils/pick-companion-photo';
 import { setTeacherLessonBootstrap } from '@/utils/teacher-lesson-bootstrap';
 import { resolveDrillTargetLanguage } from '@/utils/teacher-lesson-language';
 import {
@@ -379,6 +379,18 @@ export function TeacherBoardChat({
     t,
   ]);
 
+  const trackUserMessage = useCallback(
+    (preview: string) => {
+      recordActivity({
+        kind: 'message',
+        messagePreview: preview.slice(0, 120),
+        chatName: t('teacher.subtitle'),
+        lessonTopic: lessonTopicRef.current,
+      });
+    },
+    [recordActivity, t],
+  );
+
   const send = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || sending) return;
@@ -406,8 +418,9 @@ export function TeacherBoardChat({
     }
     scrollToEnd();
 
+    trackUserMessage(text);
     await requestReply(text, nextThread);
-  }, [ensureLesson, input, messages, registerUserStudyText, requestReply, saveCompanionThread, sending]);
+  }, [ensureLesson, input, messages, registerUserStudyText, requestReply, saveCompanionThread, sending, trackUserMessage]);
 
   const sendImageFromUri = useCallback(
     async (uri: string, pickedName?: string) => {
@@ -442,6 +455,7 @@ export function TeacherBoardChat({
       }
       scrollToEnd();
 
+      trackUserMessage(caption || '📷 Фото');
       try {
         const storedUri = await persistCompanionAttachment(uri, msgId, pickedName);
         setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, imageUri: storedUri } : m)));
@@ -456,7 +470,7 @@ export function TeacherBoardChat({
         setTyping(false);
       }
     },
-    [ensureLesson, input, registerUserStudyText, requestReply, saveCompanionThread, sending, typing],
+    [ensureLesson, input, registerUserStudyText, requestReply, saveCompanionThread, sending, trackUserMessage, typing],
   );
 
   const handleAttachToggle = useCallback(() => {
@@ -467,6 +481,12 @@ export function TeacherBoardChat({
 
   const handlePickGallery = useCallback(() => {
     void pickCompanionPhoto().then((picked) => {
+      if (picked) void sendImageFromUri(picked.uri, picked.name);
+    });
+  }, [sendImageFromUri]);
+
+  const handleTakePhoto = useCallback(() => {
+    void takeCompanionPhoto().then((picked) => {
       if (picked) void sendImageFromUri(picked.uri, picked.name);
     });
   }, [sendImageFromUri]);
@@ -691,14 +711,14 @@ export function TeacherBoardChat({
         return;
       }
       if (followUp.action === 'advance' && followUp.title) {
-        const text = buildFollowUpChatMessage(followUp);
+        const text = buildFollowUpChatMessage(followUp, uiLanguage);
         setTimeout(() => {
           void send(text);
           scrollRef.current?.scrollToEnd({ animated: true });
         }, 120);
         return;
       }
-      const text = buildFollowUpChatMessage(followUp);
+      const text = buildFollowUpChatMessage(followUp, uiLanguage);
       setTimeout(() => {
         void send(text);
         scrollRef.current?.scrollToEnd({ animated: true });
@@ -801,11 +821,16 @@ export function TeacherBoardChat({
           ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={[styles.thread, gameChrome && styles.threadGame]}
-          keyboardShouldPersistTaps="always"
-          keyboardDismissMode="none"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={() => Keyboard.dismiss()}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
-          {messages.map((m, idx) => {
+          <Pressable
+            onPress={Keyboard.dismiss}
+            accessible={false}
+            style={styles.threadTapDismiss}>
+            {messages.map((m, idx) => {
             const isMe = m.from === 'me';
             const bubbleVariant = gameChrome ? 'game' : 'default';
             const photo = isImageMsg(m) && Boolean(m.imageUri);
@@ -854,6 +879,7 @@ export function TeacherBoardChat({
               />
             </FadeInView>
           ) : null}
+          </Pressable>
         </ScrollView>
 
         <WordAddSheetHost />
@@ -872,6 +898,20 @@ export function TeacherBoardChat({
                 visible={attachOpen}
                 onPhotoSelected={(uri) => void sendImageFromUri(uri)}
               />
+              <Pressable
+                onPress={handleTakePhoto}
+                style={({ pressed }) => [
+                  styles.attachGalleryBtn,
+                  gameChrome && styles.attachGalleryBtnGame,
+                  pressed && styles.attachGalleryBtnPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Сделать фото">
+                <Ionicons name="camera-outline" size={18} color={gameChrome ? GAME_THEME.color.ink : APP_THEME.color.textSoft} />
+                <Text style={[styles.attachGalleryLabel, gameChrome && styles.attachGalleryLabelGame]}>
+                  Камера
+                </Text>
+              </Pressable>
               <Pressable
                 onPress={handlePickGallery}
                 style={({ pressed }) => [
@@ -1070,6 +1110,10 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
     backgroundColor: GAME_THEME.color.cream,
+  },
+  threadTapDismiss: {
+    flexGrow: 1,
+    width: '100%',
   },
   teacherText: {
     fontSize: 16,

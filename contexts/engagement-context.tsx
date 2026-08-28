@@ -231,7 +231,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
   const ensurePushPermissionOnce = useCallback(async (next: EngagementState): Promise<EngagementState> => {
     if (Platform.OS === 'web' || next.permissionPromptShown) return next;
     if (next.notificationPermission === 'granted') return next;
-    if (next.dailyStreak < 1) return next;
+    if (!next.lastMessageSentAt) return next;
 
     const result = await requestNotificationPermission();
     return {
@@ -243,7 +243,8 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
 
   const syncInactivityState = useCallback(
     async (current: EngagementState) => {
-      if (daysSince(current.lastQualifyingActivityAt) < 7) return current;
+      if (current.lastMessageSentAt == null) return current;
+      if (daysSince(current.lastMessageSentAt) < 7) return current;
       if (current.reengagement.phase === 'final_sent' || current.reengagement.phase === 'stopped_inactive') {
         return current;
       }
@@ -275,12 +276,12 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       if (current.reengagement.phase === 'final_sent' || current.reengagement.phase === 'stopped_inactive') {
         return current;
       }
-      if (current.notificationPermission !== 'granted' || !current.lastQualifyingActivityAt) {
+      if (current.notificationPermission !== 'granted' || !current.lastMessageSentAt) {
         return current;
       }
 
       const { nudgeAt, finalAt } = await scheduleReengagementSeries({
-        lastActivityAt: current.lastQualifyingActivityAt,
+        lastMessageSentAt: current.lastMessageSentAt,
         language,
         streakDays: current.dailyStreak,
         lastMessagePreview: meta?.messagePreview,
@@ -323,11 +324,15 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
           streakFreezeAvailable: streak.freezeConsumed ? false : current.streakFreezeAvailable,
           lastQualifyingActivityAt: at,
           lastMessageSentAt: params.kind === 'message' ? at : current.lastMessageSentAt,
-          reengagement: {
-            ...current.reengagement,
-            phase: 'active',
-            finalMessageSentAt: null,
-          },
+          ...(params.kind === 'message'
+            ? {
+                reengagement: {
+                  ...current.reengagement,
+                  phase: 'active' as const,
+                  finalMessageSentAt: null,
+                },
+              }
+            : {}),
         };
 
         if (streak.extended || streak.isNew) {
@@ -366,8 +371,10 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
           current = { ...current, ownedTearzIds: [...current.ownedTearzIds, tearzGain] };
         }
 
-        await cancelReengagementNotifications();
-        current = await ensurePushPermissionOnce(current);
+        if (params.kind === 'message') {
+          await cancelReengagementNotifications();
+          current = await ensurePushPermissionOnce(current);
+        }
         await persist(current);
         setState(current);
 
@@ -408,10 +415,13 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
         }
         if (reward) showXpReward(reward);
 
-        await planPushSeries(current, language, {
-          messagePreview: params.messagePreview,
-          chatName: params.chatName,
-        });
+        if (params.kind === 'message') {
+          await planPushSeries(current, language, {
+            messagePreview: params.messagePreview,
+            chatName: params.chatName,
+            lessonTopic: params.lessonTopic,
+          });
+        }
       })();
     },
     [buildActivityXp, ensurePushPermissionOnce, isAuthenticated, persist, planPushSeries, showXpReward, user?.id, user?.nativeLanguage],
@@ -425,7 +435,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     await persist(next);
     setState(next);
 
-    if (granted && next.lastQualifyingActivityAt) {
+    if (granted && next.lastMessageSentAt) {
       next = await planPushSeries(next, user?.nativeLanguage ?? 'ru');
       setState(next);
     }
@@ -535,6 +545,16 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
         }
 
         await syncInactivityState(current);
+
+        const after = stateRef.current;
+        if (
+          after.reengagement.phase === 'active' &&
+          after.lastMessageSentAt != null &&
+          after.notificationPermission === 'granted' &&
+          daysSince(after.lastMessageSentAt) < 7
+        ) {
+          await planPushSeries(after, user?.nativeLanguage ?? 'ru');
+        }
       })();
     };
 
@@ -543,7 +563,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       if (next === 'active') onForeground();
     });
     return () => sub.remove();
-  }, [hydrated, persist, syncInactivityState, user?.id]);
+  }, [hydrated, persist, planPushSeries, syncInactivityState, user?.id, user?.nativeLanguage]);
 
   const todayKey = localDateKey();
   const dailyTasks: DailyTasks =
