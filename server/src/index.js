@@ -222,6 +222,9 @@ const IMAGE_DATA_URL_MAX = 1_800_000;
 const PRACTICAL_QUESTION_RE =
   /(?:^|[\s,.!?])(?:как\s+(?:заказать|сказать|спросить|попросить|объяснить|назвать|позвонить|договориться|оплатить|найти|добраться)|не\s+знаю\s+как|что\s+(?:говорить|сказать)|как\s+бы\s+сказать|how\s+(?:do\s+i|to)\s+(?:say|order|ask|tell|get|call)|what\s+(?:do\s+i|should\s+i)\s+say)(?:[\s,.!?]|$)/iu;
 
+const VOCABULARY_REQUEST_RE =
+  /(?:^|[\s,.!?])(?:дай\s+(?:слова|лексик|выражен)|подбери\s+(?:слова|лексик)|список\s+слов|слова\s+(?:для|на|про|по)|лексик(?:а|у)\s+(?:для|на|про|по)|give\s+me\s+(?:words|vocabulary|expressions)|vocabulary\s+(?:for|on|about)|words\s+(?:for|about)|word\s+list|useful\s+(?:words|phrases)\s+for|词汇|给我.*词|词语|单词)(?:[\s,.!?]|$)/iu;
+
 const SITUATION_CHINA_RE =
   /китай|\bchina\b|中国|пекин|beijing|shanghai|上海|北京|广州|成都|点餐|\bhsk\b|хск|汉语|医院|мандарин/iu;
 const SITUATION_ENGLISH_RE =
@@ -253,6 +256,17 @@ function isPracticalLanguageQuestion(message) {
   if (t.length < 8) return false;
   if (/какое\s+приложен|which\s+app|где\s+скачать|download\s+the\s+app/iu.test(t)) return false;
   return PRACTICAL_QUESTION_RE.test(t);
+}
+
+function isVocabularyRequest(message) {
+  if (typeof message !== 'string') return false;
+  const t = message.trim();
+  if (t.length < 6) return false;
+  if (isPracticalLanguageQuestion(t)) return false;
+  if (/что\s+такое|как\s+работает|чем\s+отличается|объясни\s+(?:правило|грамматик)|explain\s+(?:the\s+)?(?:rule|grammar|difference)|what\s+is\s+the\s+difference/iu.test(t)) {
+    return false;
+  }
+  return VOCABULARY_REQUEST_RE.test(t);
 }
 
 /**
@@ -301,11 +315,29 @@ function buildPracticalQuestionOverride(message, lessonLang, uiLanguage = 'ru') 
     'The learner\'s latest message is a "how do I… in real life" question. They are in Tearz to learn WHAT TO SAY, not how life works.\n' +
     `Phrase examples MUST be in: ${targetLabel}. Explanations in ${m.explainLabel}.\n` +
     `NEVER put ${m.explainLabel} example phrases in «${m.phrases}» / «${m.vocabulary}» unless the target language is explicitly that language-as-L2.\n` +
-    `MANDATORY blocks: «${m.phrases}» then «${m.vocabulary}» then «${m.plain}».\n` +
+    `MANDATORY blocks: «${m.phrases}» then «${m.vocabulary}».\n` +
+    `FORBIDDEN in this reply: «${m.plain}» block — situational answers need phrases + lexicon only; glosses are enough.\n` +
     `FORBIDDEN in this reply: «${m.dialogue}» block, A/B dialogue scripts, roleplay play-throughs — dialogue practice is in mini-drill buttons, NOT in chat.\n` +
     `Vocabulary block must be substantial (8–16 items): nouns, verbs, set expressions, polite forms for THIS situation — not just rephrasing the phrases block.\n` +
     'FORBIDDEN in this reply: mobile apps (DiDi, Uber, 滴滴), «скачай/установи», payment setup, maps, VPN, SIM, visas, prices, which service to use, step-by-step logistics without language.\n' +
     'Start immediately with phrases — no travel overview, no app recommendations.' +
+    (target === 'chinese' ? CHINESE_PINYIN_CHAT_RULES : '')
+  );
+}
+
+function buildVocabularyRequestOverride(message, lessonLang, uiLanguage = 'ru') {
+  const target = inferSituationTargetLanguage(message, lessonLang);
+  const targetLabel = teacherTargetLabel(target);
+  const m = uiLangMeta(uiLanguage);
+
+  return (
+    '\n\n⚠️ ACTIVE REQUEST TYPE: VOCABULARY / LEXICON\n' +
+    'The learner asked for words or expressions — deliver the list, not a grammar recap.\n' +
+    `Items MUST be in: ${targetLabel}. Glosses in ${m.explainLabel}.\n` +
+    `MANDATORY block: «${m.vocabulary}» with 8–16 items (L2 + brief gloss).\n` +
+    `Optional «${m.phrases}» only if 2–4 ready phrases clearly help.\n` +
+    `FORBIDDEN in this reply: «${m.plain}» block — word lists do not need a plain-language essay.\n` +
+    'Skip theory blocks («Определение:», «Правило:») unless they explicitly asked to explain grammar.' +
     (target === 'chinese' ? CHINESE_PINYIN_CHAT_RULES : '')
   );
 }
@@ -324,7 +356,7 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru') {
   prompt +=
     '\n\n=== UI / NATIVE LANGUAGE (ABSOLUTE — overrides any Russian defaults in this prompt) ===\n' +
     `App language = ${m.explainLabel}. ALL explanations, block titles, declines, scaffolding, and meta text MUST be in ${m.explainLabel}.\n` +
-    `You are «${m.roleTitle}». Prefer block titles like «${m.phrases}», «${m.vocabulary}», «${m.plain}», «${m.practice}». Do NOT use «${m.dialogue}» in chat — dialogue drills live in training buttons.\n` +
+    `You are «${m.roleTitle}». Block titles: «${m.phrases}», «${m.vocabulary}», «${m.practice}» for situational answers; «${m.plain}» ONLY for grammar/rule/difference explanations — never append it to every reply. Do NOT use «${m.dialogue}» in chat — dialogue drills live in training buttons.\n` +
     `Do NOT default to Russian when app language is not Russian. Do NOT teach ${m.explainLabel} as L2.`;
   if (language === 'chinese') {
     prompt +=
@@ -2882,6 +2914,8 @@ app.post('/api/teacher-chat', async (req, res) => {
     let systemContent = buildTeacherSystemPrompt(lang, lessonTopic, ui);
     if (intent === 'practical' || isPracticalLanguageQuestion(userMessageText)) {
       systemContent += buildPracticalQuestionOverride(userMessageText, lang, ui);
+    } else if (isVocabularyRequest(userMessageText)) {
+      systemContent += buildVocabularyRequestOverride(userMessageText, lang, ui);
     }
     if (hasImage) {
       systemContent +=
