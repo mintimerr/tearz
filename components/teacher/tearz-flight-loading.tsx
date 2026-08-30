@@ -19,7 +19,7 @@ import { TeacherLessonWindow } from '@/components/teacher/teacher-lesson-window'
 import { GAME_THEME } from '@/constants/game-theme';
 import { useLexicon } from '@/contexts/lexicon-context';
 import { useLocale } from '@/contexts/locale-context';
-import { postTeacherChatReply } from '@/services/companion-chat-ai';
+import { postTeacherChatReply, warmCompanionApi } from '@/services/companion-chat-ai';
 import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 import type { CompanionMsg } from '@/types/companion-message';
 import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
@@ -236,6 +236,7 @@ export function TearzLessonTransit({
     void (async () => {
       let assistantMsg: CompanionMsg;
       try {
+        await warmCompanionApi(6);
         let image: { base64: string; mimeType: string } | undefined;
         if (imageUri) {
           const { prepareCompanionImageForApi } = await import('@/utils/companion-image-base64');

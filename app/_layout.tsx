@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { ApiWarmup } from '@/components/api-warmup';
 import { APP_THEME } from '@/constants/theme';
 import { GAME_THEME } from '@/constants/game-theme';
 import { Stack } from 'expo-router';
@@ -50,12 +52,12 @@ export default function RootLayout() {
                   <LexiconProvider>
                   <TeacherDrillSessionProvider>
                   <WordAddSheetProvider>
+                  <ApiWarmup />
                   <Stack screenOptions={{ headerShown: false, contentStyle: GAME_VOID }}>
                     <Stack.Screen name="index" />
                     <Stack.Screen name="(auth)" options={{ contentStyle: GAME_VOID_DEEP }} />
                     <Stack.Screen name="hub" options={{ animation: 'fade', contentStyle: GAME_VOID_DEEP }} />
                     <Stack.Screen name="arcade" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
-                    <Stack.Screen name="play" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="dialogs" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="cards" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="me" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
