@@ -3923,4 +3923,20 @@ httpServer.listen(PORT, () => {
   } else {
     console.warn('[auth] Письма с кодом: DEV — задайте RESEND_API_KEY в server/.env (см. server/.env.example)');
   }
+
+  const renderUrl = process.env.RENDER_EXTERNAL_URL?.trim().replace(/\/$/, '');
+  if (renderUrl && process.env.NODE_ENV === 'production') {
+    const keepAliveMs = 14 * 60 * 1000;
+    const pingSelf = async () => {
+      try {
+        const res = await fetch(`${renderUrl}/health`, { headers: { Accept: 'application/json' } });
+        console.log(`[keep-alive] ${res.status} ${renderUrl}/health`);
+      } catch (e) {
+        console.warn('[keep-alive] ping failed:', e instanceof Error ? e.message : e);
+      }
+    };
+    setTimeout(pingSelf, 20_000);
+    setInterval(pingSelf, keepAliveMs);
+    console.log(`[keep-alive] self-ping every ${keepAliveMs / 60_000} min → ${renderUrl}/health`);
+  }
 });
