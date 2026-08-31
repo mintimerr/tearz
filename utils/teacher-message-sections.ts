@@ -81,7 +81,7 @@ export function parseTeacherBlockLines(
   return out;
 }
 
-const SIMPLE_LANGUAGE_TITLE = /объясняю простым языком/i;
+const SIMPLE_LANGUAGE_TITLE = /объясняю\s+простым\s+языком|простым\s+языком|in\s+plain\s+english|简单说明/i;
 const DIALOGUE_TITLE = /диалог|dialogue|对话/i;
 const PHRASE_TITLE = /фраз|phrase|短语|例句/i;
 const VOCABULARY_TITLE = /лексик|vocab|词汇|词语|выражен|слова/i;
@@ -223,7 +223,19 @@ export function parseTeacherMessageBlocks(text: string): TeacherMessageBlock[] |
   if (!trimmed) return null;
 
   const strict = parseStrictBlocks(trimmed);
-  if (strict) return strict;
+  const parsed = strict ?? parseLenientBlocks(trimmed);
+  if (!parsed) return null;
 
-  return parseLenientBlocks(trimmed);
+  // Ситуативные ответы (фразы/лексика без теории) — не показываем «простым языком»,
+  // даже если модель уже успела его дописать в старый тред.
+  const hasPhraseOrVocab = parsed.some(
+    (b) => isPhraseTitle(b.title) || isVocabularyTitle(b.title),
+  );
+  const hasTheory = parsed.some((b) => THEORY_TITLE.test(b.title));
+  if (hasPhraseOrVocab && !hasTheory) {
+    const filtered = parsed.filter((b) => !isSimpleLanguageTitle(b.title));
+    return filtered.length > 0 ? filtered : null;
+  }
+
+  return parsed;
 }

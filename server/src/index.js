@@ -263,10 +263,54 @@ function isVocabularyRequest(message) {
   const t = message.trim();
   if (t.length < 6) return false;
   if (isPracticalLanguageQuestion(t)) return false;
-  if (/что\s+такое|как\s+работает|чем\s+отличается|объясни\s+(?:правило|грамматик)|explain\s+(?:the\s+)?(?:rule|grammar|difference)|what\s+is\s+the\s+difference/iu.test(t)) {
-    return false;
-  }
+  if (isTheoryLanguageQuestion(t)) return false;
   return VOCABULARY_REQUEST_RE.test(t);
+}
+
+/** Грамматика / правило / «чем отличается» — единственный случай для блока «простым языком». */
+function isTheoryLanguageQuestion(message) {
+  if (typeof message !== 'string') return false;
+  const t = message.trim();
+  if (t.length < 6) return false;
+  return /что\s+такое|как\s+(?:работает|образуется|употребляет|склоняет|спрягает)|чем\s+отличается|в\s+чём\s+разница|объясни\s+(?:мне\s+)?(?:правило|грамматик|форму|время|артикл|частиц)|разбери\s+(?:грамматик|правило)|расскажи\s+(?:про|о)\s+(?:грамматик|правило)|explain\s+(?:the\s+)?(?:rule|grammar|difference|tense|form|article)|what\s+(?:is|does)\s+(?:the\s+)?(?:difference|rule|grammar)|how\s+(?:does|do)\s+.+\s+work|what'?s\s+the\s+difference|grammar\s+(?:rule|point)|грамматик|什么是|有什么区别|怎么用(?:这个|这个词|语法)/iu.test(
+    t,
+  );
+}
+
+/**
+ * Вырезает блок «Объясняю простым языком:» / «In plain English:» / «简单说明：».
+ * Модель часто добавляет его вопреки инструкции — для не-теории режем жёстко.
+ */
+function stripPlainLanguageBlocks(text) {
+  if (typeof text !== 'string' || !text.trim()) return text;
+  const lines = text.split('\n');
+  const out = [];
+  let skipping = false;
+
+  for (const line of lines) {
+    const titleMatch = line.match(/^([^\n:]{2,48}):\s*(.*)$/);
+    if (titleMatch) {
+      const title = titleMatch[1].trim();
+      const wordCount = title.split(/\s+/).filter(Boolean).length;
+      if (
+        title.length >= 2 &&
+        title.length <= 48 &&
+        wordCount <= 6 &&
+        !/[.!?]$/.test(title)
+      ) {
+        if (/объясняю\s+простым\s+языком|простым\s+языком|in\s+plain\s+english|简单说明/iu.test(title)) {
+          skipping = true;
+          continue;
+        }
+        skipping = false;
+        out.push(line);
+        continue;
+      }
+    }
+    if (!skipping) out.push(line);
+  }
+
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /**
@@ -2994,7 +3038,13 @@ app.post('/api/teacher-chat', async (req, res) => {
       return res.status(502).json({ error: 'Empty model reply' });
     }
 
-    return res.json({ reply: reply.trim() });
+    let finalReply = reply.trim();
+    // Жёсткий пост-фильтр: «простым языком» только для теории/грамматики.
+    if (!isTheoryLanguageQuestion(userMessageText)) {
+      finalReply = stripPlainLanguageBlocks(finalReply);
+    }
+
+    return res.json({ reply: finalReply });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Network error';
     return res.status(502).json({ error: msg });
