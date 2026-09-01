@@ -29,7 +29,7 @@ import { TeacherAttachGallery } from '@/components/teacher/teacher-attach-galler
 import { TeacherExerciseActions } from '@/components/teacher/teacher-exercise-actions';
 import { useTeacherDrillSession } from '@/components/teacher/teacher-drill-session';
 import { TeacherMessageBody } from '@/components/teacher/teacher-message-body';
-import { WordAddSheetHost } from '@/components/word-add-sheet';
+import { WordAddSheetHost, useWordAddSheet } from '@/components/word-add-sheet';
 import {
   TEACHER_MUTED,
   TEACHER_MUTED_SOFT,
@@ -172,15 +172,22 @@ export function TeacherBoardChat({
   const drillSourceMessageRef = useRef<CompanionMsg | null>(null);
   const drillExplanationRef = useRef('');
   const drillLanguageRef = useRef<CompanionChatApiLanguage>(language);
+  const drillGenerationTokenRef = useRef(0);
   const [drillNotice, setDrillNotice] = useState<string | null>(null);
   const drillNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
   const [threadViewportH, setThreadViewportH] = useState(0);
+  const { clearWordSelections } = useWordAddSheet();
 
   const dismissChatKeyboard = useCallback(() => {
     composerRef.current?.blur();
     Keyboard.dismiss();
   }, []);
+
+  const dismissChatChrome = useCallback(() => {
+    clearWordSelections();
+    dismissChatKeyboard();
+  }, [clearWordSelections, dismissChatKeyboard]);
 
   useEffect(() => {
     dismissChatKeyboard();
@@ -611,11 +618,16 @@ export function TeacherBoardChat({
         return false;
       }
 
-      if (!drillSession.beginGenerating(source.id)) {
+      const start = drillSession.beginGenerating(source.id);
+      if (start.status === 'blocked') {
         Alert.alert(t('teacher.drill.generateFailedTitle'), t('teacher.drill.generatingInProgress'));
         showDrillNotice(t('teacher.drill.generatingInProgress'));
         return false;
       }
+      if (start.status === 'already') {
+        return false;
+      }
+      drillGenerationTokenRef.current = start.token;
 
       Keyboard.dismiss();
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -629,6 +641,7 @@ export function TeacherBoardChat({
       const explanation = source.text.trim();
       if (!explanation) return;
 
+      const generationToken = drillGenerationTokenRef.current;
       const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
       const generationSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       const lastUser = lastUserTextBefore(messagesRef.current, source.id);
@@ -649,6 +662,7 @@ export function TeacherBoardChat({
           avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
           recentMistakes: getMistakeSummariesForApi(drillMistakes),
         });
+        if (!drillSession.isGenerationCurrent(generationToken)) return;
         const sessionKey = `drill-${generationSeed}`;
         const exercises = raw.map((ex, i) => ({
           ...ex,
@@ -683,6 +697,7 @@ export function TeacherBoardChat({
         });
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e) {
+        if (!drillSession.isGenerationCurrent(generationToken)) return;
         const msg = e instanceof Error ? e.message : t('teacher.drill.networkError');
         drillSession.cancelGenerating();
         showDrillNotice(t('teacher.drill.generateFailedBody', { error: msg }));
@@ -745,6 +760,14 @@ export function TeacherBoardChat({
       if (message.from !== 'them' || message.id.startsWith('ex-') || message.text.startsWith('Не удалось')) {
         return null;
       }
+      const idx = messages.findIndex((m) => m.id === message.id);
+      let lastUserMessage: string | undefined;
+      for (let i = idx - 1; i >= 0; i -= 1) {
+        if (messages[i]?.from === 'me') {
+          lastUserMessage = messages[i].text;
+          break;
+        }
+      }
       return (
         <TeacherExerciseActions
           messageId={message.id}
@@ -752,13 +775,27 @@ export function TeacherBoardChat({
           exerciseLoadingId={drillSession.messageIdLoading}
           typing={typing}
           miniAccess={evaluateMiniDrillAccess(miniDrillUsage, message.id)}
+          language={language}
+          uiLanguage={uiLanguage}
+          lessonTopic={lessonTopicRef.current}
+          lastUserMessage={lastUserMessage}
           onPrepare={prepareDrillForMessage}
           onPress={handlePracticePress}
           onBlocked={showDrillNotice}
         />
       );
     },
-    [drillSession.messageIdLoading, handlePracticePress, miniDrillUsage, prepareDrillForMessage, showDrillNotice, typing],
+    [
+      drillSession.messageIdLoading,
+      handlePracticePress,
+      language,
+      messages,
+      miniDrillUsage,
+      prepareDrillForMessage,
+      showDrillNotice,
+      typing,
+      uiLanguage,
+    ],
   );
 
   const markerFamily = fontsLoaded ? 'Kalam_400Regular' : undefined;
@@ -820,14 +857,6 @@ export function TeacherBoardChat({
           </View>
         </View>
 
-        {drillNotice ? (
-          <View style={[styles.drillNotice, gameChrome && styles.drillNoticeGame]}>
-            <Text style={[styles.drillNoticeText, gameChrome && styles.drillNoticeTextGame]}>
-              {drillNotice}
-            </Text>
-          </View>
-        ) : null}
-
         <ScrollView
           ref={scrollRef}
           style={styles.flex}
@@ -840,10 +869,10 @@ export function TeacherBoardChat({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
-          onScrollBeginDrag={dismissChatKeyboard}
+          onScrollBeginDrag={dismissChatChrome}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
           <Pressable
-            onPress={dismissChatKeyboard}
+            onPress={dismissChatChrome}
             accessible={false}
             style={[
               styles.threadTapDismiss,
@@ -918,6 +947,42 @@ export function TeacherBoardChat({
             gameChrome && styles.composerWrapGame,
             composerInsetStyle,
           ]}>
+          {drillNotice ? (
+            <FadeInView offsetY={8} duration={260} style={styles.drillToastHost}>
+              <Pressable
+                onPress={() => setDrillNotice(null)}
+                accessibilityRole="button"
+                accessibilityLabel={t('teacher.drill.limitToastTitle')}
+                style={({ pressed }) => [
+                  styles.drillToastLip,
+                  pressed && styles.drillToastLipPressed,
+                ]}>
+                <View style={[styles.drillToast, gameChrome && styles.drillToastGame]}>
+                  <View style={[styles.drillToastIconWrap, gameChrome && styles.drillToastIconWrapGame]}>
+                    <Ionicons
+                      name="barbell-outline"
+                      size={16}
+                      color={gameChrome ? GAME_THEME.color.cream : GAME_THEME.color.ink}
+                    />
+                  </View>
+                  <View style={styles.drillToastCopy}>
+                    <Text style={[styles.drillToastEyebrow, gameChrome && styles.drillToastEyebrowGame]}>
+                      {t('teacher.drill.limitToastTitle')}
+                    </Text>
+                    <Text style={[styles.drillToastText, gameChrome && styles.drillToastTextGame]}>
+                      {drillNotice}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name="close"
+                    size={16}
+                    color={gameChrome ? 'rgba(26,26,26,0.35)' : 'rgba(26,26,26,0.4)'}
+                  />
+                </View>
+              </Pressable>
+            </FadeInView>
+          ) : null}
+
           {gameChrome ? null : <BlurView intensity={38} tint="light" style={styles.composerBlur} />}
 
           {attachOpen ? (
@@ -996,6 +1061,7 @@ export function TeacherBoardChat({
               editable={!sending}
               blurOnSubmit={false}
               onFocus={() => {
+                clearWordSelections();
                 setAttachOpen(false);
                 setTimeout(() => {
                   scrollRef.current?.scrollToEnd({ animated: true });
@@ -1048,31 +1114,74 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  drillNotice: {
-    marginHorizontal: 12,
-    marginBottom: 8,
+  drillToastHost: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 59, 48, 0.12)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 59, 48, 0.35)',
+    paddingTop: 10,
+    paddingBottom: 8,
+    zIndex: 5,
   },
-  drillNoticeGame: {
-    borderRadius: 4,
+  drillToastLip: {
+    borderRadius: 7,
+    backgroundColor: GAME_THEME.color.goldLip,
+    paddingBottom: 3,
+  },
+  drillToastLipPressed: {
+    paddingBottom: 1,
+    transform: [{ translateY: 2 }],
+  },
+  drillToast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: GAME_THEME.color.paper,
     borderWidth: 2,
     borderColor: GAME_THEME.color.ink,
-    backgroundColor: '#FFF4F2',
   },
-  drillNoticeText: {
+  drillToastGame: {
+    backgroundColor: '#E8F1FF',
+    borderWidth: GAME_THEME.border.thick,
+  },
+  drillToastIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GAME_THEME.color.sky,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+  },
+  drillToastIconWrapGame: {
+    backgroundColor: GAME_THEME.color.sky,
+  },
+  drillToastCopy: {
+    flex: 1,
+    gap: 2,
+    paddingRight: 2,
+  },
+  drillToastEyebrow: {
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: GAME_THEME.color.goldLip,
+  },
+  drillToastEyebrowGame: {
+    color: GAME_THEME.color.goldLip,
+  },
+  drillToastText: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: '600',
-    color: '#B42318',
-    textAlign: 'center',
+    fontWeight: '700',
+    color: GAME_THEME.color.ink,
+    letterSpacing: -0.1,
   },
-  drillNoticeTextGame: {
-    fontWeight: '800',
+  drillToastTextGame: {
+    fontWeight: '700',
     color: GAME_THEME.color.ink,
   },
   header: {

@@ -47,6 +47,10 @@ export const companionMessageStyles = StyleSheet.create({
     paddingBottom: 20,
     gap: CHAT_MSG.threadGap,
   },
+  threadTapDismiss: {
+    flexGrow: 1,
+    width: '100%',
+  },
   dateWrap: {
     alignItems: 'center',
     marginVertical: 12,
@@ -158,6 +162,10 @@ export const teacherMessageStyles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingBottom: 20,
     gap: CHAT_MSG.threadGap,
+  },
+  threadTapDismiss: {
+    flexGrow: 1,
+    width: '100%',
   },
   dateWrap: {
     alignItems: 'center',

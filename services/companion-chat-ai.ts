@@ -18,8 +18,11 @@ import type {
   TeacherDrillFollowUpRequestBody,
   TeacherDrillFollowUpSuccessBody,
   TeacherNextTopicRecommendation,
+  TeacherVocabExamplesRequestBody,
+  TeacherVocabExamplesSuccessBody,
 } from '@/types/companion-chat-api';
 import { normalizeTeacherExerciseSet } from '@/utils/teacher-exercise-normalize';
+import { normalizeTeacherVocabExamples } from '@/utils/teacher-vocab-examples-normalize';
 import { buildLocalDrillFollowUp, normalizeLearnerRepeatPrompt } from '@/utils/teacher-drill-followup';
 import { defaultOpeningForLang, defaultStatusBio } from '@/utils/companion-ai-fallback-profile';
 
@@ -171,6 +174,29 @@ export async function postTeacherExerciseSet(
   }
   const nextTopic = normalizeNextTopic(json);
   return { exercises, ...(nextTopic ? { nextTopic } : {}) };
+}
+
+/** POST /api/teacher-vocab-examples — карточки слов с ~5 предложениями употребления */
+export async function postTeacherVocabExamples(
+  body: TeacherVocabExamplesRequestBody,
+): Promise<TeacherVocabExamplesSuccessBody> {
+  const res = await postCompanionChatJson('/api/teacher-vocab-examples', body);
+  const raw = await res.text();
+  let json: unknown;
+  try {
+    json = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new Error(raw.slice(0, 200) || `HTTP ${res.status}`);
+  }
+  if (!res.ok) {
+    const err = json as Partial<CompanionChatErrorBody>;
+    throw new Error(err.error || `Ошибка сервера (${res.status})`);
+  }
+  const words = normalizeTeacherVocabExamples(json);
+  if (words.length === 0) {
+    throw new Error('Не удалось собрать примеры');
+  }
+  return { words };
 }
 
 /** POST /api/teacher-exercise-check — проверка ответа ученика на задание */

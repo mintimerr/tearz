@@ -34,7 +34,7 @@ import { GAME_THEME } from '@/constants/game-theme';
 import { CompanionVoiceComposer } from '@/components/companion/companion-voice-record-control';
 import { TeacherMessageBody } from '@/components/teacher/teacher-message-body';
 import { TeacherExerciseActions } from '@/components/teacher/teacher-exercise-actions';
-import { useTeacherDrillSession } from '@/components/teacher/teacher-drill-session';
+import { useTeacherDrillSession, TeacherDrillSessionOverlay } from '@/components/teacher/teacher-drill-session';
 import {
   TeacherFullWorkoutPaywall,
   type TearzPlusFeature,
@@ -48,7 +48,7 @@ import { FileMessageBubble } from '@/components/companion/file-message-bubble';
 import { ImageMessageBubble } from '@/components/companion/image-message-bubble';
 import { VoiceMessageBubble } from '@/components/companion/voice-message-bubble';
 import { LongPressWordText } from '@/components/long-press-word-text';
-import { WordAddSheetHost } from '@/components/word-add-sheet';
+import { WordAddSheetHost, useWordAddSheet } from '@/components/word-add-sheet';
 import { useAuth } from '@/contexts/auth-context';
 import { useCompanionChats } from '@/contexts/companion-chats-context';
 import { useTranslation } from '@/contexts/locale-context';
@@ -465,6 +465,7 @@ function CompanionChatScreenInner() {
   const [drillMistakes, setDrillMistakes] = useState<TeacherDrillMistakeRecord[]>([]);
   const drillSourceMessageRef = useRef<CompanionMsg | null>(null);
   const drillExplanationRef = useRef('');
+  const drillGenerationTokenRef = useRef(0);
   const drillLanguageRef = useRef<CompanionChatApiLanguage>('english');
   const [plusPaywallFeature, setPlusPaywallFeature] = useState<TearzPlusFeature | null>(null);
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
@@ -525,6 +526,7 @@ function CompanionChatScreenInner() {
   }, [chatId, saveCompanionThread, companionChatsHydrated, loadedThreadKey, threadKey]);
 
   const scrollRef = useRef<ScrollView>(null);
+  const { clearWordSelections } = useWordAddSheet();
   const restComposerPad = Math.max(insets.bottom, 10) + 8;
   const { animatedStyle: composerInsetStyle, isOpen: keyboardOpen } = useKeyboardInset(restComposerPad);
   const companionCall = useCompanionCall();
@@ -1154,10 +1156,15 @@ function CompanionChatScreenInner() {
         return false;
       }
 
-      if (!drillSession.beginGenerating(source.id)) {
+      const start = drillSession.beginGenerating(source.id);
+      if (start.status === 'blocked') {
         Alert.alert(t('teacher.drill.title'), t('teacher.drill.generatingInProgress'));
         return false;
       }
+      if (start.status === 'already') {
+        return false;
+      }
+      drillGenerationTokenRef.current = start.token;
 
       Keyboard.dismiss();
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -1171,6 +1178,7 @@ function CompanionChatScreenInner() {
       const explanation = source.text.trim();
       if (!explanation) return;
 
+      const generationToken = drillGenerationTokenRef.current;
       const access = evaluateMiniDrillAccess(miniDrillUsage, source.id);
       const generationSeed = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       const lastUser = lastUserTextBefore(messagesRef.current, source.id);
@@ -1191,6 +1199,7 @@ function CompanionChatScreenInner() {
           avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
           recentMistakes: getMistakeSummariesForApi(drillMistakes),
         });
+        if (!drillSession.isGenerationCurrent(generationToken)) return;
         const sessionKey = `drill-${generationSeed}`;
         const exercises = raw.map((ex, i) => ({
           ...ex,
@@ -1225,6 +1234,7 @@ function CompanionChatScreenInner() {
         });
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e) {
+        if (!drillSession.isGenerationCurrent(generationToken)) return;
         const msg = e instanceof Error ? e.message : t('teacher.drill.networkError');
         drillSession.cancelGenerating();
         Alert.alert(
@@ -1325,14 +1335,16 @@ function CompanionChatScreenInner() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="always"
               removeClippedSubviews={false}
+              onScrollBeginDrag={clearWordSelections}
               onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+              <Pressable onPress={clearWordSelections} style={tStyles.threadTapDismiss}>
               <View style={tStyles.dateWrap}>
                 <View style={tStyles.dateChip}>
                   <Text style={tStyles.dateChipText}>Сегодня · урок</Text>
                 </View>
               </View>
 
-              {messages.map((m) =>
+              {messages.map((m, msgIdx) =>
                 m.from === 'them' ? (
                   <View key={m.id} style={tStyles.teacherBlock}>
                     <View style={tStyles.teacherAvatar}>
@@ -1355,6 +1367,15 @@ function CompanionChatScreenInner() {
                               exerciseLoadingId={drillSession.messageIdLoading}
                               typing={typing}
                               miniAccess={evaluateMiniDrillAccess(miniDrillUsage, m.id)}
+                              language={teacherSessionLang}
+                              uiLanguage={uiLanguage}
+                              lessonTopic={lessonTopicParam}
+                              lastUserMessage={(() => {
+                                for (let i = msgIdx - 1; i >= 0; i -= 1) {
+                                  if (messages[i]?.from === 'me') return messages[i].text;
+                                }
+                                return undefined;
+                              })()}
                               onPrepare={prepareDrillForMessage}
                               onPress={handlePracticePress}
                               onBlocked={(reason) => Alert.alert(t('teacher.drill.title'), reason)}
@@ -1398,6 +1419,7 @@ function CompanionChatScreenInner() {
                   </View>
                 </View>
               ) : null}
+              </Pressable>
             </ScrollView>
           </View>
 
@@ -1413,6 +1435,7 @@ function CompanionChatScreenInner() {
           </Reanimated.View>
         </View>
 
+        <TeacherDrillSessionOverlay mode="embedded" />
       </View>
     );
   }
@@ -1485,7 +1508,9 @@ function CompanionChatScreenInner() {
           keyboardShouldPersistTaps="handled"
           removeClippedSubviews={false}
           pointerEvents={attachOpen ? 'none' : 'auto'}
+          onScrollBeginDrag={clearWordSelections}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+          <Pressable onPress={clearWordSelections} style={msgStyles.threadTapDismiss}>
           <View style={msgStyles.dateWrap}>
             <View style={msgStyles.dateChip}>
               <Text style={msgStyles.dateChipText}>Сегодня</Text>
@@ -1541,6 +1566,7 @@ function CompanionChatScreenInner() {
             </CompanionIncomingBubble>
           </View>
         ) : null}
+        </Pressable>
         </ScrollView>
       </View>
 

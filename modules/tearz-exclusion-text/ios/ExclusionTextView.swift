@@ -15,6 +15,8 @@ final class ExclusionTextView: ExpoView, UITextViewDelegate {
   private var lineHeight: CGFloat = 17
   private var fontWeightValue: Double = 500
   private var textColorValue: UIColor = UIColor(red: 1, green: 0.35, blue: 0.35, alpha: 1)
+  /// Красный курсор ввода — отдельно от цвета текста (Shanghai LCD).
+  private var cursorColorValue: UIColor = UIColor(red: 1, green: 0.23, blue: 0.19, alpha: 1)
   private var photoLoadToken = UUID()
 
   let onChangeText = EventDispatcher()
@@ -43,7 +45,7 @@ final class ExclusionTextView: ExpoView, UITextViewDelegate {
     textView.autocapitalizationType = .sentences
     textView.keyboardAppearance = .dark
     textView.returnKeyType = .go
-    textView.tintColor = textColorValue
+    textView.tintColor = cursorColorValue
     textView.textColor = textColorValue
     textView.layoutManager.allowsNonContiguousLayout = false
     textView.translatesAutoresizingMaskIntoConstraints = true
@@ -113,7 +115,7 @@ final class ExclusionTextView: ExpoView, UITextViewDelegate {
   func setTextColor(_ color: UIColor) {
     textColorValue = color
     textView.textColor = color
-    textView.tintColor = color
+    textView.tintColor = cursorColorValue
     clearButton.setTitleColor(color, for: .normal)
     photoView.layer.borderColor = color.withAlphaComponent(0.45).cgColor
     if let font = textView.font {
@@ -139,7 +141,13 @@ final class ExclusionTextView: ExpoView, UITextViewDelegate {
   }
 
   func setSelectionColor(_ color: UIColor) {
-    textView.tintColor = textColorValue
+    // selection highlight only; caret stays accent red
+    _ = color
+  }
+
+  func setCursorColor(_ color: UIColor) {
+    cursorColorValue = color
+    textView.tintColor = color
   }
 
   func setMaxLength(_ maxLength: Int) {
@@ -259,7 +267,7 @@ final class ExclusionTextView: ExpoView, UITextViewDelegate {
     let font = resolveFont()
     textView.font = font
     textView.textColor = textColorValue
-    textView.tintColor = textColorValue
+    textView.tintColor = cursorColorValue
     textView.typingAttributes = typingAttrs(font: font)
     applyScrollPadding()
   }
@@ -395,7 +403,7 @@ final class ExclusionTextView: ExpoView, UITextViewDelegate {
   }
 
   func textViewDidBeginEditing(_ textView: UITextView) {
-    textView.tintColor = textColorValue
+    textView.tintColor = cursorColorValue
     onFocus([:])
   }
 
@@ -413,10 +421,11 @@ final class ExclusionTextView: ExpoView, UITextViewDelegate {
   }
 }
 
-/// Read-only UITextView: даблтап / зажатие выделяют текст, без каретки ввода.
-/// Системные кружки ручек — меньше и в золоте.
-final class SelectableChatTextView: ExpoView, UITextViewDelegate {
+/// Read-only UITextView: зажатие выделяет слово и шлёт onSelectionChange (плашка перевода).
+/// Подсветка своя (золотая плашка) — системные handles у non-editable часто невидимы.
+final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecognizerDelegate {
   private let textView = UITextView()
+  private let highlightView = UIView()
   private var fontSize: CGFloat = 16
   private var lineHeight: CGFloat = 24
   private var fontWeightValue: Double = 600
@@ -424,15 +433,16 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
   private var maxLines = 0
   private var lastEmittedHeight: CGFloat = -1
   private var lastSelection = NSRange(location: 0, length: 0)
+  private var highlightRange = NSRange(location: NSNotFound, length: 0)
   private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
-  /// Античное золото — не системный синий.
-  private let gold = UIColor(red: 0.76, green: 0.58, blue: 0.22, alpha: 1)
-  private let ink = UIColor(red: 0.10, green: 0.09, blue: 0.07, alpha: 1)
-  private let handleScale: CGFloat = 0.58
+  /// Системный синий выделения iOS (как в Notes / Messages).
+  private let selectionBlue = UIColor(red: 0.04, green: 0.52, blue: 1.0, alpha: 1)
+  private let handleScale: CGFloat = 0.92
 
   let onSelectionChange = EventDispatcher()
   let onContentSize = EventDispatcher()
+  let onInteract = EventDispatcher()
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -451,7 +461,7 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
     textView.textContainerInset = .zero
     textView.textContainer.lineFragmentPadding = 0
     textView.textContainer.widthTracksTextView = true
-    textView.tintColor = gold
+    textView.tintColor = selectionBlue
     textView.tintAdjustmentMode = .normal
     textView.keyboardDismissMode = .none
     if #available(iOS 11.0, *) {
@@ -460,11 +470,26 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
     textView.translatesAutoresizingMaskIntoConstraints = true
     applyTypography()
 
+    highlightView.isUserInteractionEnabled = false
+    highlightView.isHidden = true
+    highlightView.backgroundColor = selectionBlue.withAlphaComponent(0.22)
+    highlightView.layer.cornerRadius = 5
+    highlightView.layer.borderWidth = 0
+    highlightView.clipsToBounds = true
+    textView.insertSubview(highlightView, at: 0)
+
     let hold = UILongPressGestureRecognizer(target: self, action: #selector(held))
     hold.minimumPressDuration = 0.38
-    hold.cancelsTouchesInView = false
+    hold.allowableMovement = 12
+    hold.cancelsTouchesInView = true
     hold.delaysTouchesBegan = false
+    hold.delegate = self
     textView.addGestureRecognizer(hold)
+
+    let tap = UITapGestureRecognizer(target: self, action: #selector(tapped))
+    tap.cancelsTouchesInView = false
+    tap.delegate = self
+    textView.addGestureRecognizer(tap)
 
     addSubview(textView)
     haptic.prepare()
@@ -474,21 +499,19 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
     super.layoutSubviews()
     textView.frame = bounds
     emitContentSize()
+    layoutHighlight()
     polishHandles()
   }
 
   func setText(_ text: String) {
     if textView.text == text {
       emitContentSize()
+      layoutHighlight()
       return
     }
-    let selected = textView.selectedRange
+    clearHighlight()
     textView.text = text
     applyTypography()
-    let end = (text as NSString).length
-    if selected.length > 0, NSMaxRange(selected) <= end {
-      textView.selectedRange = selected
-    }
     emitContentSize()
   }
 
@@ -514,6 +537,8 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
 
   func setSelectionColor(_ color: UIColor) {
     textView.tintColor = color
+    highlightView.backgroundColor = color.withAlphaComponent(0.22)
+    highlightView.layer.borderWidth = 0
   }
 
   func setNumberOfLines(_ lines: Int) {
@@ -532,6 +557,10 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
       selected = ns.substring(with: range)
         .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
         .trimmingCharacters(in: .whitespacesAndNewlines)
+      highlightRange = range
+      layoutHighlight()
+    } else {
+      clearHighlight()
     }
     onSelectionChange([
       "text": selected,
@@ -539,9 +568,11 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
       "end": range.location + range.length,
     ])
     DispatchQueue.main.async { [weak self] in
+      self?.layoutHighlight()
       self?.polishHandles()
     }
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+      self?.layoutHighlight()
       self?.polishHandles()
     }
   }
@@ -561,10 +592,200 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
   }
 
   @objc private func held(_ gesture: UILongPressGestureRecognizer) {
-    if gesture.state == .began {
-      haptic.impactOccurred()
-      haptic.prepare()
+    guard gesture.state == .began else { return }
+    onInteract([:])
+    let point = gesture.location(in: textView)
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.haptic.impactOccurred()
+      self.haptic.prepare()
+      self.selectWord(at: point)
     }
+  }
+
+  @objc private func tapped(_ gesture: UITapGestureRecognizer) {
+    guard gesture.state == .ended else { return }
+    let point = gesture.location(in: textView)
+    // Тап по уже выделенному слову оставляем; мимо — снимаем подсветку и плашку.
+    if highlightRange.location != NSNotFound,
+       !highlightView.isHidden,
+       highlightView.frame.insetBy(dx: -6, dy: -4).contains(point) {
+      return
+    }
+    onInteract([:])
+    clearSelection()
+  }
+
+  /// Снять подсветку и явно сообщить JS (selectedRange=0 часто не триггерит delegate повторно).
+  func clearSelection() {
+    clearHighlight()
+    lastSelection = NSRange(location: 0, length: 0)
+    if textView.selectedRange.length > 0 {
+      textView.selectedRange = NSRange(location: 0, length: 0)
+    } else {
+      onSelectionChange([
+        "text": "",
+        "start": 0,
+        "end": 0,
+      ])
+    }
+    if textView.isFirstResponder {
+      textView.resignFirstResponder()
+    }
+  }
+
+  func gestureRecognizer(
+    _ gestureRecognizer: UIGestureRecognizer,
+    shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+  ) -> Bool {
+    false
+  }
+
+  func gestureRecognizer(
+    _ gestureRecognizer: UIGestureRecognizer,
+    shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer
+  ) -> Bool {
+    otherGestureRecognizer is UIPanGestureRecognizer
+  }
+
+  /// Выделяет слово / CJK-символ под пальцем — иначе haptic есть, а selection не появляется.
+  private func selectWord(at point: CGPoint) {
+    guard let raw = textView.text, !raw.isEmpty else { return }
+    let ns = raw as NSString
+    var location = point
+    location.x -= textView.textContainerInset.left
+    location.y -= textView.textContainerInset.top
+    location.x += textView.contentOffset.x
+    location.y += textView.contentOffset.y
+
+    var fraction: CGFloat = 0
+    let idx = textView.layoutManager.characterIndex(
+      for: location,
+      in: textView.textContainer,
+      fractionOfDistanceBetweenInsertionPoints: &fraction
+    )
+    guard ns.length > 0 else { return }
+    let index = min(max(0, idx), ns.length - 1)
+    let range = wordRange(around: index, in: ns)
+    guard range.length > 0, NSMaxRange(range) <= ns.length else { return }
+
+    // Без first responder системная подсветка часто не рисуется — держим свою + selection.
+    _ = textView.becomeFirstResponder()
+    highlightRange = range
+    textView.selectedRange = range
+    layoutHighlight()
+    polishHandles()
+  }
+
+  private func clearHighlight() {
+    highlightRange = NSRange(location: NSNotFound, length: 0)
+    highlightView.isHidden = true
+    highlightView.frame = .zero
+  }
+
+  private func layoutHighlight() {
+    guard highlightRange.location != NSNotFound, highlightRange.length > 0 else {
+      highlightView.isHidden = true
+      return
+    }
+    let nsLen = ((textView.text ?? "") as NSString).length
+    guard NSMaxRange(highlightRange) <= nsLen else {
+      clearHighlight()
+      return
+    }
+
+    textView.layoutManager.ensureLayout(for: textView.textContainer)
+    let glyphRange = textView.layoutManager.glyphRange(forCharacterRange: highlightRange, actualCharacterRange: nil)
+    var union = CGRect.null
+    textView.layoutManager.enumerateEnclosingRects(
+      forGlyphRange: glyphRange,
+      withinSelectedGlyphRange: glyphRange,
+      in: textView.textContainer
+    ) { rect, _ in
+      union = union.isNull ? rect : union.union(rect)
+    }
+    guard !union.isNull, union.width > 0, union.height > 0 else {
+      highlightView.isHidden = true
+      return
+    }
+
+    let inset = textView.textContainerInset
+    var frame = union.insetBy(dx: -3, dy: -2)
+    frame.origin.x += inset.left
+    frame.origin.y += inset.top
+    // Не даём плашке уехать за края строки.
+    frame.origin.x = max(0, frame.origin.x)
+    frame.size.width = min(frame.width, textView.bounds.width - frame.origin.x)
+
+    highlightView.frame = frame
+    highlightView.isHidden = false
+    textView.sendSubviewToBack(highlightView)
+  }
+
+  private func wordRange(around index: Int, in ns: NSString) -> NSRange {
+    var found = NSRange(location: NSNotFound, length: 0)
+    ns.enumerateSubstrings(
+      in: NSRange(location: 0, length: ns.length),
+      options: [.byWords, .localized]
+    ) { _, substringRange, _, stop in
+      if NSLocationInRange(index, substringRange) {
+        found = substringRange
+        stop.pointee = true
+      }
+    }
+    if found.location != NSNotFound, found.length > 0 {
+      return found
+    }
+
+    // CJK / punctuation: одна grapheme-cluster под пальцем.
+    let composed = ns.rangeOfComposedCharacterSequence(at: index)
+    if composed.length > 0 {
+      let ch = ns.substring(with: composed)
+      if ch.rangeOfCharacter(from: .whitespacesAndNewlines) == nil {
+        return composed
+      }
+    }
+
+    // Latin fallback с апострофами (don't, l'eau).
+    var start = index
+    var end = index
+    while start > 0 {
+      let prev = ns.rangeOfComposedCharacterSequence(at: start - 1)
+      let piece = ns.substring(with: prev)
+      if isWordPiece(piece) {
+        start = prev.location
+      } else {
+        break
+      }
+    }
+    while end < ns.length {
+      let next = ns.rangeOfComposedCharacterSequence(at: end)
+      let piece = ns.substring(with: next)
+      if isWordPiece(piece) {
+        end = NSMaxRange(next)
+      } else {
+        break
+      }
+    }
+    return end > start ? NSRange(location: start, length: end - start) : composed
+  }
+
+  private func isWordPiece(_ s: String) -> Bool {
+    guard !s.isEmpty else { return false }
+    if s.rangeOfCharacter(from: .whitespacesAndNewlines) != nil { return false }
+    if s.rangeOfCharacter(from: .letters) != nil { return true }
+    if s.rangeOfCharacter(from: .decimalDigits) != nil { return true }
+    if s == "'" || s == "\u{2019}" || s == "-" { return true }
+    // Han / kana / hangul
+    for scalar in s.unicodeScalars {
+      switch scalar.value {
+      case 0x3400...0x9FFF, 0xF900...0xFAFF, 0x3040...0x30FF, 0xAC00...0xD7AF, 0x1100...0x11FF:
+        return true
+      default:
+        continue
+      }
+    }
+    return false
   }
 
   private func applyTypography() {
@@ -588,6 +809,7 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
         .paragraphStyle: paragraph,
       ])
     }
+    layoutHighlight()
   }
 
   private func emitContentSize() {
@@ -627,25 +849,25 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate {
 
   private func styleHandle(_ view: UIView) {
     view.transform = CGAffineTransform(scaleX: handleScale, y: handleScale)
-    view.tintColor = gold
+    view.tintColor = selectionBlue
     view.alpha = 1
+    view.isHidden = false
     if view.bounds.width > 0, view.bounds.width < 40, abs(view.bounds.width - view.bounds.height) < 8 {
-      view.backgroundColor = gold
+      view.backgroundColor = selectionBlue
       view.layer.cornerRadius = min(view.bounds.width, view.bounds.height) / 2
-      view.layer.borderWidth = 1.15
-      view.layer.borderColor = ink.cgColor
+      view.layer.borderWidth = 0
       view.layer.masksToBounds = true
     }
     if let imageView = view as? UIImageView, let image = imageView.image {
-      imageView.image = image.withTintColor(gold, renderingMode: .alwaysOriginal)
+      imageView.image = image.withTintColor(selectionBlue, renderingMode: .alwaysOriginal)
     }
     for child in view.subviews {
-      child.tintColor = gold
+      child.tintColor = selectionBlue
+      child.isHidden = false
       if child.bounds.width > 0, child.bounds.width < 28 {
-        child.backgroundColor = gold
+        child.backgroundColor = selectionBlue
         child.layer.cornerRadius = min(child.bounds.width, child.bounds.height) / 2
-        child.layer.borderWidth = 1.15
-        child.layer.borderColor = ink.cgColor
+        child.layer.borderWidth = 0
         child.layer.masksToBounds = true
       }
     }

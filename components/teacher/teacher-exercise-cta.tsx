@@ -14,6 +14,7 @@ type Props = {
   isRepeat?: boolean;
   onPress: () => void;
   onPressIn?: () => void;
+  style?: import('react-native').StyleProp<import('react-native').ViewStyle>;
 };
 
 export function TeacherExerciseCta({
@@ -24,6 +25,7 @@ export function TeacherExerciseCta({
   isRepeat,
   onPress,
   onPressIn,
+  style,
 }: Props) {
   const { t } = useTranslation();
   const inactive = disabled || loading;
@@ -37,7 +39,7 @@ export function TeacherExerciseCta({
       size="sm"
       haptic="light"
       accessibilityLabel={t('teacher.drill.ctaA11y')}
-      style={styles.btn}>
+      style={[styles.btn, style]}>
       {loading ? (
         <ActivityIndicator size="small" color={GAME_THEME.color.ink} />
       ) : (
@@ -64,6 +66,7 @@ const styles = StyleSheet.create({
   btn: {
     alignSelf: 'stretch',
     width: '100%',
+    minWidth: 0,
   },
   row: {
     flexDirection: 'row',

@@ -877,7 +877,7 @@ export function ArcadeCabinetScreen() {
     const originX = interpolate(zoomedSv.value, [0, 1], [layout.screenW / 2, layout.focusCx]);
     const originY = interpolate(zoomedSv.value, [0, 1], [layout.screenH / 2, layout.focusCy]);
     return {
-      transformOrigin: [originX, originY],
+      transformOrigin: [originX, originY, 0],
       transform: [{ scale }, { translateX: x }, { translateY: y }, { rotate: `${rot}deg` }],
     };
   });
@@ -1392,8 +1392,8 @@ function TerminalFace({
       }
     },
     onSubmitEditing: onSubmit,
-    selectionColor: metro ? 'rgba(192, 38, 255, 0.35)' : theme.selection,
-    cursorColor: caretColor,
+    selectionColor: metro ? 'rgba(192, 38, 255, 0.35)' : shanghai ? 'rgba(255, 59, 48, 0.28)' : theme.selection,
+    cursorColor: shanghai ? '#FF3B30' : caretColor,
     caretHidden: false,
   };
 
@@ -2286,7 +2286,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingRight: 4,
     fontSize: 17,
-    lineHeight: 22,
+    lineHeight: 19,
   },
   /** Padding для native UITextView задаётся insets внутри модуля — тут только типографика */
   inputShanghaiExclusion: {
@@ -2295,7 +2295,7 @@ const styles = StyleSheet.create({
     paddingRight: 0,
     fontFamily: Fonts.rounded,
     fontSize: 17,
-    lineHeight: 23,
+    lineHeight: 19,
     fontWeight: '500',
     letterSpacing: -0.35,
   },
@@ -2650,7 +2650,7 @@ const styles = StyleSheet.create({
   inputShanghai: {
     fontFamily: Fonts.rounded,
     fontSize: 17,
-    lineHeight: 23,
+    lineHeight: 19,
     fontWeight: '500',
     letterSpacing: -0.35,
     textAlign: 'left',

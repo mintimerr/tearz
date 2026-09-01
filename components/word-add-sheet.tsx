@@ -38,6 +38,8 @@ import {
 type WordAddSheetContextValue = {
   openWord: (word: string) => void;
   registerHost: () => () => void;
+  registerSelectionClearer: (clear: () => void) => () => void;
+  clearWordSelections: () => void;
   hostCount: number;
   visible: boolean;
   savedToastVisible: boolean;
@@ -59,7 +61,12 @@ const WordAddSheetContext = createContext<WordAddSheetContextValue | null>(null)
 export function useWordAddSheet() {
   const ctx = useContext(WordAddSheetContext);
   if (!ctx) throw new Error('WordAddSheetProvider missing');
-  return { openWord: ctx.openWord };
+  return {
+    openWord: ctx.openWord,
+    closeSheet: ctx.closeSheet,
+    clearWordSelections: ctx.clearWordSelections,
+    registerSelectionClearer: ctx.registerSelectionClearer,
+  };
 }
 
 function useSheetContext() {
@@ -247,6 +254,14 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sheetWordRef = useRef<string | null>(null);
   const visibleRef = useRef(false);
+  const selectionClearersRef = useRef(new Set<() => void>());
+
+  const registerSelectionClearer = useCallback((clear: () => void) => {
+    selectionClearersRef.current.add(clear);
+    return () => {
+      selectionClearersRef.current.delete(clear);
+    };
+  }, []);
 
   const registerHost = useCallback(() => {
     setHostCount((c) => c + 1);
@@ -275,6 +290,13 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
     },
     [resetSheetState],
   );
+
+  const clearWordSelections = useCallback(() => {
+    selectionClearersRef.current.forEach((clear) => clear());
+    if (visibleRef.current) {
+      closeSheet();
+    }
+  }, [closeSheet]);
 
   const isDuplicate = useCallback(
     (word: string, id: string) => {
@@ -433,6 +455,8 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
     () => ({
       openWord,
       registerHost,
+      registerSelectionClearer,
+      clearWordSelections,
       hostCount,
       visible,
       savedToastVisible,
@@ -461,6 +485,8 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
       prefetchedPy,
       prefetchedTr,
       registerHost,
+      registerSelectionClearer,
+      clearWordSelections,
       savedToastVisible,
       sheetDuplicate,
       sheetErr,

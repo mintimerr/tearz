@@ -1,5 +1,5 @@
 import { requireNativeViewManager } from 'expo-modules-core';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   type NativeSyntheticEvent,
@@ -19,6 +19,7 @@ type NativeProps = {
   style?: StyleProp<ViewStyle>;
   onSelectionChange?: (event: NativeSyntheticEvent<{ text: string; start: number; end: number }>) => void;
   onContentSize?: (event: NativeSyntheticEvent<{ width: number; height: number }>) => void;
+  onInteract?: () => void;
 };
 
 const NativeSelectableChatText = requireNativeViewManager<NativeProps>(
@@ -31,6 +32,12 @@ type Props = {
   style?: StyleProp<TextStyle>;
   numberOfLines?: number;
   onSelect: (word: string) => void;
+  /** Снятие выделения (тап в пустоту) — закрыть плашку перевода. */
+  onClear?: () => void;
+  /** Регистрация нативного сброса выделения (тап мимо слова на всём экране). */
+  registerSelectionClearer?: (clear: () => void) => () => void;
+  /** Тап мимо выделенного слова в любом сообщении — сбросить все выделения. */
+  onInteract?: () => void;
 };
 
 function fontWeightToNumber(weight: TextStyle['fontWeight']): number {
@@ -62,17 +69,43 @@ function fontWeightToNumber(weight: TextStyle['fontWeight']): number {
   }
 }
 
-export function SelectableChatText({ text, style, numberOfLines, onSelect }: Props) {
+export function SelectableChatText({
+  text,
+  style,
+  numberOfLines,
+  onSelect,
+  onClear,
+  registerSelectionClearer,
+  onInteract,
+}: Props) {
   const [height, setHeight] = useState<number | undefined>(undefined);
+  const hadSelectionRef = useRef(false);
+  const nativeRef = useRef<{ clearSelection?: () => Promise<void> }>(null);
   const flat = useMemo(() => StyleSheet.flatten(style) ?? {}, [style]);
+
+  const clearNativeSelection = useCallback(() => {
+    void nativeRef.current?.clearSelection?.();
+  }, []);
+
+  useEffect(() => {
+    if (!registerSelectionClearer) return;
+    return registerSelectionClearer(clearNativeSelection);
+  }, [clearNativeSelection, registerSelectionClearer]);
 
   const onSelectionChange = useCallback(
     (event: NativeSyntheticEvent<{ text: string; start: number; end: number }>) => {
       const selected = event.nativeEvent.text.trim();
-      if (!selected) return;
+      if (!selected) {
+        if (hadSelectionRef.current) {
+          hadSelectionRef.current = false;
+          onClear?.();
+        }
+        return;
+      }
+      hadSelectionRef.current = true;
       onSelect(selected);
     },
-    [onSelect],
+    [onClear, onSelect],
   );
 
   const onContentSize = useCallback((event: NativeSyntheticEvent<{ width: number; height: number }>) => {
@@ -82,15 +115,17 @@ export function SelectableChatText({ text, style, numberOfLines, onSelect }: Pro
 
   return (
     <NativeSelectableChatText
+      ref={nativeRef}
       text={text}
       color={typeof flat.color === 'string' ? flat.color : '#1A1A1A'}
       fontSize={typeof flat.fontSize === 'number' ? flat.fontSize : 16}
       lineHeight={typeof flat.lineHeight === 'number' ? flat.lineHeight : 24}
       fontWeight={fontWeightToNumber(flat.fontWeight)}
-      selectionColor="#C29438"
+      selectionColor="#007AFF"
       numberOfLines={numberOfLines ?? 0}
       onSelectionChange={onSelectionChange}
       onContentSize={onContentSize}
+      onInteract={onInteract}
       style={[styles.fill, height != null ? { height } : null]}
     />
   );

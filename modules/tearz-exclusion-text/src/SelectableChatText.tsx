@@ -17,16 +17,39 @@ type Props = {
   style?: StyleProp<TextStyle>;
   numberOfLines?: number;
   onSelect: (word: string) => void;
+  onClear?: () => void;
+  registerSelectionClearer?: (clear: () => void) => () => void;
+  onInteract?: () => void;
 };
 
 const LONG_PRESS_MS = 380;
 
 /** Android / web: системное выделение через TextInput. */
-export function SelectableChatText({ text, style, numberOfLines, onSelect }: Props) {
+export function SelectableChatText({
+  text,
+  style,
+  numberOfLines,
+  onSelect,
+  onClear,
+  registerSelectionClearer,
+}: Props) {
   const inputRef = useRef<TextInput>(null);
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hapticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hadSelectionRef = useRef(false);
   const [height, setHeight] = useState<number | undefined>(undefined);
+
+  const clearNativeSelection = useCallback(() => {
+    hadSelectionRef.current = false;
+    inputRef.current?.setNativeProps({ selection: { start: 0, end: 0 } });
+    inputRef.current?.blur();
+    onClear?.();
+  }, [onClear]);
+
+  useEffect(() => {
+    if (!registerSelectionClearer) return;
+    return registerSelectionClearer(clearNativeSelection);
+  }, [clearNativeSelection, registerSelectionClearer]);
 
   useEffect(
     () => () => {
@@ -55,15 +78,26 @@ export function SelectableChatText({ text, style, numberOfLines, onSelect }: Pro
     (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
       const { start, end } = e.nativeEvent.selection;
       if (end <= start) {
+        if (hadSelectionRef.current) {
+          hadSelectionRef.current = false;
+          onClear?.();
+        }
         inputRef.current?.blur();
         return;
       }
       const selected = text.slice(start, end).replace(/\s+/g, ' ').trim();
-      if (!selected) return;
+      if (!selected) {
+        if (hadSelectionRef.current) {
+          hadSelectionRef.current = false;
+          onClear?.();
+        }
+        return;
+      }
+      hadSelectionRef.current = true;
       if (openTimerRef.current) clearTimeout(openTimerRef.current);
       openTimerRef.current = setTimeout(() => onSelect(selected), 80);
     },
-    [onSelect, text],
+    [onClear, onSelect, text],
   );
 
   const onContentSizeChange = useCallback(
@@ -89,7 +123,7 @@ export function SelectableChatText({ text, style, numberOfLines, onSelect }: Pro
         autoCapitalize="none"
         spellCheck={false}
         underlineColorAndroid="transparent"
-        selectionColor="rgba(194, 148, 56, 0.32)"
+        selectionColor="rgba(0, 122, 255, 0.22)"
         onSelectionChange={onSelectionChange}
         onContentSizeChange={onContentSizeChange}
         numberOfLines={numberOfLines}

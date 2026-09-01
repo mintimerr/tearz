@@ -21,6 +21,7 @@ type NativeProps = {
   lineHeight?: number;
   fontWeight?: number;
   selectionColor?: string;
+  cursorColor?: string;
   maxLength?: number;
   photoUri?: string | null;
   photoWidthFrac?: number;
@@ -60,6 +61,7 @@ export const ExclusionTextInput = forwardRef<ExclusionTextInputRef, Props>(funct
     lineHeight,
     fontWeight,
     selectionColor,
+    cursorColor,
     maxLength,
     exclusionRect,
     exclusionNorm,
@@ -101,6 +103,7 @@ export const ExclusionTextInput = forwardRef<ExclusionTextInputRef, Props>(funct
         onBlur={onBlur}
         onSubmitEditing={onSubmitEditing}
         selectionColor={selectionColor}
+        cursorColor={cursorColor}
         maxLength={maxLength}
       />
     );
@@ -118,7 +121,12 @@ export const ExclusionTextInput = forwardRef<ExclusionTextInputRef, Props>(funct
       fontSize={typeof fontSize === 'number' ? fontSize : (flat.fontSize as number | undefined) ?? 13}
       lineHeight={typeof lineHeight === 'number' ? lineHeight : (flat.lineHeight as number | undefined) ?? 17}
       fontWeight={fontWeightToNumber(fontWeight ?? flat.fontWeight) ?? 600}
-      selectionColor={typeof selectionColor === 'string' ? selectionColor : '#FF5C5C'}
+      selectionColor={typeof selectionColor === 'string' ? selectionColor : 'rgba(255, 59, 48, 0.28)'}
+      cursorColor={
+        typeof cursorColor === 'string'
+          ? cursorColor
+          : (flat.cursorColor as string | undefined) ?? '#FF3B30'
+      }
       maxLength={maxLength}
       photoUri={photoUri ?? null}
       photoWidthFrac={photoWidthFrac}

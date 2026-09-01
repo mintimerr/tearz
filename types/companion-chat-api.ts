@@ -255,6 +255,32 @@ export type TeacherExerciseSetSuccessBody = {
   nextTopic?: TeacherNextTopicRecommendation;
 };
 
+export type TeacherVocabUsageSentence = {
+  l2: string;
+  pinyin?: string;
+  translation: string;
+  note?: string;
+};
+
+export type TeacherVocabWordCard = {
+  word: string;
+  pinyin?: string;
+  gloss: string;
+  sentences: TeacherVocabUsageSentence[];
+};
+
+export type TeacherVocabExamplesRequestBody = {
+  explanation: string;
+  language?: CompanionChatApiLanguage;
+  uiLanguage?: 'ru' | 'en' | 'zh';
+  lessonTopic?: string;
+  lastUserMessage?: string;
+};
+
+export type TeacherVocabExamplesSuccessBody = {
+  words: TeacherVocabWordCard[];
+};
+
 /** Structured learner answers for deterministic server grading */
 export type TeacherExerciseLearnerAnswers = {
   blanks?: Record<string, string>;

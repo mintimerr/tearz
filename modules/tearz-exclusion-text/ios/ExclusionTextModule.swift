@@ -44,6 +44,10 @@ public final class ExclusionTextModule: Module {
         view.setSelectionColor(color)
       }
 
+      Prop("cursorColor") { (view: ExclusionTextView, color: UIColor) in
+        view.setCursorColor(color)
+      }
+
       Prop("maxLength") { (view: ExclusionTextView, maxLength: Int) in
         view.setMaxLength(maxLength)
       }
@@ -108,7 +112,11 @@ public final class ExclusionTextModule: Module {
         view.setNumberOfLines(lines)
       }
 
-      Events("onSelectionChange", "onContentSize")
+      Events("onSelectionChange", "onContentSize", "onInteract")
+
+      AsyncFunction("clearSelection") { (view: SelectableChatTextView) in
+        view.clearSelection()
+      }
     }
   }
 }

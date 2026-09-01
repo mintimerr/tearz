@@ -82,6 +82,7 @@ export const teacherChatStyles = StyleSheet.create({
     flex: 1,
   },
   threadContent: teacherMessageStyles.threadContent,
+  threadTapDismiss: teacherMessageStyles.threadTapDismiss,
   dateWrap: {
     alignItems: 'center',
     marginVertical: 12,

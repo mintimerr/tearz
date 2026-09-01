@@ -31,13 +31,16 @@ type Props = {
 };
 
 export function LongPressWordText({ text, style, numberOfLines }: Props) {
-  const { openWord } = useWordAddSheet();
+  const { openWord, closeSheet, clearWordSelections, registerSelectionClearer } = useWordAddSheet();
   return (
     <SelectableChatText
       text={text}
       style={[styles.base, style]}
       numberOfLines={numberOfLines}
       onSelect={openWord}
+      onClear={() => closeSheet()}
+      registerSelectionClearer={registerSelectionClearer}
+      onInteract={clearWordSelections}
     />
   );
 }

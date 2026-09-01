@@ -386,6 +386,66 @@ function buildVocabularyRequestOverride(message, lessonLang, uiLanguage = 'ru') 
   );
 }
 
+function buildTeacherVocabExamplesPrompt(lang, uiLanguage = 'ru') {
+  const ui = normalizeUiLanguage(uiLanguage);
+  const m = uiLangMeta(ui);
+  const l2 =
+    lang === 'chinese'
+      ? 'Chinese (汉字)'
+      : lang === 'german'
+        ? 'German'
+        : lang === 'french'
+          ? 'French'
+          : lang === 'russian'
+            ? 'Russian'
+            : 'English';
+  const pinyinRule =
+    lang === 'chinese'
+      ? '\n- Chinese: EVERY word and sentence needs toned pinyin (nǐ hǎo style). Hanzi in "word" and "l2".'
+      : '\n- Do NOT add pinyin unless target is Chinese.';
+  return (
+    `You build rich vocabulary example cards from a teacher explanation in Tearz language app.\n` +
+    `Target language (L2): ${l2}. Glosses and translations: ${m.explainLabel}.\n` +
+    `Return JSON only: {"words":[{"word":"L2 headword","pinyin":"optional","gloss":"${m.explainLabel} meaning","sentences":[{"l2":"full sentence in L2","pinyin":"optional","translation":"${m.explainLabel}","note":"optional ≤12 words usage tip"}]}]}\n` +
+    `Rules:\n` +
+    `- Pick 4–8 key words/expressions from the explanation (prioritize vocabulary list items).\n` +
+    `- Exactly 5 sentences per word — each sentence must USE that word naturally in context.\n` +
+    `- Vary situations (formal/informal, question/statement, different subjects).\n` +
+    `- Do not invent words outside the lesson topic.\n` +
+    `- No markdown, no extra keys.${pinyinRule}`
+  );
+}
+
+function normalizeTeacherVocabExamples(parsed) {
+  const wordsRaw = parsed?.words;
+  if (!Array.isArray(wordsRaw)) return [];
+  const out = [];
+  for (const w of wordsRaw.slice(0, 8)) {
+    if (!w || typeof w !== 'object') continue;
+    const word = typeof w.word === 'string' ? w.word.trim().slice(0, 48) : '';
+    const gloss = typeof w.gloss === 'string' ? w.gloss.trim().slice(0, 120) : '';
+    if (!word || !gloss) continue;
+    const pinyin = typeof w.pinyin === 'string' && w.pinyin.trim() ? w.pinyin.trim().slice(0, 80) : undefined;
+    const sentencesRaw = Array.isArray(w.sentences) ? w.sentences : [];
+    const sentences = [];
+    for (const s of sentencesRaw.slice(0, 5)) {
+      if (!s || typeof s !== 'object') continue;
+      const l2 = typeof s.l2 === 'string' ? s.l2.trim().slice(0, 160) : '';
+      const translation = typeof s.translation === 'string' ? s.translation.trim().slice(0, 220) : '';
+      if (!l2 || !translation) continue;
+      sentences.push({
+        l2,
+        pinyin: typeof s.pinyin === 'string' && s.pinyin.trim() ? s.pinyin.trim().slice(0, 140) : undefined,
+        translation,
+        note: typeof s.note === 'string' && s.note.trim() ? s.note.trim().slice(0, 90) : undefined,
+      });
+    }
+    if (sentences.length === 0) continue;
+    out.push({ word, pinyin, gloss, sentences });
+  }
+  return out;
+}
+
 function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru') {
   const m = uiLangMeta(uiLanguage);
   let prompt =
@@ -3611,6 +3671,108 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
   }
 });
 
+app.post('/api/teacher-vocab-examples', async (req, res) => {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Server misconfiguration: OPENAI_API_KEY is not set' });
+  }
+
+  const { explanation, language, uiLanguage, lessonTopic, lastUserMessage } = req.body ?? {};
+  if (typeof explanation !== 'string' || !explanation.trim()) {
+    return res.status(400).json({ error: 'explanation must be a non-empty string' });
+  }
+
+  const teacherExplanation = explanation.trim().slice(0, 9000);
+  const ui = normalizeUiLanguage(uiLanguage);
+  const userRequest =
+    typeof lastUserMessage === 'string' && lastUserMessage.trim()
+      ? lastUserMessage.trim().slice(0, 2000)
+      : '';
+  const requestedLang =
+    language === 'english' ||
+    language === 'chinese' ||
+    language === 'russian' ||
+    language === 'german' ||
+    language === 'french'
+      ? language
+      : 'english';
+  const lang = resolveTeacherTargetLanguage(
+    requestedLang,
+    `${userRequest}\n${teacherExplanation}`,
+    lessonTopic,
+  );
+
+  const topicLine =
+    typeof lessonTopic === 'string' && lessonTopic.trim()
+      ? `\nLesson topic: ${lessonTopic.trim().slice(0, 160).replace(/"/g, "'")}`
+      : '';
+  const userLine = userRequest ? `\nLearner asked: ${userRequest}` : '';
+
+  try {
+    const openaiRes = await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: TEACHER_FAST_MODEL,
+        messages: [
+          { role: 'system', content: buildTeacherVocabExamplesPrompt(lang, ui) },
+          {
+            role: 'user',
+            content:
+              `Teacher explanation to expand into vocabulary cards:${topicLine}${userLine}\n\n${teacherExplanation}`,
+          },
+        ],
+        temperature: 0.55,
+        max_tokens: 4000,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    const raw = await openaiRes.text();
+    let data;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      return res.status(502).json({ error: 'Invalid model response' });
+    }
+
+    if (!openaiRes.ok) {
+      const errMsg =
+        typeof data?.error?.message === 'string'
+          ? data.error.message
+          : typeof data?.error === 'string'
+            ? data.error
+            : `OpenAI HTTP ${openaiRes.status}`;
+      return res.status(502).json({ error: errMsg });
+    }
+
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) {
+      return res.status(502).json({ error: 'Empty model response' });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(content.trim());
+    } catch {
+      return res.status(502).json({ error: 'Model returned non-JSON' });
+    }
+
+    const words = normalizeTeacherVocabExamples(parsed);
+    if (words.length === 0) {
+      return res.status(502).json({ error: 'No vocabulary examples generated' });
+    }
+
+    return res.json({ words });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Network error';
+    return res.status(502).json({ error: msg });
+  }
+});
+
 app.post('/api/engagement-notification', async (req, res) => {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
@@ -4018,7 +4180,7 @@ attachCompanionRealtimeBridge(companionRealtimeWss, {
 httpServer.listen(PORT, () => {
   const resend = process.env.RESEND_API_KEY?.trim();
   console.log(
-    `[chat-api] listening on http://0.0.0.0:${PORT}  WS /ws/companion-realtime  POST /api/teacher-chat (${TEACHER_MODEL})  POST /api/teacher-exercise  POST /api/teacher-exercise-set  POST /api/teacher-exercise-check  POST /api/teacher-drill-followup  POST /api/engagement-notification  POST /api/chat (${COMPANION_MODEL})  POST /api/companion-profile  POST /api/transcribe  POST /api/vocab/share  GET /api/vocab/share/:id`,
+    `[chat-api] listening on http://0.0.0.0:${PORT}  WS /ws/companion-realtime  POST /api/teacher-chat (${TEACHER_MODEL})  POST /api/teacher-exercise  POST /api/teacher-exercise-set  POST /api/teacher-exercise-check  POST /api/teacher-drill-followup  POST /api/teacher-vocab-examples  POST /api/engagement-notification  POST /api/chat (${COMPANION_MODEL})  POST /api/companion-profile  POST /api/transcribe  POST /api/vocab/share  GET /api/vocab/share/:id`,
   );
   if (resend) {
     console.log(`[auth] Письма с кодом: Resend (отправитель ${AUTH_FROM})`);
