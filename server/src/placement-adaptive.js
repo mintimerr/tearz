@@ -1,6 +1,6 @@
 /** @typedef {{ section: string; difficulty: number; correct: boolean; prompt: string }} PlacementHistorySlice */
 
-export const PLACEMENT_TOTAL = 10;
+export const PLACEMENT_TOTAL = 15;
 export const START_ABILITY = 42;
 
 export function clamp(n, min, max) {
