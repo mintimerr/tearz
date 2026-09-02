@@ -6,19 +6,26 @@ import {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-/** После успешного warm не дёргаем /health перед каждым POST. */
-const WARM_TTL_MS = 8 * 60 * 1000;
+/** После успешного запроса не дёргаем /health перед каждым POST. */
+const WARM_TTL_MS = 7 * 60 * 1000;
 let lastWarmAt = 0;
+let warmInFlight: Promise<boolean> | null = null;
 
-export async function pingCompanionApiHealth(timeoutMs = 60_000): Promise<boolean> {
+export function touchCompanionApiWarm(): void {
+  lastWarmAt = Date.now();
+}
+
+export async function pingCompanionApiHealth(timeoutMs = 20_000): Promise<boolean> {
   const base = getCompanionChatApiBaseUrl();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${base}/health`, {
+      method: 'GET',
       headers: companionApiRequestHeaders(),
       signal: controller.signal,
     });
+    if (res.ok) touchCompanionApiWarm();
     return res.ok;
   } catch {
     return false;
@@ -27,23 +34,34 @@ export async function pingCompanionApiHealth(timeoutMs = 60_000): Promise<boolea
   }
 }
 
-/** Разбудить Render перед первым POST (free tier засыпает ~15 мин). */
+/** Разбудить Render (free tier засыпает ~15 мин). Не бросает — возвращает false. */
 export async function warmCompanionApi(maxAttempts = 6): Promise<boolean> {
-  for (let i = 0; i < maxAttempts; i += 1) {
-    if (await pingCompanionApiHealth(60_000 + i * 5_000)) {
-      lastWarmAt = Date.now();
-      return true;
+  if (Date.now() - lastWarmAt < WARM_TTL_MS) return true;
+
+  if (warmInFlight) return warmInFlight;
+
+  warmInFlight = (async () => {
+    for (let i = 0; i < maxAttempts; i += 1) {
+      const timeout = Math.min(18_000 + i * 12_000, 90_000);
+      if (await pingCompanionApiHealth(timeout)) {
+        return true;
+      }
+      await sleep(900 + i * 1_400);
     }
-    await sleep(2000 + i * 1500);
+    return false;
+  })();
+
+  try {
+    return await warmInFlight;
+  } finally {
+    warmInFlight = null;
   }
-  return false;
 }
 
 type PostJsonOptions = {
-  /** Таймаут одной попытки POST. */
   timeoutMs?: number;
-  /** Число попыток при сетевой ошибке. */
   retries?: number;
+  skipWarm?: boolean;
 };
 
 export async function postCompanionApiJson(
@@ -51,22 +69,28 @@ export async function postCompanionApiJson(
   body: unknown,
   options: PostJsonOptions = {},
 ): Promise<Response> {
-  const timeoutMs = options.timeoutMs ?? 120_000;
-  const retries = Math.max(1, options.retries ?? 3);
+  const timeoutMs = options.timeoutMs ?? 90_000;
+  const retries = Math.max(1, options.retries ?? 4);
+  const skipWarm = options.skipWarm ?? false;
   const base = getCompanionChatApiBaseUrl();
   const url = `${base}${path}`;
 
   let lastErr: unknown;
   for (let attempt = 0; attempt < retries; attempt += 1) {
-    if (attempt === 0 && Date.now() - lastWarmAt > WARM_TTL_MS) {
-      await warmCompanionApi(6);
+    if (!skipWarm && Date.now() - lastWarmAt > WARM_TTL_MS) {
+      if (attempt === 0) {
+        await Promise.race([warmCompanionApi(6), sleep(2_500)]);
+      } else {
+        await warmCompanionApi(3);
+        await sleep(800 + attempt * 900);
+      }
     } else if (attempt > 0) {
-      await warmCompanionApi(5);
-      await sleep(1200 * attempt);
+      await sleep(700 * attempt);
     }
 
+    const attemptTimeout = Math.min(timeoutMs + attempt * 15_000, 120_000);
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), attemptTimeout);
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -75,6 +99,7 @@ export async function postCompanionApiJson(
         signal: controller.signal,
       });
       clearTimeout(timer);
+      touchCompanionApiWarm();
       return res;
     } catch (e) {
       clearTimeout(timer);

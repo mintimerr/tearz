@@ -204,23 +204,34 @@ console.log(`URL: ${healthBase}`);
 console.log('Waiting for /health…');
 
 let ok = false;
-for (let i = 0; i < 36; i++) {
+for (let i = 0; i < 24; i++) {
   try {
-    const res = await fetch(`${healthBase}/health`, {
-      headers: { 'ngrok-skip-browser-warning': '1' },
-      signal: AbortSignal.timeout(20000),
-    });
-    const text = await res.text();
-    if (res.ok && /"ok"\s*:\s*true/.test(text)) {
-      console.log('Health OK:', text.trim());
+    const curl = spawnSync(
+      'curl',
+      [
+        '-sfS',
+        '--retry',
+        '2',
+        '--retry-delay',
+        '5',
+        '--retry-all-errors',
+        '--max-time',
+        '90',
+        `${healthBase}/health`,
+      ],
+      { encoding: 'utf8', timeout: 120_000 },
+    );
+    const text = (curl.stdout || curl.stderr || '').trim();
+    if (curl.status === 0 && /"ok"\s*:\s*true/.test(text)) {
+      console.log('Health OK:', text.slice(0, 200));
       ok = true;
       break;
     }
-    console.log(`attempt ${i + 1}: HTTP ${res.status} ${text.slice(0, 80)}`);
+    console.log(`attempt ${i + 1}: curl ${curl.status} ${text.slice(0, 80)}`);
   } catch (e) {
-    console.log(`attempt ${i + 1}: ${e.message}`);
+    console.log(`attempt ${i + 1}: ${e instanceof Error ? e.message : e}`);
   }
-  await new Promise((r) => setTimeout(r, 10000));
+  await new Promise((r) => setTimeout(r, 12_000));
 }
 
 if (!ok) {

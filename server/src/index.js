@@ -4224,7 +4224,7 @@ httpServer.listen(PORT, () => {
 
   const renderUrl = process.env.RENDER_EXTERNAL_URL?.trim().replace(/\/$/, '');
   if (renderUrl && process.env.NODE_ENV === 'production') {
-    const keepAliveMs = 14 * 60 * 1000;
+    const keepAliveMs = 10 * 60 * 1000;
     const pingSelf = async () => {
       try {
         const res = await fetch(`${renderUrl}/health`, { headers: { Accept: 'application/json' } });
