@@ -1,9 +1,11 @@
 import {
   PLACEMENT_TOTAL,
   START_ABILITY,
+  FIRST_TASK_DIFFICULTY,
   abilityToLevel,
   computeNextProbe,
   difficultyFromAbility,
+  difficultyToScale100,
   isWeakPlacementQuestion,
   shuffleChoices,
   stripPinyin,
@@ -41,32 +43,8 @@ function normalizeChoice(s) {
 import {
   buildPlacementQuestionSystemPrompt,
   buildPlacementQuestionUserPrompt,
+  buildPlacementResultBrainPrompt,
 } from './placement-question-prompt.js';
-
-function buildPlacementResultPrompt(lang, ui, ability, history) {
-  const m = ui;
-  const lines = history
-    .map(
-      (h, i) =>
-        `${i + 1}. [${h.section} d${h.difficulty}] ${h.prompt} → ${h.correct ? 'correct' : 'wrong'}`,
-    )
-    .join('\n');
-  const extra =
-    lang === 'chinese'
-      ? '\nAlso return "hskLevel" like "HSK3" if applicable.'
-      : '';
-  const maxLevel = abilityToLevel(ability);
-  return (
-    `You are a certified language examiner. Based on adaptive placement answers, assign CEFR level.\n` +
-    `Target language: ${l2Label(lang)}. Write summary in English.\n` +
-    `Return JSON only:\n` +
-    `{"level":"A1"|"A2"|"B1"|"B2"|"C1"|"C2","score":0-100,"summary":"2 sentences in English","strengths":["…"],"gaps":["…"]${lang === 'chinese' ? ',"hskLevel":"HSK…"' : ''}}\n` +
-    `Ability estimate from algorithm: ${ability}/100. Algorithm ceiling: ${maxLevel}.\n` +
-    `Be conservative — failed hard probes mean the learner is BELOW that level.\n` +
-    `Do NOT assign C1/C2 unless they succeeded on high-difficulty grammar items.\n\n` +
-    `Answer log:\n${lines}${extra}`
-  );
-}
 
 function normalizePlacementQuestion(raw, fallbackDifficulty, lang) {
   if (!raw || typeof raw !== 'object') return null;
@@ -94,7 +72,7 @@ function normalizePlacementQuestion(raw, fallbackDifficulty, lang) {
   let correctChoice =
     typeof raw.correctChoice === 'string' ? raw.correctChoice.trim().slice(0, 160) : '';
   const difficulty = Number.isFinite(Number(raw.difficulty))
-    ? clamp(Number(raw.difficulty), 1, 25)
+    ? clamp(Number(raw.difficulty), 0, 100)
     : fallbackDifficulty;
   const section = SECTIONS.includes(raw.section) ? raw.section : 'grammar';
 
@@ -241,7 +219,7 @@ export function registerPlacementRoutes(app, deps) {
       : [];
 
     let ability =
-      Number.isFinite(Number(abilityRaw)) ? clamp(Number(abilityRaw), 5, 98) : START_ABILITY;
+      Number.isFinite(Number(abilityRaw)) ? clamp(Number(abilityRaw), 0, 100) : START_ABILITY;
     let questionIndex =
       Number.isFinite(Number(indexRaw)) ? Math.max(0, Math.min(PLACEMENT_TOTAL, Number(indexRaw))) : 0;
     let lastCorrect = null;
@@ -258,7 +236,7 @@ export function registerPlacementRoutes(app, deps) {
             ? Number(lastQuestionRaw.difficulty)
             : history.length
               ? history[history.length - 1].difficulty
-              : difficultyFromAbility(ability);
+              : FIRST_TASK_DIFFICULTY;
         const lastSection =
           lastQuestionRaw && typeof lastQuestionRaw.section === 'string'
             ? lastQuestionRaw.section
@@ -292,14 +270,14 @@ export function registerPlacementRoutes(app, deps) {
               : undefined,
           });
         }
-        ability = updateAbility(ability, lastDifficulty, correct);
+        ability = updateAbility(ability, lastDifficulty, correct, history);
         questionIndex = history.length;
 
         if (questionIndex >= PLACEMENT_TOTAL) {
           const parsed = await callOpenAiJson({
             apiKey,
             model: PLACEMENT_SCORE_MODEL,
-            system: buildPlacementResultPrompt(lang, m, ability, history),
+            system: buildPlacementResultBrainPrompt(lang, ability, history),
             user: 'Finalize placement level.',
             maxTokens: 600,
             temperature: 0.2,
@@ -364,6 +342,7 @@ export function registerPlacementRoutes(app, deps) {
             totalQuestions: PLACEMENT_TOTAL,
             probe,
             history,
+            ability,
             attempt: attempt + 1,
           }),
           maxTokens: 1100,

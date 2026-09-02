@@ -227,9 +227,9 @@ const PLACEMENT_SCORE_MODEL = process.env.PLACEMENT_SCORE_MODEL?.trim() || 'gpt-
 
 /** difficulty 1–25 → модель для генерации/проверки вопроса placement test. */
 function placementModelForDifficulty(difficulty) {
-  const d = Number.isFinite(Number(difficulty)) ? Number(difficulty) : 12;
-  if (d <= 8) return PLACEMENT_FAST_MODEL;
-  if (d <= 18) return PLACEMENT_MODEL;
+  const d = Number.isFinite(Number(difficulty)) ? Number(difficulty) : 50;
+  if (d <= 33) return PLACEMENT_FAST_MODEL;
+  if (d <= 67) return PLACEMENT_MODEL;
   return PLACEMENT_SCORE_MODEL;
 }
 /** Картинки для word_to_image (dall-e-2 — быстро и дёшево на 512²). */
