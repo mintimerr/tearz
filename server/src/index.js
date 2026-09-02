@@ -223,7 +223,7 @@ const COMPANION_PROFILE_MODEL = process.env.COMPANION_PROFILE_MODEL?.trim() || C
  */
 const PLACEMENT_FAST_MODEL = process.env.PLACEMENT_FAST_MODEL?.trim() || 'gpt-5.6-luna';
 const PLACEMENT_MODEL = process.env.PLACEMENT_MODEL?.trim() || 'gpt-5.6-terra';
-const PLACEMENT_SCORE_MODEL = process.env.PLACEMENT_SCORE_MODEL?.trim() || 'o3-mini';
+const PLACEMENT_SCORE_MODEL = process.env.PLACEMENT_SCORE_MODEL?.trim() || 'gpt-5.6-terra';
 
 /** difficulty 1–25 → модель для генерации/проверки вопроса placement test. */
 function placementModelForDifficulty(difficulty) {
