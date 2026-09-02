@@ -26,6 +26,7 @@ import { normalizeTeacherVocabExamples } from '@/utils/teacher-vocab-examples-no
 import { buildLocalDrillFollowUp, normalizeLearnerRepeatPrompt } from '@/utils/teacher-drill-followup';
 import { defaultOpeningForLang, defaultStatusBio } from '@/utils/companion-ai-fallback-profile';
 
+import { companionApiErrorFromJson, parseCompanionApiJson } from '@/utils/companion-api-error';
 import { postCompanionApiJson, warmCompanionApi } from '@/utils/companion-api-fetch';
 
 async function postCompanionChatJson(path: string, body: unknown): Promise<Response> {
@@ -182,15 +183,9 @@ export async function postTeacherVocabExamples(
 ): Promise<TeacherVocabExamplesSuccessBody> {
   const res = await postCompanionChatJson('/api/teacher-vocab-examples', body);
   const raw = await res.text();
-  let json: unknown;
-  try {
-    json = raw ? JSON.parse(raw) : {};
-  } catch {
-    throw new Error(raw.slice(0, 200) || `HTTP ${res.status}`);
-  }
+  const json = parseCompanionApiJson(raw, res.status);
   if (!res.ok) {
-    const err = json as Partial<CompanionChatErrorBody>;
-    throw new Error(err.error || `Ошибка сервера (${res.status})`);
+    throw new Error(companionApiErrorFromJson(json, res.status));
   }
   const words = normalizeTeacherVocabExamples(json);
   if (words.length === 0) {

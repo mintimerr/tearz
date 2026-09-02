@@ -404,15 +404,17 @@ function buildTeacherVocabExamplesPrompt(lang, uiLanguage = 'ru') {
       ? '\n- Chinese: EVERY word and sentence needs toned pinyin (nǐ hǎo style). Hanzi in "word" and "l2".'
       : '\n- Do NOT add pinyin unless target is Chinese.';
   return (
-    `You build rich vocabulary example cards from a teacher explanation in Tearz language app.\n` +
-    `Target language (L2): ${l2}. Glosses and translations: ${m.explainLabel}.\n` +
-    `Return JSON only: {"words":[{"word":"L2 headword","pinyin":"optional","gloss":"${m.explainLabel} meaning","sentences":[{"l2":"full sentence in L2","pinyin":"optional","translation":"${m.explainLabel}","note":"optional ≤12 words usage tip"}]}]}\n` +
+    `You generate ONLY new usage example sentences for Tearz language app.\n` +
+    `The learner already read the teacher explanation — do NOT repeat definitions, glosses, grammar rules, or any sentence already in that text.\n` +
+    `Target language (L2): ${l2}. Translations: ${m.explainLabel}.\n` +
+    `Return JSON only: {"words":[{"word":"L2 headword or expression","pinyin":"optional","gloss":"internal only","sentences":[{"l2":"full NEW sentence in L2","pinyin":"optional","translation":"${m.explainLabel}"}]}]}\n` +
     `Rules:\n` +
-    `- Pick 4–8 key words/expressions from the explanation (prioritize vocabulary list items).\n` +
-    `- Exactly 5 sentences per word — each sentence must USE that word naturally in context.\n` +
-    `- Vary situations (formal/informal, question/statement, different subjects).\n` +
-    `- Do not invent words outside the lesson topic.\n` +
-    `- No markdown, no extra keys.${pinyinRule}`
+    `- Pick 3–6 key words/expressions from the lesson (vocabulary, phrases).\n` +
+    `- 4–5 NEW sentences per word — each must use that word in a fresh, natural context.\n` +
+    `- NEVER copy or lightly rephrase sentences from the teacher explanation.\n` +
+    `- No definitions in sentences — only real usage in context.\n` +
+    `- Vary situations (question/statement, formal/informal).\n` +
+    `- No markdown, no notes, no extra keys.${pinyinRule}`
   );
 }
 

@@ -14,67 +14,32 @@ import { LongPressWordText } from '@/components/long-press-word-text';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useTranslation } from '@/contexts/locale-context';
 import type { TeacherVocabWordCard } from '@/types/companion-chat-api';
-import type { TeacherExampleGroup } from '@/utils/teacher-message-examples';
-import type { TeacherSectionIcon } from '@/utils/teacher-message-sections';
-
-const SECTION_IONICON: Record<TeacherSectionIcon, keyof typeof Ionicons.glyphMap> = {
-  bulb: 'bulb-outline',
-  language: 'language-outline',
-  people: 'people-outline',
-  barbell: 'barbell-outline',
-  list: 'list-outline',
-  'checkmark-done': 'checkmark-done-outline',
-  book: 'book-outline',
-  sparkles: 'sparkles-outline',
-};
 
 type Props = {
   visible: boolean;
   onClose: () => void;
   words: TeacherVocabWordCard[] | null;
-  fallbackGroups: TeacherExampleGroup[];
   loading: boolean;
   error: string | null;
   onRetry: () => void;
 };
 
-function VocabWordCard({ card, index }: { card: TeacherVocabWordCard; index: number }) {
-  const { t } = useTranslation();
-  const showPinyin = Boolean(card.pinyin || card.sentences.some((s) => s.pinyin));
+function WordExamples({ card }: { card: TeacherVocabWordCard }) {
+  const showPinyin = Boolean(card.pinyin);
 
   return (
-    <View style={styles.wordCard}>
-      <View style={styles.wordCardStripe} />
-      <View style={styles.wordHero}>
-        <View style={styles.wordIndex}>
-          <Text style={styles.wordIndexText}>{index + 1}</Text>
-        </View>
-        <View style={styles.wordHeroCopy}>
-          <LongPressWordText text={card.word} style={styles.wordHead} />
-          {showPinyin && card.pinyin ? <Text style={styles.wordPinyin}>{card.pinyin}</Text> : null}
-          <LongPressWordText text={card.gloss} style={styles.wordGloss} />
-        </View>
-      </View>
-
-      <View style={styles.usageHeader}>
-        <Ionicons name="chatbubble-ellipses-outline" size={13} color={GAME_THEME.color.ink} />
-        <Text style={styles.usageTitle}>
-          {t('teacher.examples.usageTitle', { count: card.sentences.length })}
-        </Text>
+    <View style={styles.wordBlock}>
+      <View style={styles.wordRow}>
+        <LongPressWordText text={card.word} style={styles.wordLabel} />
+        {showPinyin ? <Text style={styles.wordPinyin}>{card.pinyin}</Text> : null}
       </View>
 
       <View style={styles.sentenceList}>
-        {card.sentences.map((sentence, sentenceIndex) => (
-          <View key={`${card.word}-${sentenceIndex}`} style={styles.sentenceCard}>
-            <View style={styles.sentenceIndex}>
-              <Text style={styles.sentenceIndexText}>{sentenceIndex + 1}</Text>
-            </View>
-            <View style={styles.sentenceCopy}>
-              <LongPressWordText text={sentence.l2} style={styles.sentenceL2} />
-              {sentence.pinyin ? <Text style={styles.sentencePinyin}>{sentence.pinyin}</Text> : null}
-              <LongPressWordText text={sentence.translation} style={styles.sentenceTr} />
-              {sentence.note ? <Text style={styles.sentenceNote}>{sentence.note}</Text> : null}
-            </View>
+        {card.sentences.map((sentence, index) => (
+          <View key={`${card.word}-${index}`} style={styles.sentenceRow}>
+            <LongPressWordText text={sentence.l2} style={styles.sentenceL2} />
+            {sentence.pinyin ? <Text style={styles.sentencePinyin}>{sentence.pinyin}</Text> : null}
+            <LongPressWordText text={sentence.translation} style={styles.sentenceTr} />
           </View>
         ))}
       </View>
@@ -86,7 +51,6 @@ export function TeacherExamplesSheet({
   visible,
   onClose,
   words,
-  fallbackGroups,
   loading,
   error,
   onRetry,
@@ -97,7 +61,6 @@ export function TeacherExamplesSheet({
   if (!visible) return null;
 
   const richWords = words ?? [];
-  const totalSentences = richWords.reduce((sum, w) => sum + w.sentences.length, 0);
   const hasRich = richWords.length > 0;
 
   return (
@@ -107,19 +70,7 @@ export function TeacherExamplesSheet({
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) + 8 }]}>
           <View style={styles.handle} />
           <View style={styles.header}>
-            <View style={styles.headerCopy}>
-              <Text style={styles.title}>{t('teacher.examples.sheetTitle')}</Text>
-              <Text style={styles.subtitle}>
-                {loading
-                  ? t('teacher.examples.loadingHint')
-                  : hasRich
-                    ? t('teacher.examples.sheetRichSubtitle', {
-                        words: richWords.length,
-                        count: totalSentences,
-                      })
-                    : t('teacher.examples.sheetEmptyHint')}
-              </Text>
-            </View>
+            <Text style={styles.title}>{t('teacher.examples.sheetTitle')}</Text>
             <Pressable
               onPress={onClose}
               hitSlop={12}
@@ -129,6 +80,10 @@ export function TeacherExamplesSheet({
               <Ionicons name="close" size={18} color={GAME_THEME.color.ink} />
             </Pressable>
           </View>
+
+          {!loading && hasRich ? (
+            <Text style={styles.hint}>{t('teacher.examples.sheetHint')}</Text>
+          ) : null}
 
           <ScrollView
             style={styles.scroll}
@@ -155,44 +110,13 @@ export function TeacherExamplesSheet({
 
             {hasRich
               ? richWords.map((card, index) => (
-                  <VocabWordCard key={`${card.word}-${index}`} card={card} index={index} />
+                  <WordExamples key={`${card.word}-${index}`} card={card} />
                 ))
               : null}
 
-            {!loading && !hasRich && fallbackGroups.length > 0
-              ? fallbackGroups.map((group) => (
-                  <View key={`${group.category}-${group.title}`} style={styles.group}>
-                    <View style={styles.groupHeader}>
-                      <View style={styles.groupIcon}>
-                        <Ionicons
-                          name={SECTION_IONICON[group.icon]}
-                          size={14}
-                          color={GAME_THEME.color.ink}
-                        />
-                      </View>
-                      <Text style={styles.groupTitle}>
-                        {group.title || t(`teacher.examples.category.${group.category}`)}
-                      </Text>
-                    </View>
-                    <View style={styles.groupBody}>
-                      {group.items.map((item) => (
-                        <View key={item.id} style={styles.itemCard}>
-                          {item.subtext ? (
-                            <Text style={styles.itemSpeaker} numberOfLines={1}>
-                              {item.subtext}
-                            </Text>
-                          ) : null}
-                          <LongPressWordText text={item.text} style={styles.itemText} />
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                ))
-              : null}
-
-            {!loading && !hasRich && fallbackGroups.length === 0 && !error ? (
+            {!loading && !hasRich && !error ? (
               <View style={styles.emptyCard}>
-                <Ionicons name="book-outline" size={28} color="rgba(26,26,26,0.35)" />
+                <Ionicons name="chatbubbles-outline" size={28} color="rgba(26,26,26,0.35)" />
                 <Text style={styles.emptyText}>{t('teacher.examples.emptyBody')}</Text>
               </View>
             ) : null}
@@ -233,30 +157,26 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 10,
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(26,26,26,0.08)',
-  },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
+    paddingBottom: 4,
   },
   title: {
-    fontSize: 17,
+    flex: 1,
+    fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.2,
     color: GAME_THEME.color.ink,
   },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    lineHeight: 18,
+  hint: {
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    fontSize: 14,
+    lineHeight: 19,
     fontWeight: '500',
-    color: 'rgba(26,26,26,0.55)',
+    color: 'rgba(26,26,26,0.5)',
   },
   closeBtn: {
     width: 32,
@@ -276,9 +196,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 14,
-    paddingTop: 12,
+    paddingTop: 4,
     paddingBottom: 12,
-    gap: 14,
+    gap: 16,
   },
   loadingCard: {
     alignItems: 'center',
@@ -290,7 +210,7 @@ const styles = StyleSheet.create({
     borderColor: GAME_THEME.color.ink,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: 'rgba(26,26,26,0.55)',
   },
@@ -303,8 +223,8 @@ const styles = StyleSheet.create({
     borderColor: GAME_THEME.color.ink,
   },
   errorText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 21,
     fontWeight: '500',
     color: GAME_THEME.color.ink,
   },
@@ -321,146 +241,64 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   retryText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     color: GAME_THEME.color.ink,
   },
-  wordCard: {
-    borderRadius: 14,
-    backgroundColor: GAME_THEME.color.paper,
-    borderWidth: 3,
-    borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 5,
-    overflow: 'hidden',
+  wordBlock: {
+    gap: 10,
   },
-  wordCardStripe: {
-    height: 5,
-    backgroundColor: GAME_THEME.color.sky,
-  },
-  wordHero: {
+  wordRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 12,
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    gap: 8,
+    paddingHorizontal: 4,
   },
-  wordIndex: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: GAME_THEME.color.cream,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
-  },
-  wordIndexText: {
-    fontSize: 13,
+  wordLabel: {
+    fontSize: 18,
+    lineHeight: 24,
     fontWeight: '900',
-    color: GAME_THEME.color.ink,
-  },
-  wordHeroCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
-  },
-  wordHead: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '900',
-    letterSpacing: -0.5,
     color: GAME_THEME.color.ink,
   },
   wordPinyin: {
     fontSize: 15,
     lineHeight: 20,
     fontWeight: '600',
-    color: 'rgba(26,26,26,0.52)',
-  },
-  wordGloss: {
-    marginTop: 2,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: GAME_THEME.color.ink,
-  },
-  usageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingBottom: 8,
-  },
-  usageTitle: {
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-    color: 'rgba(26,26,26,0.55)',
+    color: 'rgba(26,26,26,0.5)',
   },
   sentenceList: {
-    paddingHorizontal: 10,
-    paddingBottom: 12,
-    gap: 8,
-  },
-  sentenceCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: GAME_THEME.color.cream,
+  },
+  sentenceRow: {
+    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: GAME_THEME.color.paper,
     borderWidth: 2,
     borderColor: GAME_THEME.color.ink,
-    borderLeftWidth: 4,
+    borderLeftWidth: 5,
     borderLeftColor: GAME_THEME.color.sky,
   },
-  sentenceIndex: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: GAME_THEME.color.paperWarm,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
-  },
-  sentenceIndexText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: GAME_THEME.color.ink,
-  },
-  sentenceCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 3,
-  },
   sentenceL2: {
-    fontSize: 17,
-    lineHeight: 24,
+    fontSize: 19,
+    lineHeight: 26,
     fontWeight: '800',
     color: GAME_THEME.color.ink,
   },
   sentencePinyin: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: '500',
-    color: 'rgba(26,26,26,0.5)',
+    color: 'rgba(26,26,26,0.48)',
   },
   sentenceTr: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-    color: 'rgba(26,26,26,0.78)',
-  },
-  sentenceNote: {
     marginTop: 2,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '700',
-    color: GAME_THEME.color.sky,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.72)',
   },
   emptyCard: {
     alignItems: 'center',
@@ -473,60 +311,10 @@ const styles = StyleSheet.create({
     borderColor: GAME_THEME.color.ink,
   },
   emptyText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 21,
     fontWeight: '500',
     textAlign: 'center',
     color: 'rgba(26,26,26,0.55)',
-  },
-  group: {
-    gap: 8,
-  },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  groupIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: GAME_THEME.color.sky,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
-  },
-  groupTitle: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: GAME_THEME.color.ink,
-  },
-  groupBody: {
-    gap: 8,
-  },
-  itemCard: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: GAME_THEME.color.paper,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
-  },
-  itemSpeaker: {
-    marginBottom: 4,
-    fontSize: 12,
-    fontWeight: '800',
-    color: GAME_THEME.color.ink,
-    opacity: 0.72,
-  },
-  itemText: {
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '600',
-    color: GAME_THEME.color.ink,
   },
 });

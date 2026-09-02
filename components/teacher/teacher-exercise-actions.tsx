@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { TeacherExamplesCta } from '@/components/teacher/teacher-examples-cta';
 import { TeacherExamplesSheet } from '@/components/teacher/teacher-examples-sheet';
@@ -9,10 +9,7 @@ import { postTeacherVocabExamples } from '@/services/companion-chat-ai';
 import type { CompanionChatApiLanguage, TeacherVocabWordCard } from '@/types/companion-chat-api';
 import type { CompanionMsg } from '@/types/companion-message';
 import type { MiniDrillAccess } from '@/utils/teacher-mini-drill-usage';
-import {
-  estimateVocabWordCount,
-  extractTeacherExamples,
-} from '@/utils/teacher-message-examples';
+import { filterVocabExamplesNotInExplanation } from '@/utils/teacher-vocab-examples-filter';
 
 type Props = {
   messageId: string;
@@ -51,15 +48,6 @@ export function TeacherExerciseActions({
   const [vocabWords, setVocabWords] = useState<TeacherVocabWordCard[] | null>(null);
   const cacheRef = useRef<Map<string, TeacherVocabWordCard[]>>(new Map());
 
-  const fallbackGroups = useMemo(
-    () => extractTeacherExamples(message.text, message.id),
-    [message.id, message.text],
-  );
-  const exampleCount = useMemo(() => {
-    if (vocabWords?.length) return vocabWords.length;
-    return estimateVocabWordCount(message.text);
-  }, [message.text, vocabWords]);
-
   const loadExamples = useCallback(async () => {
     const cached = cacheRef.current.get(message.id);
     if (cached) {
@@ -79,8 +67,9 @@ export function TeacherExerciseActions({
         lessonTopic,
         lastUserMessage,
       });
-      cacheRef.current.set(message.id, words);
-      setVocabWords(words);
+      const fresh = filterVocabExamplesNotInExplanation(words, message.text);
+      cacheRef.current.set(message.id, fresh);
+      setVocabWords(fresh);
     } catch (e) {
       setVocabWords(null);
       setExamplesError(e instanceof Error ? e.message : t('teacher.examples.loadFailed'));
@@ -139,25 +128,25 @@ export function TeacherExerciseActions({
     <>
       <View style={styles.wrap} collapsable={false}>
         <View style={styles.row}>
-          <TeacherExerciseCta
-            loading={loading}
-            disabled={blockedByOther}
-            exhausted={exhausted}
-            isRepeat={miniAccess.isRepeat}
-            refreshesLeft={miniAccess.refreshesLeft}
-            onPress={activate}
-            style={styles.cta}
-          />
-          <TeacherExamplesCta
-            count={exampleCount > 0 ? exampleCount : undefined}
-            onPress={() => setExamplesOpen(true)}
-          />
+          <View style={styles.slot}>
+            <TeacherExerciseCta
+              loading={loading}
+              disabled={blockedByOther}
+              exhausted={exhausted}
+              isRepeat={miniAccess.isRepeat}
+              refreshesLeft={miniAccess.refreshesLeft}
+              onPress={activate}
+              style={styles.btnFill}
+            />
+          </View>
+          <View style={styles.slot}>
+            <TeacherExamplesCta onPress={() => setExamplesOpen(true)} style={styles.btnFill} />
+          </View>
         </View>
       </View>
       <TeacherExamplesSheet
         visible={examplesOpen}
         words={vocabWords}
-        fallbackGroups={fallbackGroups}
         loading={examplesLoading}
         error={examplesError}
         onRetry={() => void loadExamples()}
@@ -177,7 +166,12 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     gap: 8,
   },
-  cta: {
+  slot: {
     flex: 1,
+    minWidth: 0,
+  },
+  btnFill: {
+    flex: 1,
+    width: '100%',
   },
 });
