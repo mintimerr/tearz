@@ -36,7 +36,7 @@ function trError(t: (k: string, params?: Record<string, string | number>) => str
 
 export default function VerifyCodeScreen() {
   if (DEMO_SKIP_AUTH) {
-    return <Redirect href="/hub" />;
+    return <Redirect href="/" />;
   }
 
   return <VerifyCodeScreenInner />;
@@ -94,7 +94,7 @@ function VerifyCodeScreenInner() {
         return;
       }
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/hub');
+      router.replace('/onboarding/placement');
     } catch {
       setError(t('common.errorGeneric'));
     } finally {

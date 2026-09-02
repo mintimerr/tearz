@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CartoonStudyFlagsRow } from '@/components/profile/cartoon-study-flags';
 import { ProfileLevelCard } from '@/components/profile/profile-level-card';
+import { ProfileMistakesSection } from '@/components/profile/profile-mistakes-section';
 import { GameWindowShell } from '@/components/game/game-window-shell';
 import { HubTearzShelf } from '@/components/game/hub-tearz-shelf';
 import { StreakChip } from '@/components/engagement/streak-chip';
@@ -21,6 +22,7 @@ import { COIN_REWARDS } from '@/constants/reward-rules';
 import { REF_USER_PROFILE } from '@/constants/user-profile-reference';
 import { useAuth, type NativeLanguage } from '@/contexts/auth-context';
 import { useEngagement } from '@/contexts/engagement-context';
+import { usePlacement } from '@/contexts/placement-context';
 import { useTranslation } from '@/contexts/locale-context';
 import { useTeacherJourney } from '@/contexts/teacher-journey-context';
 import { useUserProfile } from '@/contexts/user-profile-context';
@@ -37,9 +39,10 @@ export function ProfileWindowScreen() {
   const { lessons } = useTeacherJourney();
   const { t, locale, setAppLocale } = useTranslation();
   const { user, signOut, updateNativeLanguage } = useAuth();
-  const { dailyStreak, longestStreak, bonusXp, streakFreezeAvailable, requestNotifications, ownedTearzIds } =
+  const { dailyStreak, longestStreak, bonusXp, streakFreezeAvailable, ownedTearzIds } =
     useEngagement();
   const { lifetimeStats, avatarUri, setAvatarUri, activityScriptLangs } = useUserProfile();
+  const { record: placementRecord } = usePlacement();
   const bottomPad = insets.bottom + 24;
 
   const myWords = entries.length;
@@ -149,6 +152,26 @@ export function ProfileWindowScreen() {
           toNextLabel={(remaining) => t('profile.toNextLevel', { count: remaining })}
         />
 
+        {placementRecord ? (
+          <View style={styles.placementBadge}>
+            <Ionicons name="ribbon-outline" size={18} color={GAME_THEME.color.ink} />
+            <Text style={styles.placementBadgeText}>
+              {t('placement.profileLevel', { level: placementRecord.level })}
+              {placementRecord.hskLevel ? ` · ${placementRecord.hskLevel}` : ''}
+            </Text>
+          </View>
+        ) : null}
+
+        <Pressable
+          onPress={() => router.push('/onboarding/placement')}
+          style={({ pressed }) => [styles.placementCta, pressed && styles.rowPressed]}>
+          <Ionicons name="school-outline" size={20} color={GAME_THEME.color.ink} />
+          <Text style={styles.placementCtaText}>
+            {placementRecord ? t('placement.retake') : t('placement.openTest')}
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color="rgba(26,26,26,0.45)" />
+        </Pressable>
+
         {dailyStreak > 0 ? (
           <>
             <Text style={styles.sectionLabel}>{t('engagement.streakTitle')}</Text>
@@ -170,19 +193,7 @@ export function ProfileWindowScreen() {
           </>
         ) : null}
 
-        <Text style={styles.sectionLabel}>{t('engagement.notifications')}</Text>
-        <View style={styles.gamePanel}>
-          <Pressable
-            onPress={() => void requestNotifications()}
-            style={({ pressed }) => [styles.notifRow, pressed && styles.notifRowPressed]}
-            accessibilityRole="button">
-            <View style={styles.notifCopy}>
-              <Text style={styles.notifTitle}>{t('engagement.enableNotifications')}</Text>
-              <Text style={styles.notifLead}>{t('engagement.notificationsLead')}</Text>
-            </View>
-            <Ionicons name="notifications-outline" size={22} color="rgba(26,26,26,0.45)" />
-          </Pressable>
-        </View>
+        <ProfileMistakesSection />
 
         <Text style={styles.sectionLabel}>{t('profile.appLanguage')}</Text>
         <View style={styles.langRow}>
@@ -582,32 +593,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: GAME_THEME.color.goldLip,
   },
-  notifRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: GAME_THEME.color.panelFill,
-  },
-  notifRowPressed: {
-    opacity: 0.88,
-  },
-  notifCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  notifTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: GAME_THEME.color.ink,
-  },
-  notifLead: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '600',
-    color: 'rgba(26,26,26,0.55)',
-  },
   statRow: {
     flexDirection: 'row',
   },
@@ -690,5 +675,45 @@ const styles = StyleSheet.create({
   },
   signOutValue: {
     color: GAME_THEME.color.danger,
+  },
+  placementBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: -4,
+    marginBottom: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    alignSelf: 'center',
+    backgroundColor: GAME_THEME.color.sky,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+  },
+  placementBadgeText: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    color: GAME_THEME.color.ink,
+  },
+  placementCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 3,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 5,
+  },
+  placementCtaText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
   },
 });

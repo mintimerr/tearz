@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/auth-context';
+import { PlacementProvider } from '@/contexts/placement-context';
 import { EngagementProvider } from '@/contexts/engagement-context';
 import { LocaleProvider } from '@/contexts/locale-context';
 import { CompanionChatsProvider } from '@/contexts/companion-chats-context';
@@ -23,7 +24,7 @@ export const unstable_settings = {
 };
 
 const GAME_VOID = { backgroundColor: GAME_THEME.color.void };
-const GAME_VOID_DEEP = { backgroundColor: GAME_THEME.color.voidDeep };
+const GAME_CREAM = { backgroundColor: GAME_THEME.color.cream };
 
 const NavigationTheme = {
   ...DefaultTheme,
@@ -43,6 +44,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: GAME_THEME.color.void }}>
       <ThemeProvider value={NavigationTheme}>
         <AuthProvider>
+          <PlacementProvider>
           <LocaleProvider>
           <EngagementProvider>
           <CompanionChatsProvider>
@@ -50,17 +52,19 @@ export default function RootLayout() {
               <UserProfileProvider>
                 <VocabularyProvider>
                   <LexiconProvider>
-                  <TeacherDrillSessionProvider>
+                  <TeacherDrillSessionProvider rootOverlay={false}>
                   <WordAddSheetProvider>
                   <ApiWarmup />
                   <Stack screenOptions={{ headerShown: false, contentStyle: GAME_VOID }}>
                     <Stack.Screen name="index" />
                     <Stack.Screen name="(auth)" options={{ contentStyle: GAME_VOID_DEEP }} />
+                    <Stack.Screen name="onboarding" options={{ animation: 'fade', contentStyle: GAME_CREAM }} />
                     <Stack.Screen name="hub" options={{ animation: 'fade', contentStyle: GAME_VOID_DEEP }} />
                     <Stack.Screen name="arcade" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="dialogs" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="cards" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="me" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
+                    <Stack.Screen name="mistakes" options={{ animation: 'slide_from_right', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="(tabs)" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="companion-chat" options={{ animation: 'fade', contentStyle: GAME_VOID }} />
                     <Stack.Screen name="companion-find" options={{ animation: 'slide_from_right', contentStyle: GAME_VOID }} />
@@ -77,6 +81,7 @@ export default function RootLayout() {
           </CompanionChatsProvider>
           </EngagementProvider>
           </LocaleProvider>
+          </PlacementProvider>
         </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

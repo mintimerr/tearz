@@ -44,6 +44,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useCompanionChats } from '@/contexts/companion-chats-context';
 import { useEngagement } from '@/contexts/engagement-context';
 import { useLexicon } from '@/contexts/lexicon-context';
+import { usePlacement } from '@/contexts/placement-context';
 import { useTranslation } from '@/contexts/locale-context';
 import { useTeacherJourney } from '@/contexts/teacher-journey-context';
 import { useUserProfile } from '@/contexts/user-profile-context';
@@ -143,6 +144,7 @@ export function TeacherBoardChat({
   const uiLanguage = teacherUiLanguageFromLocale(locale);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { learnerLevel } = usePlacement();
   const [fontsLoaded] = useFonts({ Kalam_400Regular });
   const { registerUserStudyText, recordStudySwipe } = useUserProfile();
   const { addChat, saveCompanionThread } = useCompanionChats();
@@ -301,6 +303,7 @@ export function TeacherBoardChat({
           language,
           uiLanguage,
           lessonTopic: lessonTopicRef.current,
+          ...(learnerLevel ? { learnerLevel } : {}),
           ...(image?.base64 ? { imageBase64: image.base64, imageMimeType: image.mimeType } : {}),
         });
         ingestTeacherText(reply);

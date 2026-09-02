@@ -10,6 +10,7 @@
 - `TEACHER_FAST_MODEL` — intent + push-copy (по умолчанию `gpt-4.1-mini`).
 - `COMPANION_MODEL` — чат собеседника (по умолчанию `gpt-4.1`).
 - `COMPANION_PROFILE_MODEL` — генерация persona (по умолчанию = `COMPANION_MODEL`).
+- **Placement test** (когда будет включён): `PLACEMENT_FAST_MODEL` (`gpt-5.6-luna`), `PLACEMENT_MODEL` (`gpt-5.6-terra`), `PLACEMENT_SCORE_MODEL` (`o3-mini`) — tiered по сложности вопроса.
 - `RESEND_API_KEY` — **нужен для писем с кодом** на почту ([Resend](https://resend.com) → API Keys). Без ключа код только в логе сервера (режим разработки).
 - `AUTH_FROM_EMAIL` — отправитель. Для старта: `Tearz <onboarding@resend.dev>` (бесплатно). **Важно:** без своего домена Resend шлёт письма **только на email, с которым вы зарегистрировались в Resend** — для регистрации в приложении используйте тот же адрес или верифицируйте домен в Resend.
 

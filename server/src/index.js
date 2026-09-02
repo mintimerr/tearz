@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 
 import { attachCompanionRealtimeBridge } from './companion-realtime-bridge.js';
+import { registerPlacementRoutes } from './placement.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -214,6 +215,23 @@ const TEACHER_FAST_MODEL = process.env.TEACHER_FAST_MODEL?.trim() || 'gpt-4.1-mi
 const COMPANION_MODEL = process.env.COMPANION_MODEL?.trim() || 'gpt-4.1';
 /** Генерация persona собеседника. */
 const COMPANION_PROFILE_MODEL = process.env.COMPANION_PROFILE_MODEL?.trim() || COMPANION_MODEL;
+
+/**
+ * Placement test (адаптивный тест уровня при первом входе).
+ * Tiered routing: дешёвые модели на лёгкие вопросы, reasoning на финальный вердикт.
+ * ~$0.08–0.15 на одного ученика (10 вопросов), точнее чем один gpt-4.1 на всё.
+ */
+const PLACEMENT_FAST_MODEL = process.env.PLACEMENT_FAST_MODEL?.trim() || 'gpt-5.6-luna';
+const PLACEMENT_MODEL = process.env.PLACEMENT_MODEL?.trim() || 'gpt-5.6-terra';
+const PLACEMENT_SCORE_MODEL = process.env.PLACEMENT_SCORE_MODEL?.trim() || 'o3-mini';
+
+/** difficulty 1–25 → модель для генерации/проверки вопроса placement test. */
+function placementModelForDifficulty(difficulty) {
+  const d = Number.isFinite(Number(difficulty)) ? Number(difficulty) : 12;
+  if (d <= 8) return PLACEMENT_FAST_MODEL;
+  if (d <= 18) return PLACEMENT_MODEL;
+  return PLACEMENT_SCORE_MODEL;
+}
 /** Картинки для word_to_image (dall-e-2 — быстро и дёшево на 512²). */
 const EXERCISE_IMAGE_MODEL = process.env.EXERCISE_IMAGE_MODEL?.trim() || 'dall-e-2';
 /** data:image/...;base64,... для слотов картинок */
@@ -448,7 +466,7 @@ function normalizeTeacherVocabExamples(parsed) {
   return out;
 }
 
-function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru') {
+function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', learnerLevel) {
   const m = uiLangMeta(uiLanguage);
   let prompt =
     `=== REPLY LANGUAGE (ABSOLUTE #1) ===\n` +
@@ -488,6 +506,12 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru') {
       '\n\nCURRENT LESSON TOPIC (from the app): "' +
       lessonTopic.trim().slice(0, 240).replace(/"/g, "'") +
       '". Keep answers aligned with this topic when relevant. If the topic is a foreign phrase (e.g. PIN eingeben), teach THAT language.';
+  }
+  if (typeof learnerLevel === 'string' && learnerLevel.trim()) {
+    prompt +=
+      '\n\nPLACEMENT PRIOR (silent — never mention CEFR/level labels to the user): estimated ' +
+      learnerLevel.trim().slice(0, 8).replace(/"/g, '') +
+      '. Use as starting difficulty; refine from chat and mistakes.';
   }
   prompt +=
     '\n\nLEVEL & INTENT (apply silently on every message):\n' +
@@ -2755,7 +2779,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.0', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v3' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.1', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v3', vocabExamples: 'v1' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */
@@ -3022,7 +3046,7 @@ app.post('/api/teacher-chat', async (req, res) => {
     return res.status(500).json({ error: 'Server misconfiguration: OPENAI_API_KEY is not set' });
   }
 
-  const { message, conversationHistory, language, lessonTopic, imageBase64, imageMimeType, uiLanguage } =
+  const { message, conversationHistory, language, lessonTopic, imageBase64, imageMimeType, uiLanguage, learnerLevel } =
     req.body ?? {};
   const hasImage = hasImagePayload(imageBase64);
   if (typeof message !== 'string' || (!message.trim() && !hasImage)) {
@@ -3067,7 +3091,7 @@ app.post('/api/teacher-chat', async (req, res) => {
       ? await extractTextFromImage(apiKey, imageBase64, imageMimeType)
       : '';
 
-    let systemContent = buildTeacherSystemPrompt(lang, lessonTopic, ui);
+    let systemContent = buildTeacherSystemPrompt(lang, lessonTopic, ui, learnerLevel);
     if (intent === 'practical' || isPracticalLanguageQuestion(userMessageText)) {
       systemContent += buildPracticalQuestionOverride(userMessageText, lang, ui);
     } else if (isVocabularyRequest(userMessageText)) {
@@ -4179,10 +4203,18 @@ attachCompanionRealtimeBridge(companionRealtimeWss, {
   getApiKey: () => process.env.OPENAI_API_KEY?.trim() || '',
 });
 
+registerPlacementRoutes(app, {
+  getApiKey: () => process.env.OPENAI_API_KEY?.trim() || '',
+  placementModelForDifficulty,
+  PLACEMENT_SCORE_MODEL,
+  normalizeUiLanguage,
+  uiLangMeta,
+});
+
 httpServer.listen(PORT, () => {
   const resend = process.env.RESEND_API_KEY?.trim();
   console.log(
-    `[chat-api] listening on http://0.0.0.0:${PORT}  WS /ws/companion-realtime  POST /api/teacher-chat (${TEACHER_MODEL})  POST /api/teacher-exercise  POST /api/teacher-exercise-set  POST /api/teacher-exercise-check  POST /api/teacher-drill-followup  POST /api/teacher-vocab-examples  POST /api/engagement-notification  POST /api/chat (${COMPANION_MODEL})  POST /api/companion-profile  POST /api/transcribe  POST /api/vocab/share  GET /api/vocab/share/:id`,
+    `[chat-api] listening on http://0.0.0.0:${PORT}  WS /ws/companion-realtime  POST /api/placement/step  POST /api/teacher-chat (${TEACHER_MODEL})  POST /api/teacher-exercise  POST /api/teacher-exercise-set  POST /api/teacher-exercise-check  POST /api/teacher-drill-followup  POST /api/teacher-vocab-examples  POST /api/engagement-notification  POST /api/chat (${COMPANION_MODEL})  POST /api/companion-profile  POST /api/transcribe  POST /api/vocab/share  GET /api/vocab/share/:id`,
   );
   if (resend) {
     console.log(`[auth] Письма с кодом: Resend (отправитель ${AUTH_FROM})`);

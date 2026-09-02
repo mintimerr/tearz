@@ -105,7 +105,7 @@ function WelcomeScreenInner() {
         return;
       }
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/hub');
+      router.replace('/');
     } catch {
       setError(t('common.errorGeneric'));
     } finally {

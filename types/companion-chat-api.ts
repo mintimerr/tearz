@@ -53,6 +53,8 @@ export type TeacherChatRequestBody = {
   uiLanguage?: 'ru' | 'en' | 'zh';
   /** Тема урока из приложения */
   lessonTopic?: string;
+  /** CEFR из placement test (A1–C2) — сервер использует как prior */
+  learnerLevel?: string;
   imageBase64?: string;
   imageMimeType?: string;
 };

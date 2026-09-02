@@ -19,6 +19,7 @@ export const USER_SUFFIX = {
   vocabularyFolders: 'vocabulary.folders.v1',
   lexiconHarvest: 'lexicon.harvest.v1',
   engagement: 'engagement.v1',
+  placement: 'profile.placement.v1',
 } as const;
 
 /** Старые глобальные ключи (до привязки к аккаунту) — только для одноразовой миграции. */
