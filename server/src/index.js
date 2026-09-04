@@ -2314,6 +2314,10 @@ function buildExerciseBatchUserContent({
     `Variation id: ${seed}.${variationBlock}${avoidBlock}${mistakesBlock}${kindsBlock}\n\n` +
     `Сгенерируй ровно ${kinds.length} упражнений (kinds как выше)${nextTopicLine}.\n` +
     `Каждое задание должно напрямую тренировать то, о чём просил пользователь.\n` +
+    `DISTRACTORS: для choose_reply / what_do_you_say / multiple_choice / translate_sentence / choose_translation / select_missing_word — ` +
+    `все 4 варианта одной темы и длины; неправильные = near-miss (другой нюанс/вежливость/мнение), ` +
+    `НЕ рандом с другой темы (погода/магазин/кино/«я студент»). ` +
+    `Если правильный угадывается отбрасыванием «не по теме» — перепиши.\n` +
     `Только JSON: ${jsonHint}.`
   );
 }
@@ -2806,7 +2810,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.1', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v3', vocabExamples: 'v1' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.2', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v4-distractors', vocabExamples: 'v1' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */

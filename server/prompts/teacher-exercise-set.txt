@@ -9,7 +9,8 @@
 - Сначала разбери, чего человек хотел: словарный запас, фраза «как сказать», грамматика, диалог, чтение, произношение, исправление ошибки.
 - Каждое из 10 заданий должно бить в этот bottleneck, опираясь на материал из ответа преподавателя.
 - Не уходи в соседнюю «общую тему урока», если запрос узкий (например «как заказать кофе» → тренируй заказ/вежливость/ключевые слова, а не весь кафе-словарь вперемешку).
-- Distractors = типичные ошибки именно для этого запроса.
+- Distractors = типичные ошибки / near-miss именно для этого запроса.
+- HARD FAIL: один очевидный правильный + три «рандомных» фразы с другой темы (погода / магазин / кино / «я студент»). Такой набор ЗАПРЕЩЁН.
 
 Тебе передаются:
 * последний запрос пользователя;
@@ -66,6 +67,7 @@
 
 12) multiple_choice — общий выбор A–D
    choices + correctChoice; checkText = вопрос/стимул.
+   Все 4 варианта одной темы и длины; дистракторы = правдоподобные ошибки, не рандом.
 
 HelloChinese-стиль (обязательно адаптируй под L2)
 
@@ -76,22 +78,29 @@ HelloChinese-стиль (обязательно адаптируй под L2)
 
 14) choose_reply — мини-диалог: выбрать ответную реплику
    checkText: 1–2 реплики на L2 (кто говорит + текст).
-   choices: 4 возможных ответа на L2; только один естественный; correctChoice.
+   choices: 4 возможных ответа на L2; только один прагматически верный; correctChoice.
+   ВСЕ 4 реплики: тот же топик/регистр/длина (±40%), грамматически нормальные.
+   3 дистрактора = near-miss того же разговора: другой акцент мнения, слишком грубо/формально,
+   отвечает не на вопрос, путает причину/следствие, уходит в соседний, но связанный нюанс.
+   ЗАПРЕЩЕНО: погода / покупки / кино / еда / «я студент», если реплика A про другое.
 
 15) odd_one_out — лишнее слово
    checkText: «Какое слово лишнее?» + 4 L2 слова через « / » или списком в choices.
    choices: те же 4 слова; correctChoice = лишнее.
    Три слова из темы урока, одно — другая семантическая группа.
+   Лишнее не должно быть комично далёким (не «политика / налог / экономика / банан»).
 
 16) spot_error — найти ошибку
    checkText: краткий вопрос («Какое предложение неверно?» / «Где ошибка?»).
    choices: 3–4 коротких L2 предложения или слова; correctChoice = ошибочный вариант.
    Ошибка должна быть типичной для уровня (грамматика / порядок / неправильное слово).
+   Все варианты на ту же тему; отличаются одной ошибкой, а не темой.
 
 17) what_do_you_say — ситуация → фраза
    checkText: ситуация на UI-языке (1 предложение).
    choices: 4 L2 фразы; correctChoice = уместная.
-   Distractors правдоподобны, но не подходят по вежливости/времени/смыслу.
+   Distractors — почти уместные: другая вежливость, другое время суток, чужая роль,
+   близкая но не та ситуация. Не абсурд и не смена темы.
 
 18) build_from_meaning — смысл → собрать L2 предложение
    Как sentence_order: shuffledWords + correctOrder.
@@ -112,14 +121,17 @@ Duolingo / Memrise / Babbel / Busuu (новые kinds)
 21) translate_sentence — перевести предложение (Duolingo)
    checkText: предложение на UI-языке («Переведи на L2»).
    choices: 4 полных перевода на L2; correctChoice.
+   Дистракторы = тот же смысл с типичными ошибками (время / порядок / лишнее слово / близкий синоним), не другие предложения.
 
 22) reverse_translation — значение слова (Memrise/Anki)
    checkText: слово или короткая фраза на L2.
    choices: 4 перевода на UI-языке; correctChoice.
+   Дистракторы = near-synonyms / соседние слова той же темы, не случайный словарь.
 
 23) select_missing_word — пропуск в предложении (Duolingo/Babbel)
    checkText: предложение на L2 с «___» или «…».
    choices: 4 слова на L2; correctChoice.
+   Все 4 слова грамматически «влезают» на вид; отличает смысл/сочетаемость.
 
 24) true_false — верно или неверно (Busuu)
    checkText: утверждение о правиле или фразе на UI-языке.
@@ -132,6 +144,7 @@ Duolingo / Memrise / Babbel / Busuu (новые kinds)
 26) collocation_choice — естественное сочетание (Babbel)
    checkText: «Какое слово подходит к …?» + контекст на L2.
    choices: 4 слова на L2; correctChoice = естественное collocation.
+   Дистракторы = частые неверные collocation той же темы.
 
 ⸻
 
@@ -147,6 +160,9 @@ Duolingo / Memrise / Babbel / Busuu (новые kinds)
 * Каждый запрос — новый набор; Variation id обязателен; при «не повторять» — другой угол, но тот же учебный фокус.
 * Уровень выводи из диалога молча: для A1 — короче и конкретнее; для B2+ — сложнее и нюанснее.
 * Distractors = near-miss уровня, не абсурд.
+* QUALITY GATE для любого kind с choices (4 варианта): ученик НЕ должен угадать правильный,
+  просто отбросив «не по теме». Если три варианта явно не относятся к стимулу — перепиши.
+  Тест: закрой правильный ответ — оставшиеся всё ещё должны выглядеть как возможные ответы на этот вопрос.
 * В наборе закрепи 1–2 ключевых пункта из объяснения, которые реально нужны для запроса пользователя.
 * Не копируй дословно примеры преподавателя — перефразируй.
 * word_to_image: только легко рисуемые понятия.
@@ -187,24 +203,37 @@ choose_translation:
 "instruction": "(UI) Choose the translation"
 
 choose_reply:
-"checkText": "A: How are you?\nB: ___",
-"choices": ["I'm fine, thanks.", "I am a book.", "Yesterday blue.", "Ten dollars."],
-"correctChoice": "I'm fine, thanks."
+"checkText": "A: What do you think of the new tax policy?\nB: ___",
+"choices": [
+  "I think it will help the economy long-term.",
+  "I think it will hurt small businesses short-term.",
+  "I'm not sure yet — we need to see the details.",
+  "Taxes are always fair for everyone."
+],
+"correctChoice": "I think it will help the economy long-term.",
+"instruction": "(UI) Choose a suitable reply for B"
+(Пример: все 4 про политику/налоги; отличается оценка/нюанс — НЕ «я в магазин» / «какая погода».)
 
 odd_one_out:
 "checkText": "(UI) Which word does not belong?",
-"choices": ["apple", "banana", "car", "orange"],
-"correctChoice": "car"
+"choices": ["tax", "policy", "economy", "weather"],
+"correctChoice": "weather"
 
 what_do_you_say:
-"checkText": "(UI) You walk into a café. What do you say?",
-"choices": ["A coffee, please.", "Good night.", "I am Tuesday.", "Close the window."],
+"checkText": "(UI) You walk into a café to order. What do you say?",
+"choices": [
+  "A coffee, please.",
+  "Could I get the bill?",
+  "Do you have a table for two?",
+  "I'd like to reserve for tonight."
+],
 "correctChoice": "A coffee, please."
+(Все про кафе; отличаются ситуация/момент — не «спокойной ночи» и не «я вторник».)
 
 spot_error:
 "checkText": "(UI) Which sentence is wrong?",
-"choices": ["She goes home.", "She go home.", "She went home."],
-"correctChoice": "She go home."
+"choices": ["She goes home every day.", "She go home every day.", "She went home yesterday."],
+"correctChoice": "She go home every day."
 
 build_from_meaning:
 "checkText": "(UI) Build: «I love tea.»",
@@ -226,11 +255,12 @@ pick_similar:
 
 complete_dialogue:
 "segments": [
-  {"type":"text","value":"A: 你叫什么名字？\nB: 我叫"},
-  {"type":"blank","id":"b1","answer":"李明"},
+  {"type":"text","value":"A: 你觉得新的税收政策怎么样？\nB: 我觉得"},
+  {"type":"blank","id":"b1","answer":"对经济发展很重要"},
   {"type":"text","value":"。"}
 ],
-"wordBank": ["李明", "北京", "谢谢", "学生"]
+"wordBank": ["对经济发展很重要", "对小企业不太公平", "还需要再观察", "已经完美无缺"]
+(wordBank: все варианты отвечают на вопрос про политику; не «北京 / 谢谢 / 学生».)
 
 drag_word_to_blank:
 "segments": [{"type":"text","value":"I "},{"type":"blank","id":"b1","answer":"like"},{"type":"text","value":" coffee."}],

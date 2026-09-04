@@ -11,6 +11,11 @@ GLOBAL RULES
 - Do not say where to type the answer.
 - Keep the final output compact enough for one mobile card.
 - L2 strings = target language only. Instructions can be in the UI language.
+- DISTRACTOR QUALITY (critical): wrong options must be near-misses on the SAME topic —
+  same register/length, grammatically fine, wrong for a subtle reason (nuance, politeness,
+  tense, collocation, opinion polarity). NEVER pad with off-topic lines
+  (weather / shopping / movies / "I am a student") when the stem is about something else.
+  Blindfold test: hide the key — remaining options should still look like possible answers.
 
 ⸻
 
@@ -23,17 +28,26 @@ A. библиотека  B. аптека  C. вокзал  D. музей
 
 Pattern HC-2: choose reply (mini dialogue)
 One short line from speaker A; pick B’s natural reply.
-A: 你吃饭了吗？
-A. 吃了。  B. 我是学生。  C. 明天星期一。  D. 这本书很贵。
+ALL 4 options = same topic, similar length, plausible replies — only one fits pragmatically.
+Example (L2 Chinese, tax/policy talk):
+A: 最近中国政府出台了新的税收政策，你怎么看？
+A. 我觉得这对经济发展很重要。
+B. 我觉得这对小企业不太公平。
+C. 我觉得还需要再观察一段时间。
+D. 我觉得税收政策从来都不重要。
+(BAD — do NOT do this: A correct + 「我今天去超市」/「明天天气怎么样」/「你喜欢看电影吗」)
 
 Pattern HC-3: odd one out
 Four L2 words on the same “screen”; one does not belong thematically.
-Which word does not belong?  apple / banana / bus / orange
+Which word does not belong?  tax / policy / economy / banana
+(Prefer a close semantic miss when possible, not a random noun from another universe.)
 
 Pattern HC-4: what do you say
 Describe a situation in the UI language; pick the natural L2 phrase.
-You meet a friend in the morning. What do you say?
-A. Good morning!  B. Good night!  C. See you yesterday.  D. How much is it?
+Distractors = almost-right for the same setting (wrong politeness / timing / role).
+You walk into a café to order. What do you say?
+A. A coffee, please.  B. Could I get the bill?  C. Do you have a table for two?  D. I'd like to book for tonight.
+(BAD: Good night / I am Tuesday / Close the window)
 
 Pattern HC-5: spot the error
 Three short L2 sentences; pick the incorrect one (or pick the wrong word).
