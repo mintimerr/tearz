@@ -419,20 +419,36 @@ function buildTeacherVocabExamplesPrompt(lang, uiLanguage = 'ru') {
             : 'English';
   const pinyinRule =
     lang === 'chinese'
-      ? '\n- Chinese: EVERY word and sentence needs toned pinyin (nǐ hǎo style). Hanzi in "word" and "l2".'
+      ? '\n- Chinese: EVERY word and EVERY sentence needs toned pinyin fields (nǐ hǎo). Keep hanzi only in "word" and "l2" — do NOT insert (pinyin) inside l2.'
       : '\n- Do NOT add pinyin unless target is Chinese.';
   return (
-    `You generate ONLY new usage example sentences for Tearz language app.\n` +
+    `You write vivid USAGE examples for Tearz — like lines from a short film, NOT a textbook.\n` +
     `The learner already read the teacher explanation — do NOT repeat definitions, glosses, grammar rules, or any sentence already in that text.\n` +
     `Target language (L2): ${l2}. Translations: ${m.explainLabel}.\n` +
-    `Return JSON only: {"words":[{"word":"L2 headword or expression","pinyin":"optional","gloss":"internal only","sentences":[{"l2":"full NEW sentence in L2","pinyin":"optional","translation":"${m.explainLabel}"}]}]}\n` +
+    `Return JSON only: {"words":[{"word":"L2 headword","pinyin":"optional","gloss":"short meaning in ${m.explainLabel}","sentences":[{"l2":"full NEW sentence in L2","pinyin":"optional","translation":"natural ${m.explainLabel} translation of that sentence"}]}]}\n` +
     `Rules:\n` +
-    `- Pick 3–6 key words/expressions from the lesson (vocabulary, phrases).\n` +
-    `- 4–5 NEW sentences per word — each must use that word in a fresh, natural context.\n` +
-    `- NEVER copy or lightly rephrase sentences from the teacher explanation.\n` +
-    `- No definitions in sentences — only real usage in context.\n` +
-    `- Vary situations (question/statement, formal/informal).\n` +
+    `- Pick 3–6 key words/expressions from the lesson (vocabulary, phrases, slang).\n` +
+    `- Exactly 4 NEW sentences per word. Each must be a concrete scene (who, where, tone).\n` +
+    `- The headword must appear as NATURAL SPEECH inside the scene — not as a metalanguage lesson about the word.\n` +
+    `- Vary scenes hard: subway, group chat, landlord, blind date, delivery note, delayed flight, family dinner, boss Slack — do NOT reuse the same frame across words.\n` +
+    `- Vary speech acts: joke, warning, complaint, question, aside, text message.\n` +
+    `- translation = full natural ${m.explainLabel} of the L2 sentence — NEVER paste English glosses into ${m.explainLabel}.\n` +
+    `- FORBIDDEN hollow / meta frames (any language): "I often think about X", "Do you know X?", "This is X", "Here we say X", "In this chat/message X fits", "X sounds natural", "Make a sentence with X", "Native speakers use X", «Я часто думаю о X», «Ты знаешь X?», «В этом сообщении X», «звучит уместно», «Составь предложение», «这就是X», «你知道X吗», «我经常想到X», «用得很自然», «刚才聊天提到X», «带X的句子».\n` +
+    `- FORBIDDEN: talking ABOUT the word («это слово значит…», "the word X means…", "don't force X into an email").\n` +
+    `- NEVER copy or lightly rephrase the teacher explanation.\n` +
     `- No markdown, no notes, no extra keys.${pinyinRule}`
+  );
+}
+
+function isHollowTeacherVocabL2(l2) {
+  return /经常想到|你知道.+吗|这就是|这里可以说|刚才聊天提到|自然地用了|别乱用|带.+的句子|用得很自然|In this (chat|message)|fits the situation|sounds? (odd|natural|fitting|perfect)|Don't force|make your own sentence|Native speakers use|Dans ce message|sonne très naturel|Tu peux inventer|In diesem Chat|passt perfekt|Kannst du einen eigenen|Muttersprachler nutzen|В этом (сообщении|чате|диалоге)|звучит (уместно|странно|естественно)|Составь сво|Je pense souvent|Tu connais|I often think about|Do you know|It's all about|Here we use|Я часто думаю о|Ты знаешь|Речь про|Здесь уместно/i.test(
+    String(l2 || '').trim(),
+  );
+}
+
+function isHollowTeacherVocabTr(tr) {
+  return /часто думаю|ты знаешь|речь про|здесь уместно|как раз к месту|звучит (уместно|странно|естественно)|составь сво|в этом (сообщении|чате|диалоге)|i often think|do you know|fits the situation|make your own|native speakers|用得很自然|这里「/i.test(
+    String(tr || '').trim(),
   );
 }
 
@@ -453,6 +469,7 @@ function normalizeTeacherVocabExamples(parsed) {
       const l2 = typeof s.l2 === 'string' ? s.l2.trim().slice(0, 160) : '';
       const translation = typeof s.translation === 'string' ? s.translation.trim().slice(0, 220) : '';
       if (!l2 || !translation) continue;
+      if (isHollowTeacherVocabL2(l2) || isHollowTeacherVocabTr(translation)) continue;
       sentences.push({
         l2,
         pinyin: typeof s.pinyin === 'string' && s.pinyin.trim() ? s.pinyin.trim().slice(0, 140) : undefined,
@@ -460,7 +477,7 @@ function normalizeTeacherVocabExamples(parsed) {
         note: typeof s.note === 'string' && s.note.trim() ? s.note.trim().slice(0, 90) : undefined,
       });
     }
-    if (sentences.length === 0) continue;
+    if (sentences.length < 2) continue;
     out.push({ word, pinyin, gloss, sentences });
   }
   return out;
@@ -502,10 +519,20 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', lear
   prompt +=
     `\n\nHARD RULE: Do not teach the learner their native/UI language (${m.explainLabel}) as if it were L2. Explain in ${m.explainLabel}; teach the TARGET language above.`;
   if (typeof lessonTopic === 'string' && lessonTopic.trim()) {
+    const topic = lessonTopic.trim().slice(0, 240).replace(/"/g, "'");
     prompt +=
       '\n\nCURRENT LESSON TOPIC (from the app): "' +
-      lessonTopic.trim().slice(0, 240).replace(/"/g, "'") +
+      topic +
       '". Keep answers aligned with this topic when relevant. If the topic is a foreign phrase (e.g. PIN eingeben), teach THAT language.';
+    if (/путь до|path to|通往|мастерства|mastery path|精通之路|tl-path/i.test(topic)) {
+      prompt +=
+        '\n\nLEVEL PATH MODE (this chat):\n' +
+        '- YOU lead the curriculum ladder toward the goal level in the topic title.\n' +
+        '- Do NOT ask the learner to choose a menu (grammar / vocabulary / conversation / style / fluency).\n' +
+        '- Each turn: give one concrete micro-step (short explanation + a clear task), then wait for their attempt.\n' +
+        '- After feedback, immediately propose the next step yourself.\n' +
+        '- Stay on a coherent sequence (structure → wording → practice → freer use), not random topics.';
+    }
   }
   if (typeof learnerLevel === 'string' && learnerLevel.trim()) {
     prompt +=
@@ -3697,6 +3724,127 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
   }
 });
 
+/** Long-press word → accurate L2 gloss into the learner's UI language. */
+app.post('/api/translate-word', async (req, res) => {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Server misconfiguration: OPENAI_API_KEY is not set' });
+  }
+
+  const wordRaw = typeof req.body?.word === 'string' ? req.body.word.trim() : '';
+  if (!wordRaw || wordRaw.length > 80) {
+    return res.status(400).json({ error: 'word must be a non-empty string ≤80 chars' });
+  }
+
+  const targetLocale =
+    req.body?.targetLocale === 'en' || req.body?.targetLocale === 'zh' || req.body?.targetLocale === 'ru'
+      ? req.body.targetLocale
+      : 'ru';
+  const sourceLanguage =
+    req.body?.sourceLanguage === 'english' ||
+    req.body?.sourceLanguage === 'chinese' ||
+    req.body?.sourceLanguage === 'german' ||
+    req.body?.sourceLanguage === 'french' ||
+    req.body?.sourceLanguage === 'russian'
+      ? req.body.sourceLanguage
+      : null;
+  const context =
+    typeof req.body?.context === 'string' ? req.body.context.trim().slice(0, 400) : '';
+
+  const targetName =
+    targetLocale === 'zh' ? 'Simplified Chinese' : targetLocale === 'en' ? 'English' : 'Russian';
+  const sourceName =
+    sourceLanguage === 'french'
+      ? 'French'
+      : sourceLanguage === 'german'
+        ? 'German'
+        : sourceLanguage === 'chinese'
+          ? 'Chinese'
+          : sourceLanguage === 'russian'
+            ? 'Russian'
+            : sourceLanguage === 'english'
+              ? 'English'
+              : 'the language of the selected word (infer carefully)';
+
+  try {
+    const openaiRes = await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: TEACHER_FAST_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You translate ONE selected word/short phrase for a language learner.\n' +
+              'Return JSON only: {"translation":"…","pinyin":"…"|"null"}.\n' +
+              'Rules:\n' +
+              `- Source language: ${sourceName}.\n` +
+              `- Target language: ${targetName} (learner UI / native).\n` +
+              '- Prefer the sense that fits the provided sentence context.\n' +
+              '- translation: 1–3 short natural glosses separated by "; " (no full sentences).\n' +
+              '- Do NOT translate as if the word were English when source is French/German/Chinese.\n' +
+              '- Strip punctuation from the lemma if present.\n' +
+              '- pinyin: only for Chinese source (tone marks); otherwise null.\n' +
+              '- Never invent unrelated meanings.',
+          },
+          {
+            role: 'user',
+            content:
+              `Word: ${wordRaw}` +
+              (context ? `\nContext sentence:\n${context}` : '\n(No sentence context.)'),
+          },
+        ],
+        temperature: 0.15,
+        max_tokens: 180,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    const raw = await openaiRes.text();
+    let data;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      return res.status(502).json({ error: 'Invalid model response' });
+    }
+    if (!openaiRes.ok) {
+      const errMsg =
+        typeof data?.error?.message === 'string'
+          ? data.error.message
+          : `OpenAI HTTP ${openaiRes.status}`;
+      return res.status(502).json({ error: errMsg });
+    }
+
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) {
+      return res.status(502).json({ error: 'Empty translation' });
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(content.trim());
+    } catch {
+      return res.status(502).json({ error: 'Invalid translation JSON' });
+    }
+    const translation =
+      typeof parsed.translation === 'string' ? parsed.translation.trim().slice(0, 160) : '';
+    if (!translation) {
+      return res.status(502).json({ error: 'Missing translation' });
+    }
+    const pinyin =
+      typeof parsed.pinyin === 'string' && parsed.pinyin.trim() && parsed.pinyin !== 'null'
+        ? parsed.pinyin.trim().slice(0, 80)
+        : null;
+    return res.json({ translation, pinyin });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Network error';
+    return res.status(502).json({ error: msg });
+  }
+});
+
 app.post('/api/teacher-vocab-examples', async (req, res) => {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
@@ -3748,10 +3896,12 @@ app.post('/api/teacher-vocab-examples', async (req, res) => {
           {
             role: 'user',
             content:
-              `Teacher explanation to expand into vocabulary cards:${topicLine}${userLine}\n\n${teacherExplanation}`,
+              `Teacher explanation to expand into vocabulary cards:${topicLine}${userLine}\n` +
+              `Freshness: invent NEW scenes this turn — do not recycle stock tutoring lines.\n\n` +
+              `${teacherExplanation}`,
           },
         ],
-        temperature: 0.55,
+        temperature: 0.85,
         max_tokens: 4000,
         response_format: { type: 'json_object' },
       }),
@@ -4214,7 +4364,7 @@ registerPlacementRoutes(app, {
 httpServer.listen(PORT, () => {
   const resend = process.env.RESEND_API_KEY?.trim();
   console.log(
-    `[chat-api] listening on http://0.0.0.0:${PORT}  WS /ws/companion-realtime  POST /api/placement/step  POST /api/teacher-chat (${TEACHER_MODEL})  POST /api/teacher-exercise  POST /api/teacher-exercise-set  POST /api/teacher-exercise-check  POST /api/teacher-drill-followup  POST /api/teacher-vocab-examples  POST /api/engagement-notification  POST /api/chat (${COMPANION_MODEL})  POST /api/companion-profile  POST /api/transcribe  POST /api/vocab/share  GET /api/vocab/share/:id`,
+    `[chat-api] listening on http://0.0.0.0:${PORT}  WS /ws/companion-realtime  POST /api/placement/step  POST /api/translate-word  POST /api/teacher-chat (${TEACHER_MODEL})  POST /api/teacher-exercise  POST /api/teacher-exercise-set  POST /api/teacher-exercise-check  POST /api/teacher-drill-followup  POST /api/teacher-vocab-examples  POST /api/engagement-notification  POST /api/chat (${COMPANION_MODEL})  POST /api/companion-profile  POST /api/transcribe  POST /api/vocab/share  GET /api/vocab/share/:id`,
   );
   if (resend) {
     console.log(`[auth] Письма с кодом: Resend (отправитель ${AUTH_FROM})`);

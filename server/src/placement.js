@@ -2,8 +2,8 @@ import {
   PLACEMENT_TOTAL,
   START_ABILITY,
   FIRST_TASK_DIFFICULTY,
-  abilityToLevel,
   computeNextProbe,
+  conservativePlacementLevel,
   difficultyFromAbility,
   difficultyToScale100,
   isWeakPlacementQuestion,
@@ -16,6 +16,13 @@ const SECTIONS = ['grammar', 'comprehension', 'phrases', 'structure'];
 
 function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
+}
+
+function normalizeSeenKey(value) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
 }
 
 function encodeAnswerKey(id, correctChoice) {
@@ -209,13 +216,13 @@ export function registerPlacementRoutes(app, deps) {
       : [];
 
     const seenIds = Array.isArray(req.body?.seenQuestionIds)
-      ? req.body.seenQuestionIds.filter((id) => typeof id === 'string').slice(0, 200)
+      ? req.body.seenQuestionIds.filter((id) => typeof id === 'string').slice(-2000)
       : [];
     const seenPrompts = Array.isArray(req.body?.seenPrompts)
-      ? req.body.seenPrompts.filter((p) => typeof p === 'string').slice(0, 200)
+      ? req.body.seenPrompts.filter((p) => typeof p === 'string').slice(-2000)
       : [];
     const seenContentKeys = Array.isArray(req.body?.seenContentKeys)
-      ? req.body.seenContentKeys.filter((k) => typeof k === 'string').slice(0, 200)
+      ? req.body.seenContentKeys.filter((k) => typeof k === 'string').slice(-2000)
       : [];
 
     let ability =
@@ -285,11 +292,11 @@ export function registerPlacementRoutes(app, deps) {
           const level =
             typeof parsed.level === 'string' && /^A1|A2|B1|B2|C1|C2$/i.test(parsed.level)
               ? parsed.level.toUpperCase()
-              : abilityToLevel(ability);
-          const algorithmLevel = abilityToLevel(ability);
+              : conservativePlacementLevel(ability, history);
+          const algorithmLevel = conservativePlacementLevel(ability, history);
           const levelRank = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
           const finalLevel =
-            levelRank[level] > levelRank[algorithmLevel] ? algorithmLevel : level;
+            (levelRank[level] || 0) > (levelRank[algorithmLevel] || 0) ? algorithmLevel : level;
           const score = Number.isFinite(Number(parsed.score))
             ? clamp(Number(parsed.score), 5, 98)
             : ability;
@@ -351,19 +358,21 @@ export function registerPlacementRoutes(app, deps) {
         const candidate = normalizePlacementQuestion(parsed, targetDifficulty, lang);
         if (!candidate) continue;
         const seenAll = new Set([
-          ...history.map((h) => h.prompt),
-          ...seenPrompts,
+          ...history.map((h) => normalizeSeenKey(h.prompt)),
+          ...seenPrompts.map((p) => normalizeSeenKey(p)),
           ...history.map((h) => h.questionId).filter(Boolean),
           ...seenIds,
         ]);
-        const contentKey = `${candidate.prompt}::${[...candidate.choices].sort().join('|')}`;
+        const contentKey = normalizeSeenKey(
+          `${candidate.prompt}::${[...candidate.choices].sort().join('|')}`,
+        );
         const contentSeen = new Set([
           ...history
             .filter((h) => h.prompt && Array.isArray(h.choices))
-            .map((h) => `${h.prompt}::${[...h.choices].sort().join('|')}`),
-          ...seenContentKeys,
+            .map((h) => normalizeSeenKey(`${h.prompt}::${[...h.choices].sort().join('|')}`)),
+          ...seenContentKeys.map((k) => normalizeSeenKey(k)),
         ]);
-        if (seenAll.has(candidate.prompt) || seenAll.has(candidate.id) || contentSeen.has(contentKey)) {
+        if (seenAll.has(normalizeSeenKey(candidate.prompt)) || seenAll.has(candidate.id) || contentSeen.has(contentKey)) {
           continue;
         }
         question = candidate;

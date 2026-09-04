@@ -1,8 +1,9 @@
 /** @typedef {{ section: string; difficulty: number; correct: boolean; prompt: string }} PlacementHistorySlice */
 
 export const PLACEMENT_TOTAL = 15;
-export const START_ABILITY = 50;
-export const FIRST_TASK_DIFFICULTY = 50;
+/** Start in mid-A2 so C1 needs sustained success on truly hard items. */
+export const START_ABILITY = 30;
+export const FIRST_TASK_DIFFICULTY = 30;
 
 export function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
@@ -65,13 +66,15 @@ export function updateAbility(ability, difficulty, correct, history = []) {
 
   let change;
   if (correct) {
-    if (delta >= 10 && delta <= 20) change = 7;
-    else if (delta > 20) change = 8;
-    else if (delta < -10) change = 1.5;
-    else if (delta < -5) change = 2;
-    else change = 4;
-    if (successStreak >= 2) change += 1;
-    if (successStreak >= 3) change += 2;
+    if (delta > 20) change = 5;
+    else if (delta >= 10) change = 4;
+    else if (delta < -15) change = 0;
+    else if (delta < -5) change = 1;
+    else change = 3;
+    if (delta >= -5) {
+      if (successStreak >= 2) change += 1;
+      if (successStreak >= 3) change += 1;
+    }
   } else {
     if (delta <= -10 && delta >= -20) change = -8;
     else if (delta < -20) change = -3;
@@ -82,6 +85,33 @@ export function updateAbility(ability, difficulty, correct, history = []) {
   }
 
   return clamp(Math.round(ability + change), 0, 100);
+}
+
+/** Cap CEFR by hard-item evidence — mirrors client conservativePlacementLevel. */
+export function conservativePlacementLevel(ability, history = []) {
+  let level = abilityToLevel(ability);
+  const hardCorrect = history.filter(
+    (h) => h.correct && difficultyToScale100(h.difficulty) >= 68,
+  ).length;
+  const upperMidCorrect = history.filter(
+    (h) => h.correct && difficultyToScale100(h.difficulty) >= 51,
+  ).length;
+  const midCorrect = history.filter(
+    (h) => h.correct && difficultyToScale100(h.difficulty) >= 34,
+  ).length;
+
+  const rank = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  const setMax = (max) => {
+    if ((rank[level] || 0) > (rank[max] || 0)) level = max;
+  };
+
+  if (hardCorrect < 3) setMax('C1');
+  if (hardCorrect < 2) setMax('B2');
+  if (upperMidCorrect < 2 && hardCorrect < 1) setMax('B1');
+  if (midCorrect < 2 && upperMidCorrect < 1) setMax('A2');
+  if (history.filter((h) => h.correct).length < 3) setMax('A2');
+
+  return level;
 }
 
 export function difficultyFromAbility(ability) {
@@ -110,20 +140,20 @@ export function computeNextProbe(ability, history, questionIndex) {
   if (alternating) {
     explorationAdjustment = taskNumber % 2 === 0 ? 2 : -2;
   } else if (successStreak >= 3) {
-    explorationAdjustment = 10;
-  } else if (successStreak >= 2) {
     explorationAdjustment = 6;
+  } else if (successStreak >= 2) {
+    explorationAdjustment = 4;
   } else if (failureStreak >= 3) {
     explorationAdjustment = -10;
   } else if (failureStreak >= 2) {
     explorationAdjustment = -6;
   } else if (last.correct) {
-    explorationAdjustment = 5;
+    explorationAdjustment = 3;
   } else {
     explorationAdjustment = -5;
   }
 
-  const maxStep = phase === 'explore' ? 12 : phase === 'narrow' ? 7 : 5;
+  const maxStep = phase === 'explore' ? 8 : phase === 'narrow' ? 6 : 4;
   explorationAdjustment = clamp(explorationAdjustment, -maxStep, maxStep);
 
   let next = clamp(Math.round(ability + explorationAdjustment), 0, 100);
@@ -206,19 +236,35 @@ export function isWeakPlacementQuestion(prompt, choices, kind) {
   return false;
 }
 
+export function ensureCorrectChoiceInList(q) {
+  const choices = q.choices.map((c) => String(c).trim()).filter(Boolean);
+  let correctChoice = String(q.correctChoice ?? '').trim();
+  if (!choices.includes(correctChoice)) {
+    const match = choices.find((c) => c.toLowerCase() === correctChoice.toLowerCase());
+    if (match) correctChoice = match;
+    else if (choices.length > 0) {
+      choices[0] = correctChoice || choices[0];
+      correctChoice = choices[0];
+    }
+  }
+  while (choices.length < 4) choices.push(`${correctChoice}…`);
+  return { ...q, choices: choices.slice(0, 4), correctChoice };
+}
+
 export function shuffleChoices(q) {
-  const tagged = q.choices.map((choice) => ({
+  const fixed = ensureCorrectChoiceInList(q);
+  const tagged = fixed.choices.map((choice) => ({
     choice,
-    correct: choice === q.correctChoice,
+    correct: choice === fixed.correctChoice,
   }));
   for (let i = tagged.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [tagged[i], tagged[j]] = [tagged[j], tagged[i]];
   }
   return {
-    ...q,
+    ...fixed,
     choices: tagged.map((t) => t.choice),
-    correctChoice: tagged.find((t) => t.correct)?.choice ?? q.correctChoice,
+    correctChoice: tagged.find((t) => t.correct)?.choice ?? fixed.correctChoice,
   };
 }
 
