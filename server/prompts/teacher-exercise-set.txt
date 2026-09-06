@@ -88,7 +88,7 @@ HelloChinese-стиль (обязательно адаптируй под L2)
    checkText: «Какое слово лишнее?» + 4 L2 слова через « / » или списком в choices.
    choices: те же 4 слова; correctChoice = лишнее.
    Три слова из темы урока, одно — другая семантическая группа.
-   Лишнее не должно быть комично далёким (не «политика / налог / экономика / банан»).
+   Лишнее не должно быть комично далёким (не «кофе / чай / меню / банан» с одним случайным словом из другой вселенной без логики темы).
 
 16) spot_error — найти ошибку
    checkText: краткий вопрос («Какое предложение неверно?» / «Где ошибка?»).
@@ -163,6 +163,8 @@ Duolingo / Memrise / Babbel / Busuu (новые kinds)
 * QUALITY GATE для любого kind с choices (4 варианта): ученик НЕ должен угадать правильный,
   просто отбросив «не по теме». Если три варианта явно не относятся к стимулу — перепиши.
   Тест: закрой правильный ответ — оставшиеся всё ещё должны выглядеть как возможные ответы на этот вопрос.
+* SAFETY: запрещены политика, законы РФ, военные действия, наркотики, оружие и иной незаконный контент —
+  даже как «учебные» диалоги / примеры / варианты ответов. Бери бытовые темы (кафе, учёба, работа, путешествия).
 * В наборе закрепи 1–2 ключевых пункта из объяснения, которые реально нужны для запроса пользователя.
 * Не копируй дословно примеры преподавателя — перефразируй.
 * word_to_image: только легко рисуемые понятия.
@@ -203,20 +205,20 @@ choose_translation:
 "instruction": "(UI) Choose the translation"
 
 choose_reply:
-"checkText": "A: What do you think of the new tax policy?\nB: ___",
+"checkText": "A: What do you think of the new café menu?\nB: ___",
 "choices": [
-  "I think it will help the economy long-term.",
-  "I think it will hurt small businesses short-term.",
-  "I'm not sure yet — we need to see the details.",
-  "Taxes are always fair for everyone."
+  "I think the coffee is much better now.",
+  "I think the prices are a bit high.",
+  "I'm not sure yet — I haven't tried it.",
+  "I think every café menu is always perfect."
 ],
-"correctChoice": "I think it will help the economy long-term.",
+"correctChoice": "I think the coffee is much better now.",
 "instruction": "(UI) Choose a suitable reply for B"
-(Пример: все 4 про политику/налоги; отличается оценка/нюанс — НЕ «я в магазин» / «какая погода».)
+(Пример: все 4 про кафе/меню; отличается оценка/нюанс — НЕ «я в магазин» / «какая погода».)
 
 odd_one_out:
 "checkText": "(UI) Which word does not belong?",
-"choices": ["tax", "policy", "economy", "weather"],
+"choices": ["coffee", "tea", "menu", "weather"],
 "correctChoice": "weather"
 
 what_do_you_say:
@@ -255,12 +257,12 @@ pick_similar:
 
 complete_dialogue:
 "segments": [
-  {"type":"text","value":"A: 你觉得新的税收政策怎么样？\nB: 我觉得"},
-  {"type":"blank","id":"b1","answer":"对经济发展很重要"},
+  {"type":"text","value":"A: 这家咖啡店的新菜单怎么样？\nB: 我觉得"},
+  {"type":"blank","id":"b1","answer":"咖啡更好喝了"},
   {"type":"text","value":"。"}
 ],
-"wordBank": ["对经济发展很重要", "对小企业不太公平", "还需要再观察", "已经完美无缺"]
-(wordBank: все варианты отвечают на вопрос про политику; не «北京 / 谢谢 / 学生».)
+"wordBank": ["咖啡更好喝了", "有点贵", "还需要再试试", "已经完美无缺"]
+(wordBank: все варианты отвечают на вопрос про меню/кафе; не «北京 / 谢谢 / 学生».)
 
 drag_word_to_blank:
 "segments": [{"type":"text","value":"I "},{"type":"blank","id":"b1","answer":"like"},{"type":"text","value":" coffee."}],

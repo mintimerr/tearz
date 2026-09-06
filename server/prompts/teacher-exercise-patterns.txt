@@ -29,12 +29,13 @@ A. библиотека  B. аптека  C. вокзал  D. музей
 Pattern HC-2: choose reply (mini dialogue)
 One short line from speaker A; pick B’s natural reply.
 ALL 4 options = same topic, similar length, plausible replies — only one fits pragmatically.
-Example (L2 Chinese, tax/policy talk):
-A: 最近中国政府出台了新的税收政策，你怎么看？
-A. 我觉得这对经济发展很重要。
-B. 我觉得这对小企业不太公平。
-C. 我觉得还需要再观察一段时间。
-D. 我觉得税收政策从来都不重要。
+Never use politics, RF law, military, drugs, or weapons as drill topics.
+Example (L2 Chinese, café talk):
+A: 这家咖啡店的新菜单怎么样？
+A. 我觉得咖啡更好喝了。
+B. 我觉得有点贵。
+C. 我觉得还需要再试试。
+D. 我觉得每家店的菜单都完美。
 (BAD — do NOT do this: A correct + 「我今天去超市」/「明天天气怎么样」/「你喜欢看电影吗」)
 
 Pattern HC-3: odd one out

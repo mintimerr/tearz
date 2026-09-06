@@ -108,6 +108,11 @@ function uiLangMeta(uiRaw) {
           'That is not about language — I cannot help with that.\n\n' +
           'How I can help:\n' +
           'We can cover grammar, phrases, translation, homework, or how to say something in any situation.',
+        prohibited:
+          'Briefly:\n' +
+          'I do not discuss politics, laws, military topics, drugs, weapons, or other illegal content.\n\n' +
+          'How I can help:\n' +
+          'Ask about grammar, everyday phrases, translation, or homework — safe language topics only.',
       },
     };
   }
@@ -152,6 +157,11 @@ function uiLangMeta(uiRaw) {
           '这已经不是语言学习——这类问题我帮不了。\n\n' +
           '我能帮你：\n' +
           '语法、句子、翻译、作业，或任何场景里「怎么说」。',
+        prohibited:
+          '简短：\n' +
+          '我不讨论政治、法律、军事、毒品、武器或其他违法内容。\n\n' +
+          '我能帮你：\n' +
+          '语法、日常用语、翻译或作业——只谈安全的语言话题。',
       },
     };
   }
@@ -196,6 +206,11 @@ function uiLangMeta(uiRaw) {
         'Это уже не про язык — с таким я не помогу.\n\n' +
         'Чем могу помочь:\n' +
         'Зато разберём грамматику, фразы, перевод, домашку или «как сказать» в любой ситуации.',
+      prohibited:
+        'Коротко:\n' +
+        'Я не обсуждаю политику, законы, военные темы, наркотики, оружие и другой запрещённый контент.\n\n' +
+        'Чем могу помочь:\n' +
+        'Грамматика, бытовые фразы, перевод или домашка — только безопасные языковые темы.',
     },
   };
 }
@@ -552,7 +567,7 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', lear
   return prompt;
 }
 
-/** @typedef {'teach' | 'practical' | 'cheat' | 'jailbreak' | 'off_topic'} TeacherIntent */
+/** @typedef {'teach' | 'practical' | 'cheat' | 'jailbreak' | 'off_topic' | 'prohibited'} TeacherIntent */
 
 /**
  * Fast intent/policy gate before the main teacher reply.
@@ -603,7 +618,8 @@ async function classifyTeacherIntent(apiKey, message, history) {
       intent === 'practical' ||
       intent === 'cheat' ||
       intent === 'jailbreak' ||
-      intent === 'off_topic'
+      intent === 'off_topic' ||
+      intent === 'prohibited'
     ) {
       return intent;
     }
@@ -3103,7 +3119,7 @@ app.post('/api/teacher-chat', async (req, res) => {
     let intent = 'teach';
     if (!hasImage) {
       intent = await classifyTeacherIntent(apiKey, userMessageText, history);
-      if (intent === 'cheat' || intent === 'jailbreak' || intent === 'off_topic') {
+      if (intent === 'cheat' || intent === 'jailbreak' || intent === 'off_topic' || intent === 'prohibited') {
         return res.json({ reply: teacherIntentReply(intent, ui) });
       }
     } else if (userMessageText && !m.photoOnlyHint.test(userMessageText)) {
@@ -3112,7 +3128,7 @@ app.post('/api/teacher-chat', async (req, res) => {
         `${userMessageText}\n\n${m.photoAttachHint}`,
         history,
       );
-      if (intent === 'cheat' || intent === 'jailbreak') {
+      if (intent === 'cheat' || intent === 'jailbreak' || intent === 'prohibited') {
         return res.json({ reply: teacherIntentReply(intent, ui) });
       }
       if (intent === 'off_topic') intent = 'teach';
