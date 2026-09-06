@@ -23,8 +23,11 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GameGoldButton } from '@/components/game/game-gold-button';
+import { LongPressWordText } from '@/components/long-press-word-text';
+import { WordAddSheetHost } from '@/components/word-add-sheet';
 import { useKeyboardInset } from '@/hooks/use-keyboard-inset';
 import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
+import { setActiveStudyLanguage } from '@/utils/active-study-language';
 import { GAME_THEME } from '@/constants/game-theme';
 import { TearzThinking } from '@/components/teacher/tearz-thinking';
 import { useTranslation } from '@/contexts/locale-context';
@@ -88,11 +91,13 @@ function DrillHeader({
   index,
   finished,
   onClose,
+  closeDisabled = false,
 }: {
   total: number;
   index: number;
   finished: boolean;
   onClose: () => void;
+  closeDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   const progress = finished ? 1 : (index + 1) / total;
@@ -101,12 +106,22 @@ function DrillHeader({
     <View style={styles.header}>
       <View style={styles.titleBar}>
         <Pressable
-          onPress={onClose}
+          onPress={closeDisabled ? undefined : onClose}
+          disabled={closeDisabled}
           hitSlop={10}
-          style={({ pressed }) => [styles.headerSideBtn, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.headerSideBtn,
+            closeDisabled && styles.headerSideBtnDisabled,
+            pressed && !closeDisabled && styles.pressed,
+          ]}
           accessibilityRole="button"
+          accessibilityState={{ disabled: closeDisabled }}
           accessibilityLabel={t('teacher.drill.closeA11y')}>
-          <Ionicons name="chevron-down" size={22} color={GAME_THEME.color.ink} />
+          <Ionicons
+            name="chevron-down"
+            size={22}
+            color={closeDisabled ? 'rgba(26,26,26,0.28)' : GAME_THEME.color.ink}
+          />
         </Pressable>
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>{t('teacher.drill.title')}</Text>
@@ -142,12 +157,14 @@ function DrillFeedback({
         <View style={[styles.fbBubble, ok ? styles.fbBubbleOk : styles.fbBubbleWarn]}>
           <View style={[styles.fbTail, ok ? styles.fbTailOk : styles.fbTailWarn]} />
           <Text style={styles.fbTitle}>{result.title}</Text>
-          {result.feedback ? <Text style={styles.fbText}>{result.feedback}</Text> : null}
+          {result.feedback ? (
+            <LongPressWordText text={result.feedback} style={styles.fbText} />
+          ) : null}
 
           {result.idealAnswer && !ok ? (
             <View style={styles.fbAnswer}>
               <Text style={styles.fbAnswerLabel}>{t('teacher.drill.idealAnswer')}</Text>
-              <Text style={styles.fbAnswerText}>{result.idealAnswer}</Text>
+              <LongPressWordText text={result.idealAnswer} style={styles.fbAnswerText} />
             </View>
           ) : null}
 
@@ -316,7 +333,12 @@ function ChoiceOption({
       <View style={[styles.choiceLetter, selected && styles.choiceLetterSelected]}>
         <Text style={[styles.choiceLetterText, selected && styles.choiceLetterTextSelected]}>{letter}</Text>
       </View>
-      <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</Text>
+      <View style={styles.choiceTextWrap}>
+        <LongPressWordText
+          text={label}
+          style={[styles.choiceText, selected && styles.choiceTextSelected]}
+        />
+      </View>
     </Pressable>
   );
 }
@@ -353,6 +375,13 @@ export function TeacherExerciseDrill({
   const [finished, setFinished] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const blankRefs = useRef<Record<string, TextInput | null>>({});
+
+  useEffect(() => {
+    if (!visible) return;
+    const lang = followUpContext?.language ?? transcribeLanguage;
+    setActiveStudyLanguage(lang);
+    return () => setActiveStudyLanguage(null);
+  }, [followUpContext?.language, transcribeLanguage, visible]);
 
   const patchAnswerState = useCallback((patch: Partial<ExerciseAnswerState>) => {
     setAnswerState((prev) => ({ ...prev, ...patch }));
@@ -528,19 +557,22 @@ export function TeacherExerciseDrill({
   }, [index, resetCardState, result, total]);
 
   const handleClose = useCallback(() => {
+    // На экране итогов ждём рекомендацию — иначе уводят до выбора.
+    if (finished && followUpLoading) return;
     Keyboard.dismiss();
     const summary = finished || result ? { correct: correctCount, total } : null;
     resetAll();
     onClose(summary);
-  }, [correctCount, finished, onClose, resetAll, result, total]);
+  }, [correctCount, finished, followUpLoading, onClose, resetAll, result, total]);
 
   const handleFinish = useCallback(() => {
+    if (followUpLoading) return;
     Keyboard.dismiss();
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const summary = { correct: correctCount, total };
     resetAll();
     onClose(summary);
-  }, [correctCount, onClose, resetAll, total]);
+  }, [correctCount, followUpLoading, onClose, resetAll, total]);
 
   const handleFollowUpPress = useCallback(() => {
     if (!followUp) return;
@@ -566,13 +598,21 @@ export function TeacherExerciseDrill({
 
   if (!open) return null;
 
+  const summaryReady = !followUpLoading;
+
   return (
     <View style={styles.overlay}>
       <View style={[styles.root, { paddingTop: insets.top }]}>
         <Animated.View style={[styles.flex, keyboardInsetStyle]}>
         <Pressable style={styles.flex} onPress={Keyboard.dismiss} accessible={false}>
         <WordDragProvider>
-        <DrillHeader total={total} index={index} finished={finished} onClose={handleClose} />
+        <DrillHeader
+          total={total}
+          index={index}
+          finished={finished}
+          onClose={handleClose}
+          closeDisabled={finished && !summaryReady}
+        />
 
         {finished ? (
           <>
@@ -722,12 +762,28 @@ export function TeacherExerciseDrill({
 
             <View style={styles.footer}>
               <Pressable
-                onPress={handleFinish}
-                style={({ pressed }) => [styles.summaryCloseBtn, pressed && styles.pressed]}
+                onPress={summaryReady ? handleFinish : undefined}
+                disabled={!summaryReady}
+                style={({ pressed }) => [
+                  styles.summaryCloseBtn,
+                  !summaryReady && styles.summaryCloseBtnDisabled,
+                  pressed && summaryReady && styles.pressed,
+                ]}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: !summaryReady }}
                 accessibilityLabel={t('teacher.drill.backToLesson')}>
-                <Text style={styles.summaryCloseText}>{t('teacher.drill.backToLesson')}</Text>
-                <Ionicons name="arrow-forward" size={17} color={GAME_THEME.color.ink} />
+                <Text
+                  style={[
+                    styles.summaryCloseText,
+                    !summaryReady && styles.summaryCloseTextDisabled,
+                  ]}>
+                  {t('teacher.drill.backToLesson')}
+                </Text>
+                <Ionicons
+                  name="arrow-forward"
+                  size={17}
+                  color={!summaryReady ? 'rgba(26,26,26,0.28)' : GAME_THEME.color.ink}
+                />
               </Pressable>
             </View>
           </>
@@ -768,7 +824,7 @@ export function TeacherExerciseDrill({
                 </View>
 
                 {current.instruction && !isFormExerciseKind(current.kind) ? (
-                  <Text style={styles.instruction}>{current.instruction}</Text>
+                  <LongPressWordText text={current.instruction} style={styles.instruction} />
                 ) : null}
 
                 {!result ? (
@@ -862,6 +918,12 @@ export function TeacherExerciseDrill({
         </WordDragProvider>
         </Pressable>
         </Animated.View>
+        {/* Host inside drill Modal — root/board host sits under this overlay. */}
+        <View
+          style={[styles.wordSheetHost, { paddingBottom: Math.max(insets.bottom, 10) }]}
+          pointerEvents="box-none">
+          <WordAddSheetHost />
+        </View>
       </View>
     </View>
   );
@@ -874,6 +936,12 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: GAME_THEME.color.cream,
+  },
+  wordSheetHost: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    zIndex: 2000,
+    elevation: 2000,
   },
   flex: {
     flex: 1,
@@ -896,6 +964,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 20,
     backgroundColor: 'rgba(26,26,26,0.05)',
+  },
+  headerSideBtnDisabled: {
+    opacity: 0.45,
   },
   headerSpacer: {
     width: 40,
@@ -1052,6 +1123,7 @@ const styles = StyleSheet.create({
   choiceLetterSelected: drillShellStyles.choiceLetterSelected,
   choiceLetterText: drillShellStyles.choiceLetterText,
   choiceLetterTextSelected: drillShellStyles.choiceLetterTextSelected,
+  choiceTextWrap: drillShellStyles.choiceTextWrap,
   choiceText: drillShellStyles.choiceText,
   choiceTextSelected: drillShellStyles.choiceTextSelected,
   freeInput: {
@@ -1466,10 +1538,17 @@ const styles = StyleSheet.create({
     borderColor: GAME_THEME.color.ink,
     backgroundColor: GAME_THEME.color.cream,
   },
+  summaryCloseBtnDisabled: {
+    borderColor: 'rgba(26,26,26,0.18)',
+    backgroundColor: 'rgba(26,26,26,0.06)',
+  },
   summaryCloseText: {
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.1,
     color: GAME_THEME.color.ink,
+  },
+  summaryCloseTextDisabled: {
+    color: 'rgba(26,26,26,0.32)',
   },
 });
