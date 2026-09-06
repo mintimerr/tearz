@@ -1806,6 +1806,153 @@ function formatMistakesBlock(label, mistakes) {
   );
 }
 
+const GENERIC_FOCUS_RE =
+  /^(лексика|грамматика|орфография|понимание(?:\s+значений)?|значения|устойчивые(?:\s+выражения)?|слова|упражнения|vocabulary|grammar|spelling|collocations?|comprehension|word\s*usage|expressions?|words?|exercises?)$/iu;
+
+function focusLabelFromMistake(mistake, maxLen = 40) {
+  const candidates = [mistake.idealAnswer, mistake.checkText, mistake.learnerAnswer]
+    .map((s) => (typeof s === 'string' ? s.trim().replace(/\s+/g, ' ') : ''))
+    .filter(Boolean);
+  for (const raw of candidates) {
+    if (/^[\u4e00-\u9fff]{1,8}$/u.test(raw)) return raw;
+    const cleaned = raw
+      .replace(/_{2,}|…+|\.{3,}/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!cleaned) continue;
+    if (cleaned.length <= maxLen) return cleaned;
+    const head = cleaned.slice(0, maxLen - 1).trim();
+    const cut = head.replace(/\s+\S*$/, '');
+    return `${cut || head}…`;
+  }
+  return '';
+}
+
+function focusAreasFromMistakes(mistakes, max = 4) {
+  const out = [];
+  const seen = new Set();
+  for (const m of mistakes) {
+    const label = focusLabelFromMistake(m);
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key) || GENERIC_FOCUS_RE.test(label)) continue;
+    seen.add(key);
+    out.push(label);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function isGenericFocusList(areas) {
+  const list = (Array.isArray(areas) ? areas : []).map((s) => String(s || '').trim()).filter(Boolean);
+  if (list.length === 0) return true;
+  const genericCount = list.filter((s) => GENERIC_FOCUS_RE.test(s)).length;
+  return genericCount >= Math.ceil(list.length * 0.6);
+}
+
+function joinFocusForTitle(areas, ui) {
+  const parts = (areas || []).slice(0, 3);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) {
+    return ui === 'en' ? `${parts[0]} and ${parts[1]}` : ui === 'zh' ? `${parts[0]}和${parts[1]}` : `${parts[0]} и ${parts[1]}`;
+  }
+  return ui === 'en'
+    ? `${parts[0]}, ${parts[1]}, and ${parts[2]}`
+    : ui === 'zh'
+      ? `${parts[0]}、${parts[1]}和${parts[2]}`
+      : `${parts[0]}, ${parts[1]} и ${parts[2]}`;
+}
+
+function personalizedRepeatTitle(areas, ui) {
+  const joined = joinFocusForTitle(areas, ui);
+  if (!joined) return ui === 'en' ? 'Repeat this topic' : ui === 'zh' ? '再练本主题' : 'Повторить эту тему';
+  return ui === 'en' ? `Retry ${joined}` : ui === 'zh' ? `再练：${joined}` : `Повторим: ${joined}`;
+}
+
+function personalizedReviewTitle(areas, ui) {
+  const joined = joinFocusForTitle(areas, ui);
+  if (!joined) return ui === 'en' ? 'Review mistakes' : ui === 'zh' ? '复习错误' : 'Разобрать ошибки';
+  return ui === 'en' ? `Review ${joined}` : ui === 'zh' ? `复习：${joined}` : `Разберём: ${joined}`;
+}
+
+function personalizedRepeatReason(wrong, total, areas, ui) {
+  const joined = joinFocusForTitle(areas, ui);
+  if (ui === 'en') {
+    return joined
+      ? `You missed ${wrong}/${total}. Weak spots this round: ${joined}. Lock those in before a new topic.`
+      : `You missed ${wrong}/${total} — repeat this topic before moving on.`;
+  }
+  if (ui === 'zh') {
+    return joined
+      ? `这轮错了 ${wrong}/${total}。先巩固：${joined}，再学新内容。`
+      : `错误较多（${wrong}/${total}）— 先巩固本主题再继续。`;
+  }
+  return joined
+    ? `В этой тренировке ${wrong} из ${total}. Слабые места: ${joined}. Сначала закрепим их, потом новая тема.`
+    : `Много ошибок (${wrong} из ${total}) — лучше закрепить эту тему, прежде чем идти дальше.`;
+}
+
+function personalizedReviewReason(areas, ui, gapHint) {
+  const joined = joinFocusForTitle(areas, ui);
+  if (ui === 'en') {
+    if (joined) return `Fix these before the next topic: ${joined}.`;
+    if (gapHint) return `Worth closing this gap: ${gapHint}`;
+    return 'A few gaps to fix before the next topic.';
+  }
+  if (ui === 'zh') {
+    if (joined) return `继续新主题前先补上：${joined}。`;
+    if (gapHint) return `建议先补上：${gapHint}`;
+    return '还有几处需要巩固，再继续新主题。';
+  }
+  if (joined) return `Перед новой темой закроем: ${joined}.`;
+  if (gapHint) return `Стоит закрыть пробел: ${gapHint}`;
+  return 'Есть точечные ошибки — разберём их перед новой темой.';
+}
+
+function enrichFollowUpWithMistakes(followUp, mistakes, correct, total, ui = 'ru') {
+  if (!followUp || followUp.action === 'advance') return followUp;
+  const areas = focusAreasFromMistakes(mistakes);
+  if (areas.length === 0) return followUp;
+  const needsFocusSwap = isGenericFocusList(followUp.focusAreas);
+  const focusAreas = needsFocusSwap ? areas : followUp.focusAreas && followUp.focusAreas.length ? followUp.focusAreas : areas;
+  const wrong = Math.max(0, total - correct);
+  const titleLooksGeneric =
+    !followUp.title ||
+    /^(сначала\s+)?повторим\s+(слова|упражнения)|повторить тренировку|review mistakes|repeat practice|再练一次|复习错误/iu.test(
+      followUp.title,
+    ) ||
+    (/слов|упражнен|practice|exercises|words/iu.test(followUp.title) &&
+      !areas.some((a) => followUp.title.includes(a)));
+  const reasonLooksGeneric =
+    !followUp.reason ||
+    (/много ошибок|too many|错误较多|сделали много|you made/iu.test(followUp.reason) &&
+      !areas.some((a) => followUp.reason.includes(a)));
+  const title = titleLooksGeneric
+    ? followUp.action === 'review_gaps'
+      ? personalizedReviewTitle(focusAreas, ui)
+      : personalizedRepeatTitle(focusAreas, ui)
+    : followUp.title;
+  const reason = reasonLooksGeneric
+    ? followUp.action === 'review_gaps'
+      ? personalizedReviewReason(focusAreas, ui, mistakes[0]?.feedback || mistakes[0]?.idealAnswer)
+      : personalizedRepeatReason(wrong, total, focusAreas, ui)
+    : followUp.reason;
+  return {
+    ...followUp,
+    title,
+    reason,
+    focusAreas,
+    repeatPrompt: normalizeLearnerRepeatPrompt(
+      followUp.repeatPrompt,
+      followUp.action,
+      ui,
+      focusAreas,
+      title,
+    ),
+  };
+}
+
 function isTeacherVoiceRepeatPrompt(text) {
   const t = typeof text === 'string' ? text.trim() : '';
   if (!t) return true;
@@ -2826,7 +2973,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.2', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v4-distractors', vocabExamples: 'v1' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.3', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v4-distractors', vocabExamples: 'v1', drillFollowUp: 'personalized-v1' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */
@@ -3608,6 +3755,7 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
       : 'english';
 
   const wrong = Math.max(0, scoreTotal - scoreCorrect);
+  const areas = focusAreasFromMistakes(sessionList);
   const localFallback = () => {
     if (wrong === 0 && normalizedNextTopic) {
       return {
@@ -3618,43 +3766,37 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
       };
     }
     if (wrong >= Math.ceil(scoreTotal / 2) || wrong >= 4) {
-      return {
-        action: 'repeat_same',
-        title: ui === 'en' ? 'Repeat practice' : ui === 'zh' ? '再练一次' : 'Повторить тренировку',
-        reason:
-          ui === 'en'
-            ? 'Too many mistakes — repeat this topic before moving on.'
-            : ui === 'zh'
-              ? '错误较多 — 先巩固本主题再继续。'
-              : 'Много ошибок — лучше повторить эту тему, прежде чем идти дальше.',
-        focusAreas: sessionList.slice(0, 3).map((item) => item.checkText),
-        repeatPrompt: defaultLearnerRepeatPrompt(
-          'repeat_same',
-          ui,
-          sessionList.slice(0, 3).map((item) => item.checkText),
-        ),
-      };
+      const title = personalizedRepeatTitle(areas, ui);
+      return enrichFollowUpWithMistakes(
+        {
+          action: 'repeat_same',
+          title,
+          reason: personalizedRepeatReason(wrong, scoreTotal, areas, ui),
+          focusAreas: areas,
+          repeatPrompt: defaultLearnerRepeatPrompt('repeat_same', ui, areas, title),
+        },
+        sessionList,
+        scoreCorrect,
+        scoreTotal,
+        ui,
+      );
     }
     if (wrong > 0) {
       const gapHint = sessionList[0]?.feedback || sessionList[0]?.idealAnswer || sessionList[0]?.checkText;
-      return {
-        action: 'review_gaps',
-        title: ui === 'en' ? 'Review mistakes' : ui === 'zh' ? '复习错误' : 'Разобрать ошибки',
-        reason:
-          gapHint && ui === 'ru'
-            ? `Стоит закрыть пробел: ${gapHint}`
-            : ui === 'en'
-              ? 'A few gaps to fix before the next topic.'
-              : ui === 'zh'
-                ? '还有几处需要巩固，再继续新主题。'
-                : 'Есть точечные ошибки — разберём их перед новой темой.',
-        focusAreas: sessionList.slice(0, 4).map((item) => item.checkText),
-        repeatPrompt: defaultLearnerRepeatPrompt(
-          'review_gaps',
-          ui,
-          sessionList.slice(0, 4).map((item) => item.checkText),
-        ),
-      };
+      const title = personalizedReviewTitle(areas, ui);
+      return enrichFollowUpWithMistakes(
+        {
+          action: 'review_gaps',
+          title,
+          reason: personalizedReviewReason(areas, ui, gapHint),
+          focusAreas: areas,
+          repeatPrompt: defaultLearnerRepeatPrompt('review_gaps', ui, areas, title),
+        },
+        sessionList,
+        scoreCorrect,
+        scoreTotal,
+        ui,
+      );
     }
     if (normalizedNextTopic) {
       return {
@@ -3688,7 +3830,9 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
       : '') +
     formatMistakesBlock('Ошибки этой сессии', sessionList) +
     formatMistakesBlock('Память недавних ошибок', memoryList) +
-    '\n\nВерни JSON followUp по правилам промпта.';
+    '\n\nPERSONALIZE: title/reason/focusAreas must name concrete items from session mistakes ' +
+    '(words/phrases), never abstract tags like vocabulary/grammar alone.\n' +
+    'Верни JSON followUp по правилам промпта.';
 
   try {
     const openaiRes = await fetch(OPENAI_URL, {
@@ -3737,7 +3881,14 @@ app.post('/api/teacher-drill-followup', async (req, res) => {
       return res.json({ followUp: localFallback() });
     }
 
-    const followUp = normalizeDrillFollowUpFromModel(parsed, normalizedNextTopic, ui) || localFallback();
+    const followUp =
+      enrichFollowUpWithMistakes(
+        normalizeDrillFollowUpFromModel(parsed, normalizedNextTopic, ui) || localFallback(),
+        sessionList,
+        scoreCorrect,
+        scoreTotal,
+        ui,
+      );
     return res.json({ followUp });
   } catch {
     return res.json({ followUp: localFallback() });

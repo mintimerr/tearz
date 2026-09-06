@@ -42,7 +42,7 @@ import type {
   TeacherNextTopicRecommendation,
 } from '@/types/companion-chat-api';
 import { postTeacherDrillFollowUp } from '@/services/companion-chat-ai';
-import { buildLocalDrillFollowUp } from '@/utils/teacher-drill-followup';
+import { buildLocalDrillFollowUp, enrichFollowUpWithMistakes } from '@/utils/teacher-drill-followup';
 import type { TeacherDrillMistakeItem } from '@/utils/teacher-drill-mistakes';
 import { DRILL, drillShellStyles } from '@/components/teacher/teacher-drill-styles';
 import { EXERCISE_KIND_META } from '@/components/teacher/teacher-exercise-kind-meta';
@@ -457,10 +457,22 @@ export function TeacherExerciseDrill({
           uiLanguage: followUpContext?.uiLanguage,
           nextTopic: nextTopic ?? undefined,
         });
-        if (!cancelled) setFollowUp(nextFollowUp);
+        if (!cancelled) {
+          const ui =
+            followUpContext?.uiLanguage === 'en' || followUpContext?.uiLanguage === 'zh'
+              ? followUpContext.uiLanguage
+              : 'ru';
+          setFollowUp(
+            enrichFollowUpWithMistakes(nextFollowUp, sessionMistakes, correctCount, total, ui),
+          );
+        }
       } catch {
         if (!cancelled) {
-          setFollowUp(buildLocalDrillFollowUp(correctCount, total, sessionMistakes, nextTopic));
+          const ui =
+            followUpContext?.uiLanguage === 'en' || followUpContext?.uiLanguage === 'zh'
+              ? followUpContext.uiLanguage
+              : 'ru';
+          setFollowUp(buildLocalDrillFollowUp(correctCount, total, sessionMistakes, nextTopic, ui));
         }
       } finally {
         if (!cancelled) setFollowUpLoading(false);
