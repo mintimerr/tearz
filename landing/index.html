@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#5C94FC" />
+    <meta name="theme-color" content="#f7f7f8" />
     <meta name="description" content="Tearz — скачать для Android" />
     <meta name="apple-mobile-web-app-title" content="Tearz" />
     <title>Tearz — скачать для Android</title>
@@ -12,64 +12,40 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="bg" aria-hidden="true">
-      <div class="bg-orb bg-orb-a"></div>
-      <div class="bg-orb bg-orb-b"></div>
-      <div class="bg-grid"></div>
-    </div>
+    <main class="page">
+      <header class="top">
+        <img class="mark" src="./assets/icon.png" alt="" width="28" height="28" />
+        <span class="brand" id="brand">Tearz</span>
+      </header>
 
-    <main class="shell">
-      <section class="card">
-        <div class="mascot-wrap">
-          <div class="mascot-glow" aria-hidden="true"></div>
-          <img
-            class="mascot"
-            src="./assets/tearz-mascot.png"
-            alt="Tearz"
-            width="720"
-            height="720"
-            decoding="async"
-          />
-        </div>
+      <section class="hero">
+        <img
+          class="mascot"
+          src="./assets/tearz-mascot.png"
+          alt="Tearz"
+          width="720"
+          height="720"
+          decoding="async"
+        />
 
-        <p class="eyebrow">Android</p>
-        <h1 class="title" id="brand">Tearz</h1>
+        <h1 class="title">Tearz для Android</h1>
         <p class="lead">
-          Твой преподаватель языков.<br />
+          Преподаватель языков в кармане.<br />
           Скачай приложение и начни урок.
         </p>
 
         <a class="btn" id="downloadBtn" href="./tearz.apk">
-          <span class="btn-icon" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 3v12m0 0l4.5-4.5M12 15l-4.5-4.5"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M4 17.5V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1.5"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-              />
-            </svg>
-          </span>
-          <span class="btn-label">Скачать APK</span>
+          Скачать APK
         </a>
 
         <p class="meta" id="statusHint">Бесплатно · без Google Play</p>
-        <p class="note">
-          После скачивания разреши установку из браузера — один раз.
-        </p>
+        <p class="note">После скачивания разреши установку из браузера — один раз.</p>
       </section>
     </main>
 
