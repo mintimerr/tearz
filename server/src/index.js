@@ -3004,11 +3004,21 @@ if (fs.existsSync(path.join(ANDROID_LANDING_DIR, 'index.html'))) {
     '/android',
     express.static(ANDROID_LANDING_DIR, {
       index: 'index.html',
-      maxAge: '1h',
+      // HTML/CSS часто правятся — не кешируем агрессивно (Safari залипал на старом UI)
+      maxAge: 0,
       setHeaders(res, filePath) {
         if (filePath.endsWith('.apk')) {
           res.setHeader('Content-Type', 'application/vnd.android.package-archive');
           res.setHeader('Content-Disposition', 'attachment; filename="tearz.apk"');
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+          return;
+        }
+        if (/\.(html|css|js)$/i.test(filePath)) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          return;
+        }
+        if (/\.(png|jpg|jpeg|webp|svg|ico)$/i.test(filePath)) {
+          res.setHeader('Cache-Control', 'public, max-age=86400');
         }
       },
     }),

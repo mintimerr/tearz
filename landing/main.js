@@ -19,7 +19,7 @@
     btn.classList.add('is-disabled');
     btn.addEventListener('click', (e) => e.preventDefault());
     if (hint) {
-      hint.classList.add('is-warn');
+      hint.hidden = false;
       hint.textContent = cfg.waitlistNote || 'APK скоро появится.';
     }
   }
