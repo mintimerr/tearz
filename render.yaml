@@ -5,7 +5,8 @@ services:
     runtime: node
     rootDir: server
     # Web кладётся в public/app локально (`npm run build:web`) и едет с репо.
-    buildCommand: npm install
+    # APK качаем на билде — в git не храним (*.apk), иначе Android не скачивает с Expo-редиректов.
+    buildCommand: npm install && mkdir -p public/android && curl -fsSL -o public/android/tearz.apk "https://expo.dev/artifacts/eas/_ORtBvaItA-uLf0XpAvUallvmSuv5m_24g5ICgEs5s8.apk" && ls -lh public/android/tearz.apk
     startCommand: npm start
     healthCheckPath: /health
     plan: free

@@ -2987,7 +2987,19 @@ app.get(['/terms', '/terms.html'], (_req, res) => {
 
 /** Android download landing — https://…/android */
 const ANDROID_LANDING_DIR = path.join(__dirname, '../public/android');
+const ANDROID_APK_PATH = path.join(ANDROID_LANDING_DIR, 'tearz.apk');
 if (fs.existsSync(path.join(ANDROID_LANDING_DIR, 'index.html'))) {
+  // Явный роут APK — правильный Content-Type / Disposition для Android
+  app.get(['/android/tearz.apk', '/download/tearz.apk'], (req, res) => {
+    if (!fs.existsSync(ANDROID_APK_PATH)) {
+      return res.status(404).type('text').send('APK not found');
+    }
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', 'attachment; filename="tearz.apk"');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.sendFile(ANDROID_APK_PATH);
+  });
+
   app.use(
     '/android',
     express.static(ANDROID_LANDING_DIR, {
@@ -3004,7 +3016,10 @@ if (fs.existsSync(path.join(ANDROID_LANDING_DIR, 'index.html'))) {
   app.get(['/download', '/download/'], (_req, res) => {
     res.redirect(302, '/android/');
   });
-  console.log(`[android] download landing from ${ANDROID_LANDING_DIR}`);
+  console.log(
+    `[android] download landing from ${ANDROID_LANDING_DIR}` +
+      (fs.existsSync(ANDROID_APK_PATH) ? ' (+tearz.apk)' : ' (apk missing)'),
+  );
 }
 
 /** Web-демо (expo export) — та же ссылка / QR, что и API host */

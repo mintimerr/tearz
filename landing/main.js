@@ -8,16 +8,20 @@
 
   const apkUrlRaw = (cfg.apkUrl || './tearz.apk').trim();
   const apkUrl = new URL(apkUrlRaw, window.location.href).href;
-  const looksLikePlaceholder = /tearz\.apk$/i.test(apkUrlRaw) && apkUrlRaw.startsWith('./');
-  const isRemote = /^https?:\/\//i.test(apkUrlRaw);
+  const looksLikePlaceholder = /tearz\.apk$/i.test(apkUrlRaw);
 
   btn.setAttribute('href', apkUrl);
-  if (isRemote) {
-    btn.removeAttribute('download');
-    btn.setAttribute('target', '_blank');
-    btn.setAttribute('rel', 'noopener');
-  } else {
-    btn.setAttribute('download', '');
+  // Same-origin: атрибут download работает на Android Chrome
+  btn.setAttribute('download', 'tearz.apk');
+  btn.removeAttribute('target');
+
+  function markMissing() {
+    btn.classList.add('is-disabled');
+    btn.addEventListener('click', (e) => e.preventDefault());
+    if (hint) {
+      hint.classList.add('is-warn');
+      hint.textContent = cfg.waitlistNote || 'APK скоро появится.';
+    }
   }
 
   if (looksLikePlaceholder) {
@@ -26,12 +30,11 @@
         if (!res.ok) throw new Error('missing');
       })
       .catch(() => {
-        btn.classList.add('is-disabled');
-        btn.addEventListener('click', (e) => e.preventDefault());
-        if (hint) {
-          hint.classList.add('is-warn');
-          hint.textContent = cfg.waitlistNote || 'APK скоро появится.';
-        }
-      });
+        // HEAD иногда режется — пробуем GET range
+        return fetch(apkUrl, { method: 'GET', headers: { Range: 'bytes=0-0' } }).then((res) => {
+          if (!(res.ok || res.status === 206)) throw new Error('missing');
+        });
+      })
+      .catch(markMissing);
   }
 })();

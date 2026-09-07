@@ -4,6 +4,7 @@
 window.TEARZ_DOWNLOAD = {
   brand: 'Tearz',
   version: '1.0.0',
-  apkUrl: 'https://expo.dev/artifacts/eas/_ORtBvaItA-uLf0XpAvUallvmSuv5m_24g5ICgEs5s8.apk',
+  // Same-origin — без Expo-редиректов (на Android они ломают скачивание)
+  apkUrl: './tearz.apk',
   waitlistNote: 'APK скоро появится.',
 };
