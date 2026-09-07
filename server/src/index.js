@@ -2986,7 +2986,7 @@ app.get(['/terms', '/terms.html'], (_req, res) => {
 });
 
 /** Android download landing — https://…/android */
-const ANDROID_LANDING_DIR = path.join(__dirname, '../../landing');
+const ANDROID_LANDING_DIR = path.join(__dirname, '../public/android');
 if (fs.existsSync(path.join(ANDROID_LANDING_DIR, 'index.html'))) {
   app.use(
     '/android',
