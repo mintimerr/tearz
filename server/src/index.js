@@ -2985,12 +2985,36 @@ app.get(['/terms', '/terms.html'], (_req, res) => {
   res.type('html').sendFile(path.join(LEGAL_DIR, 'terms.html'));
 });
 
+/** Android download landing — https://…/android */
+const ANDROID_LANDING_DIR = path.join(__dirname, '../../landing');
+if (fs.existsSync(path.join(ANDROID_LANDING_DIR, 'index.html'))) {
+  app.use(
+    '/android',
+    express.static(ANDROID_LANDING_DIR, {
+      index: 'index.html',
+      maxAge: '1h',
+      setHeaders(res, filePath) {
+        if (filePath.endsWith('.apk')) {
+          res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+          res.setHeader('Content-Disposition', 'attachment; filename="tearz.apk"');
+        }
+      },
+    }),
+  );
+  app.get(['/download', '/download/'], (_req, res) => {
+    res.redirect(302, '/android/');
+  });
+  console.log(`[android] download landing from ${ANDROID_LANDING_DIR}`);
+}
+
 /** Web-демо (expo export) — та же ссылка / QR, что и API host */
 const WEB_APP_DIR = path.join(__dirname, '../public/app');
 const webIndex = path.join(WEB_APP_DIR, 'index.html');
 if (fs.existsSync(webIndex)) {
   app.use(express.static(WEB_APP_DIR, { index: false, maxAge: '1h' }));
-  app.get(/^(?!\/api(?:\/|$)|\/health$|\/privacy(?:\.html)?$|\/terms(?:\.html)?$|\/ws\/).*/, (req, res, next) => {
+  app.get(
+    /^(?!\/api(?:\/|$)|\/health$|\/privacy(?:\.html)?$|\/terms(?:\.html)?$|\/android(?:\/|$)|\/download(?:\/|$)|\/ws\/).*/,
+    (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
     const rel = req.path === '/' ? 'index.html' : req.path.replace(/^\//, '');
     const filePath = path.join(WEB_APP_DIR, rel);
