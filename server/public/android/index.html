@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#5C94FC" />
+    <meta name="description" content="Tearz — скачай Android APK и учи язык с преподавателем, который ведёт тебя по уровню." />
+    <title>Tearz — скачать для Android</title>
+    <link rel="icon" href="./assets/icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Manrope:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="sky" aria-hidden="true"></div>
+    <div class="clouds" aria-hidden="true"></div>
+
+    <main class="stage">
+      <p class="brand" id="brand">Tearz</p>
+      <h1 class="headline">Учи язык.<br />Tearz ведёт.</h1>
+      <p class="lead">
+        Android APK — тот же Tearz, что на телефоне разработчика: чат, тест уровня, карточки.
+        Без Google Play. Установка в пару тапов.
+      </p>
+
+      <div class="cta-row">
+        <a class="btn" id="downloadBtn" href="./tearz.apk" download>
+          <span class="btn-label">Скачать APK</span>
+          <span class="btn-meta" id="versionLabel">v1.0.0</span>
+        </a>
+        <div class="qr-card" id="qrCard">
+          <canvas id="qr" width="148" height="148" aria-label="QR-код для скачивания APK"></canvas>
+          <p class="qr-caption">Наведи камерой</p>
+        </div>
+      </div>
+
+      <p class="hint" id="statusHint">
+        На Android: открой файл → «Установить» → при необходимости разреши установку из этого источника.
+      </p>
+
+      <figure class="hero">
+        <img
+          src="./assets/tearz-hero.png"
+          alt="Tearz"
+          class="hero-img"
+          width="640"
+          height="640"
+        />
+      </figure>
+    </main>
+
+    <footer class="foot">
+      <div class="foot-row">
+        <span>Пока только Android</span>
+        <span class="dot" aria-hidden="true">·</span>
+        <span>iOS — позже</span>
+        <span class="dot" aria-hidden="true">·</span>
+        <a class="foot-link" href="https://tearz-chat-api.onrender.com/terms" target="_blank" rel="noopener">Terms</a>
+        <span class="dot" aria-hidden="true">·</span>
+        <a class="foot-link" href="https://tearz-chat-api.onrender.com/privacy" target="_blank" rel="noopener">Privacy</a>
+      </div>
+      <p class="foot-disclaimer">
+        Сервис использует генеративный ИИ. Ответы создаются автоматически и могут быть неточными.
+        Администрация не несет ответственности за сгенерированный ИИ контент.
+      </p>
+    </footer>
+
+    <script src="./config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+    <script src="./main.js"></script>
+  </body>
+</html>
