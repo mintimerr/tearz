@@ -1,10 +1,7 @@
 (function () {
   const cfg = window.TEARZ_DOWNLOAD || {};
-  const brand = document.getElementById('brand');
   const btn = document.getElementById('downloadBtn');
   const hint = document.getElementById('statusHint');
-
-  if (brand && cfg.brand) brand.textContent = cfg.brand;
 
   const apkUrlRaw = (cfg.apkUrl || './tearz.apk').trim();
   const apkUrl = new URL(apkUrlRaw, window.location.href).href;
