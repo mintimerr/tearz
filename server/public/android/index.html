@@ -3,31 +3,51 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#ffffff" />
-    <meta name="description" content="Tearz" />
+    <meta name="theme-color" content="#07090f" />
+    <meta name="description" content="Tearz — цифровой преподаватель языков" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <title>Tearz</title>
-    <link rel="icon" href="./assets/icon.png?v=7" type="image/png" />
-    <link rel="stylesheet" href="./styles.css?v=7" />
+    <link rel="icon" href="./assets/icon.png?v=8" type="image/png" />
+    <link rel="stylesheet" href="./styles.css?v=8" />
   </head>
   <body>
+    <div class="fx" aria-hidden="true">
+      <div class="fx-glow fx-glow-a"></div>
+      <div class="fx-glow fx-glow-b"></div>
+      <div class="fx-grid"></div>
+      <div class="fx-noise"></div>
+    </div>
+
     <main class="page">
-      <div class="center">
-        <img
-          class="logo"
-          src="./assets/tearz-mascot.png?v=7"
-          alt="Tearz"
-          width="720"
-          height="720"
-        />
+      <section class="hero">
+        <div class="mascot" id="mascot">
+          <div class="mascot-ring"></div>
+          <div class="mascot-glow"></div>
+          <img
+            class="mascot-img"
+            src="./assets/tearz-mascot.png?v=8"
+            alt="Tearz"
+            width="720"
+            height="720"
+            decoding="async"
+          />
+        </div>
+
+        <p class="eyebrow">Language learning product</p>
         <h1 class="title" id="brand">Tearz</h1>
-        <a class="btn" id="downloadBtn" href="./tearz.apk">Скачать для Android</a>
+        <p class="lead">Преподаватель. Всегда рядом.</p>
+
+        <a class="btn" id="downloadBtn" href="./tearz.apk">
+          <span class="btn-shine" aria-hidden="true"></span>
+          <span class="btn-label">Скачать для Android</span>
+        </a>
         <p class="meta" id="statusHint" hidden></p>
-      </div>
+      </section>
 
       <footer class="credit">mintimerakhmetshin</footer>
     </main>
-    <script src="./config.js?v=7"></script>
-    <script src="./main.js?v=7"></script>
+
+    <script src="./config.js?v=8"></script>
+    <script src="./main.js?v=8"></script>
   </body>
 </html>
