@@ -77,9 +77,9 @@ body {
 }
 
 .mascot {
-  width: min(38vw, 168px);
+  width: min(62vw, 280px);
   aspect-ratio: 1;
-  margin: 0 0 28px;
+  margin: 0 0 24px;
   display: grid;
   place-items: center;
 }
