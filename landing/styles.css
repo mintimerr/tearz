@@ -63,7 +63,7 @@ body {
   display: grid;
   place-items: center;
   padding:
-    calc(56px + env(safe-area-inset-top) + 24px)
+    calc(56px + env(safe-area-inset-top) + 16px)
     24px
     calc(56px + env(safe-area-inset-bottom));
 }
@@ -77,9 +77,8 @@ body {
 }
 
 .mascot {
-  width: min(78vw, 340px);
-  aspect-ratio: 1;
-  margin: 0 0 22px;
+  width: min(58vw, 260px);
+  margin: 0;
   display: grid;
   place-items: center;
 }
@@ -90,23 +89,13 @@ body {
   object-fit: contain;
   display: block;
   background: transparent;
-  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.10));
+  filter: drop-shadow(0 16px 32px rgba(0, 0, 0, 0.12));
   animation: softFloat 5.5s ease-in-out infinite;
   will-change: transform;
-  border-radius: 24px;
-}
-
-.title {
-  margin: 0;
-  font-size: clamp(40px, 8vw, 52px);
-  font-weight: 600;
-  letter-spacing: -0.05em;
-  line-height: 1.05;
-  color: var(--ink);
 }
 
 .btn {
-  margin-top: 28px;
+  margin-top: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -137,7 +126,7 @@ body {
 }
 
 .meta {
-  margin: 16px 0 0;
+  margin: 14px 0 0;
   max-width: 28ch;
   font-size: 13px;
   line-height: 1.4;
