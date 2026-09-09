@@ -27,43 +27,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-.top {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 56px;
-  padding: 0 20px;
-  padding-top: env(safe-area-inset-top);
-  background: rgba(255, 255, 255, 0.86);
-  backdrop-filter: saturate(1.2) blur(12px);
-  -webkit-backdrop-filter: saturate(1.2) blur(12px);
-  border-bottom: 1px solid var(--line);
-}
-
-.top-mark {
-  width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  background: #5c94fc;
-}
-
-.top-brand {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
 .page {
   min-height: 100svh;
   display: grid;
   place-items: center;
   padding:
-    calc(56px + env(safe-area-inset-top) + 16px)
+    max(24px, env(safe-area-inset-top))
     24px
     calc(56px + env(safe-area-inset-bottom));
 }
