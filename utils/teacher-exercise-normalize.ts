@@ -18,6 +18,63 @@ import {
 
 const BLANK_RE = /_{2,}|…{2,}|\.{3,}/g;
 
+function shuffleList<T>(items: readonly T[]): T[] {
+  const arr = items.slice();
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = arr[i]!;
+    arr[i] = arr[j]!;
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+/** Модель часто кладёт correctChoice первым — перемешиваем, чтобы A≠всегда верный. */
+function withShuffledChoiceOrder(item: TeacherExerciseItem): TeacherExerciseItem {
+  let next = item;
+
+  if (item.choices && item.choices.length >= 2) {
+    let choices = item.choices.slice();
+    let correct = item.correctChoice?.trim() || undefined;
+    if (correct) {
+      const exact = choices.find((c) => c === correct);
+      const fuzzy = exact
+        ? undefined
+        : choices.find((c) => c.trim().toLowerCase() === correct!.toLowerCase());
+      if (fuzzy) correct = fuzzy;
+      else if (!exact) choices = [correct, ...choices.filter((c) => c !== correct)].slice(0, 6);
+    }
+    choices = shuffleList(choices);
+    // Если после shuffle correct снова на [0] при ≥3 вариантах — ещё раз крутануть
+    if (correct && choices.length >= 3 && choices[0] === correct) {
+      choices = shuffleList(choices);
+    }
+    next = { ...next, choices, correctChoice: correct ?? item.correctChoice };
+  }
+
+  if (item.formSlots?.length) {
+    next = {
+      ...next,
+      formSlots: item.formSlots.map((slot) => ({
+        ...slot,
+        options: slot.options.length >= 2 ? shuffleList(slot.options) : slot.options,
+      })),
+    };
+  }
+
+  if (
+    item.shuffledWords &&
+    item.correctOrder &&
+    item.shuffledWords.length >= 2 &&
+    item.shuffledWords.length === item.correctOrder.length &&
+    item.shuffledWords.every((w, i) => w === item.correctOrder![i])
+  ) {
+    next = { ...next, shuffledWords: shuffleList(item.shuffledWords) };
+  }
+
+  return next;
+}
+
 export function fillBlankInText(text: string, word: string): string {
   const trimmed = word.trim();
   if (!trimmed) return text.replace(BLANK_RE, '___');
@@ -547,7 +604,7 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     checkText: resolvedCheckText,
     }),
   );
-  return normalized;
+  return withShuffledChoiceOrder(normalized);
 }
 
 export function normalizeTeacherExerciseSet(raw: unknown): TeacherExerciseItem[] {

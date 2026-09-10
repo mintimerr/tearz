@@ -1734,6 +1734,36 @@ function trimStrList(raw, maxItems, maxLen) {
   return out.length > 0 ? out : undefined;
 }
 
+function shuffleList(items) {
+  const arr = items.slice();
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+/** Модель часто отдаёт correctChoice первым — перемешиваем порядок вариантов. */
+function shuffleExerciseChoices(choices, correctChoice) {
+  if (!Array.isArray(choices) || choices.length < 2) return { choices, correctChoice };
+  let list = choices.slice();
+  let correct =
+    typeof correctChoice === 'string' && correctChoice.trim() ? correctChoice.trim() : undefined;
+  if (correct) {
+    const exact = list.find((c) => c === correct);
+    const fuzzy = exact
+      ? undefined
+      : list.find((c) => c.trim().toLowerCase() === correct.toLowerCase());
+    if (fuzzy) correct = fuzzy;
+    else if (!exact) list = [correct, ...list.filter((c) => c !== correct)].slice(0, 6);
+  }
+  list = shuffleList(list);
+  if (correct && list.length >= 3 && list[0] === correct) list = shuffleList(list);
+  return { choices: list, correctChoice: correct || correctChoice };
+}
+
 function normalizeNextTopicFromModel(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const next = raw.nextTopic;
@@ -2392,6 +2422,34 @@ function normalizeExerciseSetFromModel(raw) {
       (ORDER_KINDS.has(kind) ? 'Составь предложение из слов' : '') ||
       (CHOICE_KINDS.has(kind) ? 'Выбери правильный вариант' : '');
 
+    let outChoices =
+      CHOICE_KINDS.has(kind) || kind === 'identify_main_idea' ? choices : undefined;
+    let outCorrect =
+      CHOICE_KINDS.has(kind) || kind === 'identify_main_idea' ? correctChoice : undefined;
+    if (outChoices) {
+      const shuffled = shuffleExerciseChoices(outChoices, outCorrect);
+      outChoices = shuffled.choices;
+      outCorrect = shuffled.correctChoice;
+    }
+
+    let outFormSlots = FORM_KINDS.has(kind) ? formSlots : undefined;
+    if (outFormSlots?.length) {
+      outFormSlots = outFormSlots.map((s) => ({
+        ...s,
+        options: Array.isArray(s.options) && s.options.length >= 2 ? shuffleList(s.options) : s.options,
+      }));
+    }
+
+    let outShuffledWords = ORDER_KINDS.has(kind) ? shuffledWords : undefined;
+    const outCorrectOrder = ORDER_KINDS.has(kind) ? correctOrder : undefined;
+    if (
+      outShuffledWords?.length >= 2 &&
+      outCorrectOrder?.length === outShuffledWords.length &&
+      outShuffledWords.every((w, idx) => w === outCorrectOrder[idx])
+    ) {
+      outShuffledWords = shuffleList(outShuffledWords);
+    }
+
     out.push({
       id: typeof item.id === 'string' && item.id.trim() ? item.id.trim() : `ex-${i + 1}`,
       kind,
@@ -2400,14 +2458,14 @@ function normalizeExerciseSetFromModel(raw) {
           ? item.instruction.trim().slice(0, 160)
           : undefined,
       segments,
-      choices: CHOICE_KINDS.has(kind) || kind === 'identify_main_idea' ? choices : undefined,
+      choices: outChoices,
       wordBank: DRAG_BLANK_KINDS.has(kind) || kind === 'word_to_image' ? wordBank : undefined,
       numberedSentences: DRAG_BLANK_KINDS.has(kind) ? numberedSentences : undefined,
-      formSlots: FORM_KINDS.has(kind) ? formSlots : undefined,
+      formSlots: outFormSlots,
       imageSlots: kind === 'word_to_image' ? imageSlots : undefined,
       pairs: kind === 'match_pairs' ? pairs : undefined,
-      shuffledWords: ORDER_KINDS.has(kind) ? shuffledWords : undefined,
-      correctOrder: ORDER_KINDS.has(kind) ? correctOrder : undefined,
+      shuffledWords: outShuffledWords,
+      correctOrder: outCorrectOrder,
       minSentences: kind === 'write_sentences' ? minSentences || 5 : undefined,
       voicePrompt: kind === 'voice_recording' ? voicePrompt : undefined,
       selectWord: kind === 'read_and_select' ? selectWord : undefined,
@@ -2424,8 +2482,7 @@ function normalizeExerciseSetFromModel(raw) {
               }))
           : undefined,
       passage: kind === 'identify_main_idea' ? passage : undefined,
-      correctChoice:
-        CHOICE_KINDS.has(kind) || kind === 'identify_main_idea' ? correctChoice : undefined,
+      correctChoice: outCorrect,
       checkText: resolvedCheck.slice(0, 1200),
     });
   }
@@ -2480,7 +2537,8 @@ function buildExerciseBatchUserContent({
     `DISTRACTORS: для choose_reply / what_do_you_say / multiple_choice / translate_sentence / choose_translation / select_missing_word — ` +
     `все 4 варианта одной темы и длины; неправильные = near-miss (другой нюанс/вежливость/мнение), ` +
     `НЕ рандом с другой темы (погода/магазин/кино/«я студент»). ` +
-    `Если правильный угадывается отбрасыванием «не по теме» — перепиши.\n` +
+    `Если правильный угадывается отбрасыванием «не по теме» — перепиши. ` +
+    `ПОРЯДОК: correctChoice НЕ всегда choices[0] — меняй позицию правильного (A/B/C/D) между заданиями.\n` +
     `Только JSON: ${jsonHint}.`
   );
 }
