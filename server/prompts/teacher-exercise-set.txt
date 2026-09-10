@@ -138,8 +138,12 @@ Duolingo / Memrise / Babbel / Busuu (новые kinds)
    choices: ровно 2 варианта на UI («True»/«False» или локализованные); correctChoice.
 
 25) type_translation — напечатать перевод (Babbel)
-   checkText: фраза на UI-языке.
-   segments: один blank с answer = правильный перевод на L2 (или одно поле free-text через blank).
+   checkText: ОБЯЗАТЕЛЬНО сама фраза на UI-языке, которую надо перевести (например «Спасибо» / «Good morning»).
+   НЕ пиши в checkText инструкцию вроде «Напиши перевод на китайском» — это поле instruction.
+   instruction: короткая подсказка «Напиши перевод на L2».
+   segments: один blank с answer = правильный перевод на L2
+     ИЛИ без segments — тогда правильный ответ в correctChoice / blank answer всё равно нужен.
+   Пример: { "kind":"type_translation", "instruction":"Напиши перевод на китайском.", "checkText":"Мы выиграли тендер.", "segments":[{"type":"blank","id":"b1","answer":"我们中标了。"}] }
 
 26) collocation_choice — естественное сочетание (Babbel)
    checkText: «Какое слово подходит к …?» + контекст на L2.

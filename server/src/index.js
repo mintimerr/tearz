@@ -795,7 +795,7 @@ function tryDeterministicExerciseCheck(item, answer, learnerAnswers, uiLanguage 
   }
 
   if (
-    (DRAG_BLANK_KINDS.has(kind) || kind === 'type_word_in_blank') &&
+    (DRAG_BLANK_KINDS.has(kind) || kind === 'type_word_in_blank' || kind === 'type_translation') &&
     Array.isArray(item.segments)
   ) {
     const blanks = item.segments.filter(
@@ -814,6 +814,10 @@ function tryDeterministicExerciseCheck(item, answer, learnerAnswers, uiLanguage 
               });
               return map;
             })();
+      // type_translation UI пишет в freeText — подставляем в первый blank
+      if (kind === 'type_translation' && ans && blanks[0] && !filled[blanks[0].id]) {
+        filled[blanks[0].id] = ans;
+      }
       let correct = true;
       const ideals = blanks.map((b) => b.answer.trim());
       for (const b of blanks) {
@@ -821,6 +825,17 @@ function tryDeterministicExerciseCheck(item, answer, learnerAnswers, uiLanguage 
       }
       return ok(correct, ideals.join(', '));
     }
+  }
+
+  if (kind === 'type_translation') {
+    const ideal =
+      (typeof item.correctChoice === 'string' && item.correctChoice.trim()) ||
+      (Array.isArray(item.segments)
+        ? item.segments.find((s) => s && s.type === 'blank' && s.answer)?.answer
+        : '') ||
+      '';
+    if (!ideal || !ans) return null;
+    return ok(answersEqual(ans, ideal), String(ideal).trim());
   }
 
   if (
@@ -2371,6 +2386,19 @@ function normalizeExerciseSetFromModel(raw) {
         : '';
     const hasBlankSegment = segments.some((s) => s && s.type === 'blank');
 
+    const isGenericInstruction = (text) => {
+      const t = typeof text === 'string' ? text.trim() : '';
+      if (!t) return true;
+      if (t.length > 120) return false;
+      if (/^(напиши|write|type|введи|enter|перевед|translate|complete|заполни|choose|выбери|请|写)\b/i.test(t)) {
+        return true;
+      }
+      if (/перевод на (китайском|английском|немецком|французском|l2|chinese|english|german|french)/i.test(t)) {
+        return true;
+      }
+      return /^(напиши|write|type)\s+.{0,24}(перевод|translation)\b/i.test(t);
+    };
+
     if (
       !checkText &&
       !instructionText &&
@@ -2408,19 +2436,41 @@ function normalizeExerciseSetFromModel(raw) {
         kind = wordBank?.length ? 'drag_word_to_blank' : 'type_word_in_blank';
       else if (choices?.length >= 2) kind = 'multiple_choice';
       else if (minSentences) kind = 'write_sentences';
-      else if (typeof item.promptL2 === 'string' || kind === 'type_translation') kind = 'type_translation';
+      else if (
+        typeof item.promptL1 === 'string' ||
+        typeof item.sourceText === 'string' ||
+        kind === 'type_translation'
+      )
+        kind = 'type_translation';
       else kind = 'free_text';
     }
 
-    const resolvedCheck =
+    let resolvedCheck =
       checkText ||
-      instructionText ||
-      (kind === 'read_and_select' && selectWord ? selectWord : '') ||
-      (kind === 'fill_partial_word' && maskedSentence ? maskedSentence : '') ||
-      (kind === 'identify_main_idea' ? 'Выбери главную мысль' : '') ||
-      (kind === 'match_pairs' ? 'Сопоставь слова и переводы' : '') ||
-      (ORDER_KINDS.has(kind) ? 'Составь предложение из слов' : '') ||
-      (CHOICE_KINDS.has(kind) ? 'Выбери правильный вариант' : '');
+      (typeof item.sourceText === 'string' ? item.sourceText.trim() : '') ||
+      (typeof item.promptL1 === 'string' ? item.promptL1.trim() : '') ||
+      (typeof item.prompt === 'string' ? item.prompt.trim() : '') ||
+      '';
+
+    if (kind === 'type_translation') {
+      const fromSeg = segments
+        .filter((s) => s && s.type === 'text' && typeof s.value === 'string' && s.value.trim())
+        .map((s) => s.value.trim())
+        .join(' ');
+      const candidates = [resolvedCheck, fromSeg, checkText].filter(Boolean);
+      resolvedCheck = candidates.find((c) => !isGenericInstruction(c)) || '';
+      if (!resolvedCheck) continue; // без фразы для перевода задание бессмысленно
+    } else {
+      resolvedCheck =
+        resolvedCheck ||
+        instructionText ||
+        (kind === 'read_and_select' && selectWord ? selectWord : '') ||
+        (kind === 'fill_partial_word' && maskedSentence ? maskedSentence : '') ||
+        (kind === 'identify_main_idea' ? 'Выбери главную мысль' : '') ||
+        (kind === 'match_pairs' ? 'Сопоставь слова и переводы' : '') ||
+        (ORDER_KINDS.has(kind) ? 'Составь предложение из слов' : '') ||
+        (CHOICE_KINDS.has(kind) ? 'Выбери правильный вариант' : '');
+    }
 
     let outChoices =
       CHOICE_KINDS.has(kind) || kind === 'identify_main_idea' ? choices : undefined;

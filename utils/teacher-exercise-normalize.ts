@@ -320,6 +320,43 @@ function asString(x: unknown, max: number): string {
   return x.trim().slice(0, max);
 }
 
+/** Instruction-like UI copy — не фраза для перевода. */
+export function isGenericDrillInstruction(text: string): boolean {
+  const t = text.trim();
+  if (!t) return true;
+  if (t.length > 120) return false;
+  const lower = t.toLowerCase();
+  if (
+    /^(напиши|write|type|введи|enter|перевед|translate|complete|заполни|choose|выбери|请|写)\b/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (/перевод на (китайском|английском|немецком|французском|l2|chinese|english|german|french)/i.test(lower)) {
+    return true;
+  }
+  if (/^(напиши|write|type)\s+.{0,24}(перевод|translation)\b/i.test(lower)) return true;
+  return false;
+}
+
+/** Фраза, которую ученик должен перевести (не instruction). */
+export function resolveTypeTranslationSource(item: TeacherExerciseItem): string {
+  const fromSegments = item.segments
+    .filter((s): s is Extract<TeacherExerciseSegment, { type: 'text' }> => s.type === 'text')
+    .map((s) => s.value.trim())
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+
+  const candidates = [item.checkText, fromSegments];
+  for (const c of candidates) {
+    const v = (c ?? '').trim();
+    if (v && !isGenericDrillInstruction(v)) return v;
+  }
+  return '';
+}
+
 function asStringArray(raw: unknown, maxItems: number, maxLen: number): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const out = raw.map((x) => asString(x, maxLen)).filter(Boolean).slice(0, maxItems);
@@ -508,7 +545,7 @@ export function emptyExerciseAnswerState(): ExerciseAnswerState {
 export function normalizeTeacherExerciseItem(raw: unknown, index: number): TeacherExerciseItem | null {
   if (!raw || typeof raw !== 'object') return null;
   const obj = raw as Record<string, unknown>;
-  const checkText = asString(obj.checkText, 1200) || asString(obj.prompt, 1200) || asString(obj.text, 1200);
+  let checkText = asString(obj.checkText, 1200) || asString(obj.prompt, 1200) || asString(obj.text, 1200);
   const selectWord = asString(obj.selectWord ?? obj.word, 48) || undefined;
   const selectIsReal =
     typeof obj.selectIsReal === 'boolean'
@@ -521,6 +558,8 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
   const correctChoice = asString(obj.correctChoice ?? obj.correct, 200) || undefined;
   if (
     !checkText &&
+    !asString(obj.sourceText, 400) &&
+    !asString(obj.promptL1, 400) &&
     !obj.pairs &&
     !obj.shuffledWords &&
     !selectWord &&
@@ -563,6 +602,21 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     correctChoice,
   };
   const kind = normalizeKind(obj.kind ?? obj.type, draft);
+  if (kind === 'type_translation') {
+    const sourceCandidates = [
+      asString(obj.sourceText, 400),
+      asString(obj.promptL1, 400),
+      asString(obj.prompt, 400),
+      checkText,
+      segments
+        .filter((s): s is Extract<TeacherExerciseSegment, { type: 'text' }> => s.type === 'text')
+        .map((s) => s.value.trim())
+        .filter(Boolean)
+        .join(' '),
+    ];
+    const source = sourceCandidates.find((c) => c && !isGenericDrillInstruction(c)) ?? '';
+    if (source) checkText = source;
+  }
   const resolvedCheckText =
     checkText ||
     (kind === 'read_and_select' && selectWord ? selectWord : '') ||
@@ -574,7 +628,12 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     (kind === 'word_to_image' && imageSlots?.length
       ? imageSlots.map((s) => s.correctWord).join(' · ')
       : '') ||
-    segmentsToPromptText(segments);
+    (kind === 'type_translation' ? '' : segmentsToPromptText(segments));
+
+  // type_translation without a source phrase is unusable — drop it
+  if (kind === 'type_translation' && !resolvedCheckText.trim()) {
+    return null;
+  }
 
   const normalized = coerceWordToImageItem(
     coerceDragWordToBlankItem({
@@ -715,6 +774,15 @@ export function buildExerciseCheckPayload(
     return wrap(item.checkText.trim(), freeText.trim());
   }
 
+  if (item.kind === 'type_translation') {
+    const source = resolveTypeTranslationSource(item) || item.checkText.trim();
+    const blankAnswer = item.segments
+      .filter((s): s is Extract<TeacherExerciseSegment, { type: 'blank' }> => s.type === 'blank')
+      .map((s) => (blanks[s.id] ?? '').trim())
+      .find(Boolean);
+    return wrap(source, (freeText.trim() || blankAnswer || '').trim());
+  }
+
   if (item.kind === 'multiple_choice' || isChoiceExerciseKind(item.kind)) {
     const prompt =
       segmentsToPromptText(item.segments) ||
@@ -818,6 +886,12 @@ export function exerciseHasCompleteAnswer(item: TeacherExerciseItem, state: Exer
 
   if (item.kind === 'free_text') {
     return freeText.trim().length > 0;
+  }
+
+  if (item.kind === 'type_translation') {
+    if (freeText.trim().length > 0) return true;
+    const blankIds = item.segments.filter((s) => s.type === 'blank').map((s) => s.id);
+    return blankIds.length > 0 && blankIds.every((id) => (blanks[id] ?? '').trim().length > 0);
   }
 
   if (isFormExerciseKind(item.kind) && item.formSlots?.length) {

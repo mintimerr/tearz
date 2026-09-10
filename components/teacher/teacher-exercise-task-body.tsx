@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
 
 import { APP_THEME } from '@/constants/theme';
+import { LongPressWordText } from '@/components/long-press-word-text';
 import { TEACHER_TITLE } from '@/components/teacher/teacher-tokens';
 import { drillTaskStyles as styles } from '@/components/teacher/teacher-drill-styles';
 import { DrillDropZone, DraggableWordBank, useWordDragAssign } from '@/components/teacher/teacher-word-drag';
@@ -14,6 +15,7 @@ import { hashSeed } from '@/utils/teacher-exercise-bank';
 import type { ExerciseAnswerState } from '@/utils/teacher-exercise-normalize';
 import {
   parseMaskedSentence,
+  resolveTypeTranslationSource,
   textToBlankSegments,
 } from '@/utils/teacher-exercise-normalize';
 import {
@@ -23,6 +25,12 @@ import {
 
 type VoiceCapture = { uri: string; durationMs: number };
 
+/** L2 stem text — long-press / stretch selection → word sheet (same as board chat). */
+function SelectableStem({ text, style }: { text: string; style?: StyleProp<TextStyle> }) {
+  if (!text.trim()) return null;
+  return <LongPressWordText text={text} style={style} />;
+}
+
 type Props = {
   exercise: TeacherExerciseItem;
   disabled: boolean;
@@ -31,6 +39,8 @@ type Props = {
   blankRefs: MutableRefObject<Record<string, TextInput | null>>;
   onFocusBlank: (id: string) => void;
   activeBlankId: string | null;
+  /** Подскролл родителя, когда растёт многострочный ввод. */
+  onInputGrow?: () => void;
   VoiceBlock: React.ComponentType<{
     disabled: boolean;
     capture: VoiceCapture | null;
@@ -145,10 +155,12 @@ function NumberedSentenceInput({
   value,
   disabled,
   onChange,
+  onGrow,
 }: {
   value: string;
   disabled: boolean;
   onChange: (text: string) => void;
+  onGrow?: () => void;
 }) {
   const { t } = useTranslation();
   const seeded = useRef(false);
@@ -169,7 +181,9 @@ function NumberedSentenceInput({
       style={styles.numberedInput}
       editable={!disabled}
       blurOnSubmit={false}
-      scrollEnabled
+      scrollEnabled={false}
+      onContentSizeChange={() => onGrow?.()}
+      onFocus={() => onGrow?.()}
     />
   );
 }
@@ -180,19 +194,21 @@ function FreeTextAnswer({
   value,
   onChange,
   label,
+  onGrow,
 }: {
   exercise: TeacherExerciseItem;
   disabled: boolean;
   value: string;
   onChange: (text: string) => void;
   label?: string;
+  onGrow?: () => void;
 }) {
   const { t } = useTranslation();
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{label ?? t('teacher.drill.yourAnswer')}</Text>
       <View style={styles.promptSurface}>
-        <Text style={styles.promptPlain}>{exercise.checkText}</Text>
+        <SelectableStem text={exercise.checkText} style={styles.promptPlain} />
       </View>
       <TextInput
         value={value}
@@ -202,6 +218,49 @@ function FreeTextAnswer({
         multiline
         style={styles.freeInput}
         editable={!disabled}
+        scrollEnabled={false}
+        onContentSizeChange={() => onGrow?.()}
+        onFocus={() => onGrow?.()}
+      />
+    </View>
+  );
+}
+
+function TypeTranslationAnswer({
+  exercise,
+  disabled,
+  value,
+  onChange,
+  onGrow,
+}: {
+  exercise: TeacherExerciseItem;
+  disabled: boolean;
+  value: string;
+  onChange: (text: string) => void;
+  onGrow?: () => void;
+}) {
+  const { t } = useTranslation();
+  const source = resolveTypeTranslationSource(exercise) || exercise.checkText.trim();
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionLabel}>{t('teacher.drill.translateThis')}</Text>
+      <View style={styles.promptSurface}>
+        <SelectableStem
+          text={source || '…'}
+          style={styles.promptPlain}
+        />
+      </View>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder={t('teacher.drill.writeTranslationHere')}
+        placeholderTextColor={APP_THEME.color.mutedFaint}
+        multiline
+        style={styles.freeInput}
+        editable={!disabled}
+        scrollEnabled={false}
+        onContentSizeChange={() => onGrow?.()}
+        onFocus={() => onGrow?.()}
       />
     </View>
   );
@@ -215,6 +274,7 @@ export function TeacherExerciseTaskBody({
   blankRefs,
   onFocusBlank,
   activeBlankId,
+  onInputGrow,
   VoiceBlock,
   voiceCapture,
   onVoiceCapture,
@@ -486,6 +546,7 @@ export function TeacherExerciseTaskBody({
             disabled={disabled}
             value={state.freeText}
             onChange={(text) => onStateChange({ freeText: text })}
+            onGrow={onInputGrow}
           />
         );
       }
@@ -494,7 +555,7 @@ export function TeacherExerciseTaskBody({
         return (
           <>
             <View style={styles.promptSurface}>
-              <Text style={styles.promptPlain}>{exercise.checkText}</Text>
+              <SelectableStem text={exercise.checkText} style={styles.promptPlain} />
             </View>
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>{t('teacher.drill.tapWordsBuild')}</Text>
@@ -518,6 +579,9 @@ export function TeacherExerciseTaskBody({
               multiline
               style={styles.freeInput}
               editable={!disabled}
+              scrollEnabled={false}
+              onContentSizeChange={() => onInputGrow?.()}
+              onFocus={() => onInputGrow?.()}
             />
           </>
         );
@@ -526,7 +590,6 @@ export function TeacherExerciseTaskBody({
       return renderBlanks(hasWordBank);
 
     case 'type_word_in_blank':
-    case 'type_translation':
       if (!hasBlanks) {
         return (
           <FreeTextAnswer
@@ -534,10 +597,29 @@ export function TeacherExerciseTaskBody({
             disabled={disabled}
             value={state.freeText}
             onChange={(text) => onStateChange({ freeText: text })}
+            onGrow={onInputGrow}
           />
         );
       }
       return renderBlanks(false);
+
+    case 'type_translation':
+      return (
+        <TypeTranslationAnswer
+          exercise={exercise}
+          disabled={disabled}
+          value={state.freeText}
+          onChange={(text) => {
+            const blankId = exercise.segments.find((s) => s.type === 'blank')?.id;
+            if (blankId) {
+              onStateChange({ freeText: text, blanks: { ...state.blanks, [blankId]: text } });
+            } else {
+              onStateChange({ freeText: text });
+            }
+          }}
+          onGrow={onInputGrow}
+        />
+      );
 
     case 'choose_word_form':
     case 'pick_similar':
@@ -548,6 +630,7 @@ export function TeacherExerciseTaskBody({
             disabled={disabled}
             value={state.freeText}
             onChange={(text) => onStateChange({ freeText: text })}
+            onGrow={onInputGrow}
           />
         );
       }
@@ -560,7 +643,7 @@ export function TeacherExerciseTaskBody({
             return (
               <View key={slot.id} style={styles.formBlock}>
                 <View style={styles.formPrompt}>
-                  <Text style={styles.formPromptText}>{promptText}</Text>
+                  <SelectableStem text={promptText} style={styles.formPromptText} />
                 </View>
                 <View style={styles.optionsCol}>
                   {slot.options.map((opt) => (
@@ -655,6 +738,7 @@ export function TeacherExerciseTaskBody({
             disabled={disabled}
             value={state.freeText}
             onChange={(text) => onStateChange({ freeText: text })}
+            onGrow={onInputGrow}
           />
         );
       }
@@ -705,6 +789,7 @@ export function TeacherExerciseTaskBody({
             disabled={disabled}
             value={state.freeText}
             onChange={(text) => onStateChange({ freeText: text })}
+            onGrow={onInputGrow}
           />
         );
       }
@@ -762,7 +847,10 @@ export function TeacherExerciseTaskBody({
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('teacher.drill.isRealWord')}</Text>
           <View style={styles.readSelectCard}>
-            <Text style={styles.readSelectWord}>{exercise.selectWord ?? exercise.checkText}</Text>
+            <SelectableStem
+              text={exercise.selectWord ?? exercise.checkText}
+              style={styles.readSelectWord}
+            />
           </View>
           <View style={styles.readSelectRow}>
             <Pressable
@@ -851,7 +939,10 @@ export function TeacherExerciseTaskBody({
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('teacher.drill.mainIdea')}</Text>
           <View style={styles.promptSurface}>
-            <Text style={styles.passageText}>{exercise.passage ?? exercise.checkText}</Text>
+            <SelectableStem
+              text={exercise.passage ?? exercise.checkText}
+              style={styles.passageText}
+            />
           </View>
           <View style={styles.optionsCol}>
             {(exercise.choices ?? []).map((opt) => (
@@ -863,9 +954,10 @@ export function TeacherExerciseTaskBody({
                   void Haptics.selectionAsync();
                 }}
                 style={[styles.optionRow, state.selectedChoice === opt && styles.optionRowSelected]}>
-                <Text style={[styles.optionText, state.selectedChoice === opt && styles.optionTextSelected]}>
-                  {opt}
-                </Text>
+                <LongPressWordText
+                  text={opt}
+                  style={[styles.optionText, state.selectedChoice === opt && styles.optionTextSelected]}
+                />
               </Pressable>
             ))}
           </View>
@@ -876,7 +968,10 @@ export function TeacherExerciseTaskBody({
       return (
         <>
           <View style={styles.promptSurface}>
-            <Text style={styles.promptPlain}>{exercise.voicePrompt || exercise.checkText}</Text>
+            <SelectableStem
+              text={exercise.voicePrompt || exercise.checkText}
+              style={styles.promptPlain}
+            />
           </View>
           <VoiceBlock disabled={disabled} capture={voiceCapture} onCapture={onVoiceCapture} />
         </>
@@ -889,12 +984,13 @@ export function TeacherExerciseTaskBody({
             {t('teacher.drill.writeNSentences', { count: exercise.minSentences ?? 5 })}
           </Text>
           <View style={styles.promptSurface}>
-            <Text style={styles.promptPlain}>{exercise.checkText}</Text>
+            <SelectableStem text={exercise.checkText} style={styles.promptPlain} />
           </View>
           <NumberedSentenceInput
             value={state.freeText}
             disabled={disabled}
             onChange={(text) => onStateChange({ freeText: text })}
+            onGrow={onInputGrow}
           />
         </View>
       );
@@ -904,7 +1000,7 @@ export function TeacherExerciseTaskBody({
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>{t('teacher.drill.yourAnswer')}</Text>
           <View style={styles.promptSurface}>
-            <Text style={styles.promptPlain}>{exercise.checkText}</Text>
+            <SelectableStem text={exercise.checkText} style={styles.promptPlain} />
           </View>
           <TextInput
             value={state.freeText}
@@ -914,6 +1010,9 @@ export function TeacherExerciseTaskBody({
             multiline
             style={styles.freeInput}
             editable={!disabled}
+            scrollEnabled={false}
+            onContentSizeChange={() => onInputGrow?.()}
+            onFocus={() => onInputGrow?.()}
           />
         </View>
       );
@@ -931,14 +1030,14 @@ export function TeacherExerciseTaskBody({
     case 'what_do_you_say':
       return (
         <View style={styles.promptSurface}>
-          <Text style={styles.promptPlain}>{exercise.checkText}</Text>
+          <SelectableStem text={exercise.checkText} style={styles.promptPlain} />
         </View>
       );
 
     default:
       return (
         <View style={styles.promptSurface}>
-          <Text style={styles.promptPlain}>{exercise.checkText}</Text>
+          <SelectableStem text={exercise.checkText} style={styles.promptPlain} />
         </View>
       );
   }
