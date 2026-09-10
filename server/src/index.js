@@ -347,11 +347,41 @@ function stripPlainLanguageBlocks(text) {
 }
 
 /**
+ * Явный запрос учить/переключить L2 («хочу выучить английские слова») —
+ * важнее языка сессии (китайский чат и т.п.).
+ */
+function detectExplicitL2Switch(message) {
+  if (typeof message !== 'string') return null;
+  const t = message.trim();
+  if (t.length < 4) return null;
+
+  const want = (langRe) =>
+    new RegExp(
+      `(?:` +
+        `(?:хочу|хотел|хотела|давай|нужно|надо|помоги|научи|учить|выучить|изучать|учитьс\\w*|learn|study|want\\s+to\\s+learn|give\\s+me|дай).{0,56}${langRe}` +
+        `|` +
+        `${langRe}.{0,48}(?:слов\\w*|words?|язык\\w*|language|phrases?|лексик\\w*|vocabulary|грамматик\\w*|grammar)` +
+        `)`,
+      'iu',
+    ).test(t);
+
+  if (want('(?:английск\\w*|\\benglish\\b)')) return 'english';
+  if (want('(?:китайск\\w*|\\bchinese\\b|中文|汉语)')) return 'chinese';
+  if (want('(?:немецк\\w*|\\bgerman\\b|deutsch)')) return 'german';
+  if (want('(?:французск\\w*|\\bfrench\\b|fran[cç]ais)')) return 'french';
+  return null;
+}
+
+/**
  * Целевой L2. «russian» от клиента обычно = родной язык UI, не цель урока → english,
  * если тема явно не «учить русский как иностранный».
+ * Явный «хочу учить английский» в сообщении перекрывает язык сессии.
  */
 function resolveTeacherTargetLanguage(requested, message, lessonTopic) {
-  // Явный L2 от клиента (english/chinese/…) — не переопределяем эвристикой по тексту.
+  const switched = detectExplicitL2Switch(message);
+  if (switched) return switched;
+
+  // Явный L2 от клиента — не переопределяем слабой эвристикой.
   if (
     requested === 'english' ||
     requested === 'chinese' ||
@@ -533,6 +563,10 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', lear
   }
   prompt +=
     `\n\nHARD RULE: Do not teach the learner their native/UI language (${m.explainLabel}) as if it were L2. Explain in ${m.explainLabel}; teach the TARGET language above.`;
+  prompt +=
+    `\n\nL2 SWITCH: If the learner explicitly asks to learn / practice a different target language this turn ` +
+    `(e.g. English words while the previous lesson was Chinese), teach THAT language now. ` +
+    `Do NOT refuse. Do NOT say you only teach the previous session language. Briefly acknowledge the switch in one short line, then teach.`;
   if (typeof lessonTopic === 'string' && lessonTopic.trim()) {
     const topic = lessonTopic.trim().slice(0, 240).replace(/"/g, "'");
     prompt +=
