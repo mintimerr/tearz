@@ -29,8 +29,17 @@ import { defaultOpeningForLang, defaultStatusBio } from '@/utils/companion-ai-fa
 import { companionApiErrorFromJson, parseCompanionApiJson } from '@/utils/companion-api-error';
 import { postCompanionApiJson, warmCompanionApi } from '@/utils/companion-api-fetch';
 
-async function postCompanionChatJson(path: string, body: unknown): Promise<Response> {
-  return postCompanionApiJson(path, body, { timeoutMs: 120_000, retries: 3 });
+async function postCompanionChatJson(
+  path: string,
+  body: unknown,
+  options: { skipWarm?: boolean; timeoutMs?: number; retries?: number } = {},
+): Promise<Response> {
+  return postCompanionApiJson(path, body, {
+    // teacher-chat: classifyIntent + основная модель; Render cold start + OpenAI ≈ 2 мин.
+    timeoutMs: options.timeoutMs ?? 150_000,
+    retries: options.retries ?? 3,
+    skipWarm: options.skipWarm,
+  });
 }
 
 export { warmCompanionApi };
@@ -57,7 +66,12 @@ export async function postCompanionChatReply(body: CompanionChatRequestBody): Pr
 
 /** POST /api/teacher-chat — ответ AI-преподавателя (модель на сервере, по умолчанию gpt-4.1-mini) */
 export async function postTeacherChatReply(body: TeacherChatRequestBody): Promise<string> {
-  const res = await postCompanionChatJson('/api/teacher-chat', body);
+  const hasImage = typeof body.imageBase64 === 'string' && body.imageBase64.trim().length > 0;
+  const res = await postCompanionChatJson('/api/teacher-chat', body, {
+    // Фото: OCR + ответ; меньше ретраев — повтор огромного base64 только усугубляет таймаут.
+    timeoutMs: hasImage ? 180_000 : 150_000,
+    retries: hasImage ? 2 : 3,
+  });
   const raw = await res.text();
   let json: unknown;
   try {
@@ -181,7 +195,11 @@ export async function postTeacherExerciseSet(
 export async function postTeacherVocabExamples(
   body: TeacherVocabExamplesRequestBody,
 ): Promise<TeacherVocabExamplesSuccessBody> {
-  const res = await postCompanionChatJson('/api/teacher-vocab-examples', body);
+  const res = await postCompanionChatJson('/api/teacher-vocab-examples', body, {
+    skipWarm: false,
+    timeoutMs: 90_000,
+    retries: 2,
+  });
   const raw = await res.text();
   const json = parseCompanionApiJson(raw, res.status);
   if (!res.ok) {

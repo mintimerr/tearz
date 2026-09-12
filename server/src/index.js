@@ -347,7 +347,7 @@ function stripPlainLanguageBlocks(text) {
 }
 
 /**
- * Явный запрос учить/переключить L2 («хочу выучить английские слова») —
+ * Явный запрос учить/переключить L2 («хочу выучить английские слова», «лексика на испанском») —
  * важнее языка сессии (китайский чат и т.п.).
  */
 function detectExplicitL2Switch(message) {
@@ -358,14 +358,17 @@ function detectExplicitL2Switch(message) {
   const want = (langRe) =>
     new RegExp(
       `(?:` +
-        `(?:хочу|хотел|хотела|давай|нужно|надо|помоги|научи|учить|выучить|изучать|учитьс\\w*|learn|study|want\\s+to\\s+learn|give\\s+me|дай).{0,56}${langRe}` +
+        `(?:хочу|хотел|хотела|давай|нужно|надо|помоги|научи|учить|выучить|изучать|учитьс\\w*|learn|study|want\\s+to\\s+learn|give\\s+me|дай|переключ\\w*|switch).{0,80}${langRe}` +
         `|` +
-        `${langRe}.{0,48}(?:слов\\w*|words?|язык\\w*|language|phrases?|лексик\\w*|vocabulary|грамматик\\w*|grammar)` +
+        `${langRe}.{0,56}(?:слов\\w*|words?|язык\\w*|language|phrases?|лексик\\w*|vocabulary|грамматик\\w*|grammar|преподав\\w*)` +
+        `|` +
+        `(?:слов\\w*|лексик\\w*|words?|vocabulary|phrases?|язык\\w*).{0,56}(?:на|по[- ]?|in\\s+|for\\s+)?${langRe}` +
         `)`,
       'iu',
     ).test(t);
 
   if (want('(?:английск\\w*|\\benglish\\b)')) return 'english';
+  if (want('(?:испанск\\w*|\\bspanish\\b|espa[ñn]ol)')) return 'spanish';
   if (want('(?:китайск\\w*|\\bchinese\\b|中文|汉语)')) return 'chinese';
   if (want('(?:немецк\\w*|\\bgerman\\b|deutsch)')) return 'german';
   if (want('(?:французск\\w*|\\bfrench\\b|fran[cç]ais)')) return 'french';
@@ -386,7 +389,8 @@ function resolveTeacherTargetLanguage(requested, message, lessonTopic) {
     requested === 'english' ||
     requested === 'chinese' ||
     requested === 'german' ||
-    requested === 'french'
+    requested === 'french' ||
+    requested === 'spanish'
   ) {
     return requested;
   }
@@ -395,6 +399,7 @@ function resolveTeacherTargetLanguage(requested, message, lessonTopic) {
   if (/[\u4e00-\u9fff]/.test(blob) || SITUATION_CHINA_RE.test(blob)) return 'chinese';
   if (SITUATION_GERMAN_RE.test(blob)) return 'german';
   if (SITUATION_FRENCH_RE.test(blob)) return 'french';
+  if (/испанск|spanish|espa[ñn]ol/iu.test(blob)) return 'spanish';
   if (SITUATION_ENGLISH_RE.test(blob)) return 'english';
   if (SITUATION_RUSSIA_RE.test(blob) && /учить|foreign|как\s+иностран/iu.test(blob)) return 'russian';
   return 'english';
@@ -404,8 +409,23 @@ function teacherTargetLabel(target) {
   if (target === 'chinese') return 'Chinese (中文; pinyin by level from the dialogue)';
   if (target === 'german') return 'German (Deutsch)';
   if (target === 'french') return 'French (français)';
+  if (target === 'spanish') return 'Spanish (español)';
   if (target === 'english') return 'English';
   return 'Russian';
+}
+
+function normalizeRequestedTeacherLanguage(language) {
+  if (
+    language === 'english' ||
+    language === 'chinese' ||
+    language === 'russian' ||
+    language === 'german' ||
+    language === 'french' ||
+    language === 'spanish'
+  ) {
+    return language;
+  }
+  return 'english';
 }
 
 function inferSituationTargetLanguage(message, lessonLang) {
@@ -459,9 +479,11 @@ function buildTeacherVocabExamplesPrompt(lang, uiLanguage = 'ru') {
         ? 'German'
         : lang === 'french'
           ? 'French'
-          : lang === 'russian'
-            ? 'Russian'
-            : 'English';
+          : lang === 'spanish'
+            ? 'Spanish'
+            : lang === 'russian'
+              ? 'Russian'
+              : 'English';
   const pinyinRule =
     lang === 'chinese'
       ? '\n- Chinese: EVERY word and EVERY sentence needs toned pinyin fields (nǐ hǎo). Keep hanzi only in "word" and "l2" — do NOT insert (pinyin) inside l2.'
@@ -554,6 +576,9 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', lear
   } else if (language === 'french') {
     prompt +=
       `\n\nLESSON TARGET LANGUAGE (L2): French (français). Phrases / vocabulary / examples = French. Explanations = ${m.explainLabel}. Useful for Métro, Navigo, café, everyday Paris situations.`;
+  } else if (language === 'spanish') {
+    prompt +=
+      `\n\nLESSON TARGET LANGUAGE (L2): Spanish (español). Phrases / vocabulary / examples = Spanish. Explanations = ${m.explainLabel}. Useful for travel, classroom, and everyday Spain/LatAm situations.`;
   } else if (language === 'english') {
     prompt +=
       `\n\nLESSON TARGET LANGUAGE (L2): English. Phrases / vocabulary / examples = English. Explanations = ${m.explainLabel}.`;
@@ -565,8 +590,9 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', lear
     `\n\nHARD RULE: Do not teach the learner their native/UI language (${m.explainLabel}) as if it were L2. Explain in ${m.explainLabel}; teach the TARGET language above.`;
   prompt +=
     `\n\nL2 SWITCH: If the learner explicitly asks to learn / practice a different target language this turn ` +
-    `(e.g. English words while the previous lesson was Chinese), teach THAT language now. ` +
-    `Do NOT refuse. Do NOT say you only teach the previous session language. Briefly acknowledge the switch in one short line, then teach.`;
+    `(e.g. Spanish words while the previous lesson was Chinese, or English while German), teach THAT language now. ` +
+    `Do NOT refuse. Do NOT keep teaching the previous session language. Do NOT say you only teach the previous session language. ` +
+    `Briefly acknowledge the switch in one short line, then teach in the newly requested L2.`;
   if (typeof lessonTopic === 'string' && lessonTopic.trim()) {
     const topic = lessonTopic.trim().slice(0, 240).replace(/"/g, "'");
     prompt +=
@@ -929,6 +955,9 @@ function buildTeacherExercisePrompt(language, lessonTopic, uiLanguage = 'ru') {
   } else if (language === 'french') {
     prompt +=
       `\n\nLESSON TARGET LANGUAGE (L2): French. Practice content MUST be French. ${m.instructionsNote}.`;
+  } else if (language === 'spanish') {
+    prompt +=
+      `\n\nLESSON TARGET LANGUAGE (L2): Spanish. Practice content MUST be Spanish. ${m.instructionsNote}.`;
   } else if (language === 'english') {
     prompt +=
       `\n\nLESSON TARGET LANGUAGE (L2): English. Practice content MUST be English. ${m.instructionsNote}.`;
@@ -967,6 +996,9 @@ function buildTeacherExerciseSetPrompt(language, lessonTopic, uiLanguage = 'ru')
   } else if (language === 'french') {
     prompt +=
       `\n\nLESSON TARGET LANGUAGE (L2): French. Exercise vocabulary must be French; ${m.instructionsNote}. For read_and_select use a French word/pseudo-word.`;
+  } else if (language === 'spanish') {
+    prompt +=
+      `\n\nLESSON TARGET LANGUAGE (L2): Spanish. Exercise vocabulary must be Spanish; ${m.instructionsNote}. For read_and_select use a Spanish word/pseudo-word.`;
   } else if (language === 'english') {
     prompt +=
       `\n\nLESSON TARGET LANGUAGE (L2): English. Exercise vocabulary must be English; ${m.instructionsNote}.`;
@@ -2977,7 +3009,7 @@ function buildVisionUserContent({
     {
       type: 'image_url',
       image_url: {
-        url: `data:${mime};base64,${imageBase64.trim().slice(0, 12_000_000)}`,
+        url: `data:${mime};base64,${imageBase64.trim().slice(0, 8_000_000)}`,
         detail: visionDetail,
       },
     },
@@ -2986,7 +3018,8 @@ function buildVisionUserContent({
 }
 
 /**
- * Dedicated high-detail transcription pass — quote characters before teaching.
+ * Dedicated transcription pass — quote characters before teaching.
+ * Uses the fast model + timeout so homework photos don't hang for minutes.
  * @returns {Promise<string>}
  */
 async function extractTextFromImage(apiKey, imageBase64, imageMimeType) {
@@ -2995,6 +3028,8 @@ async function extractTextFromImage(apiKey, imageBase64, imageMimeType) {
     typeof imageMimeType === 'string' && imageMimeType.startsWith('image/')
       ? imageMimeType.trim().slice(0, 40)
       : 'image/jpeg';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45_000);
   try {
     const openaiRes = await fetch(OPENAI_URL, {
       method: 'POST',
@@ -3002,8 +3037,10 @@ async function extractTextFromImage(apiKey, imageBase64, imageMimeType) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
-        model: TEACHER_MODEL,
+        // mini + high: быстрее полного TEACHER_MODEL, OCR всё ещё читаемый
+        model: TEACHER_FAST_MODEL,
         messages: [
           {
             role: 'system',
@@ -3016,7 +3053,7 @@ async function extractTextFromImage(apiKey, imageBase64, imageMimeType) {
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:${mime};base64,${imageBase64.trim().slice(0, 12_000_000)}`,
+                  url: `data:${mime};base64,${imageBase64.trim().slice(0, 8_000_000)}`,
                   detail: 'high',
                 },
               },
@@ -3028,7 +3065,7 @@ async function extractTextFromImage(apiKey, imageBase64, imageMimeType) {
           },
         ],
         temperature: 0,
-        max_tokens: 4000,
+        max_tokens: 2500,
       }),
     });
     const raw = await openaiRes.text();
@@ -3038,11 +3075,17 @@ async function extractTextFromImage(apiKey, imageBase64, imageMimeType) {
     } catch {
       return '';
     }
-    if (!openaiRes.ok) return '';
+    if (!openaiRes.ok) {
+      console.warn('[teacher-ocr]', openaiRes.status, data?.error?.message || raw.slice(0, 160));
+      return '';
+    }
     const content = data?.choices?.[0]?.message?.content;
     return typeof content === 'string' ? content.trim().slice(0, 12000) : '';
-  } catch {
+  } catch (e) {
+    console.warn('[teacher-ocr]', e instanceof Error ? e.message : e);
     return '';
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -3439,14 +3482,7 @@ app.post('/api/teacher-chat', async (req, res) => {
   }
   const ui = normalizeUiLanguage(uiLanguage);
   const m = uiLangMeta(ui);
-  const requestedLang =
-    language === 'english' ||
-    language === 'chinese' ||
-    language === 'russian' ||
-    language === 'german' ||
-    language === 'french'
-      ? language
-      : 'english';
+  const requestedLang = normalizeRequestedTeacherLanguage(language);
   const lang = resolveTeacherTargetLanguage(requestedLang, message, lessonTopic);
 
   const history = sanitizeHistory(conversationHistory);
@@ -3475,6 +3511,7 @@ app.post('/api/teacher-chat', async (req, res) => {
     const photoTranscript = hasImage
       ? await extractTextFromImage(apiKey, imageBase64, imageMimeType)
       : '';
+    const hasUsefulOcr = photoTranscript.length >= 24;
 
     let systemContent = buildTeacherSystemPrompt(lang, lessonTopic, ui, learnerLevel);
     if (intent === 'practical' || isPracticalLanguageQuestion(userMessageText)) {
@@ -3485,19 +3522,22 @@ app.post('/api/teacher-chat', async (req, res) => {
     if (hasImage) {
       systemContent +=
         '\n\nPHOTOS / OCR:\n' +
-        '- You receive the photo AND a separate exact transcription pass.\n' +
-        '- Treat the transcription as the primary source of characters on the page.\n' +
-        '- Still look at the image for layout, handwriting, circling, arrows, and blurry spots.\n' +
+        '- You receive the photo' +
+        (hasUsefulOcr ? ' AND a separate exact transcription pass.\n' : '.\n') +
+        (hasUsefulOcr
+          ? '- Treat the transcription as the primary source of characters on the page.\n' +
+            '- Still look at the image for layout, handwriting, circling, arrows, and blurry spots.\n'
+          : '- Read every visible character from the image carefully (homework / textbook / screenshot).\n') +
         '- Quote text as written; do not invent, autocorrect, or pull wording from earlier chat that is not on this photo.\n' +
-        '- If transcription says [unclear], say what is unclear; do not guess characters.\n' +
+        '- If something is unclear, say what is unclear; do not guess characters.\n' +
         '- Never claim you cannot see the image.';
-      if (photoTranscript) {
+      if (hasUsefulOcr) {
         systemContent +=
           '\n\nEXACT TEXT FROM PHOTO (OCR pass — prefer this for characters):\n' + photoTranscript;
       }
     }
 
-    const visionInstruction = photoTranscript
+    const visionInstruction = hasUsefulOcr
       ? [
           userMessageText || m.photoCaption,
           '',
@@ -3509,12 +3549,14 @@ app.post('/api/teacher-chat', async (req, res) => {
         ].join('\n')
       : userMessageText || m.photoEmpty;
 
+    // Если OCR уже дал текст — картинку шлём в low (layout), иначе один high-проход.
+    const visionDetail = hasImage ? (hasUsefulOcr ? 'low' : 'high') : 'high';
     const userContent = buildVisionUserContent({
       message: visionInstruction,
       imageBase64,
       imageMimeType,
       emptyImageFallback: visionInstruction,
-      detail: 'high',
+      detail: visionDetail,
     });
 
     const messages = [
@@ -3584,14 +3626,7 @@ app.post('/api/teacher-exercise', async (req, res) => {
   }
   const teacherExplanation = explanation.trim().slice(0, 9000);
   const ui = normalizeUiLanguage(uiLanguage);
-  const requestedLang =
-    language === 'english' ||
-    language === 'chinese' ||
-    language === 'russian' ||
-    language === 'german' ||
-    language === 'french'
-      ? language
-      : 'english';
+  const requestedLang = normalizeRequestedTeacherLanguage(language);
   const lang = resolveTeacherTargetLanguage(requestedLang, teacherExplanation, lessonTopic);
 
   const history = sanitizeHistory(conversationHistory).slice(-16);
@@ -3675,14 +3710,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     typeof lastUserMessage === 'string' && lastUserMessage.trim()
       ? lastUserMessage.trim().slice(0, 4000)
       : '';
-  const requestedLang =
-    language === 'english' ||
-    language === 'chinese' ||
-    language === 'russian' ||
-    language === 'german' ||
-    language === 'french'
-      ? language
-      : 'english';
+  const requestedLang = normalizeRequestedTeacherLanguage(language);
   const lang = resolveTeacherTargetLanguage(
     requestedLang,
     `${userRequest}\n${teacherExplanation}`,
@@ -4224,14 +4252,7 @@ app.post('/api/teacher-vocab-examples', async (req, res) => {
     typeof lastUserMessage === 'string' && lastUserMessage.trim()
       ? lastUserMessage.trim().slice(0, 2000)
       : '';
-  const requestedLang =
-    language === 'english' ||
-    language === 'chinese' ||
-    language === 'russian' ||
-    language === 'german' ||
-    language === 'french'
-      ? language
-      : 'english';
+  const requestedLang = normalizeRequestedTeacherLanguage(language);
   const lang = resolveTeacherTargetLanguage(
     requestedLang,
     `${userRequest}\n${teacherExplanation}`,

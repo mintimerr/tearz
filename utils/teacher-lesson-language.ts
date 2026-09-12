@@ -1,8 +1,14 @@
 import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 
-const EXPLICIT_L2 = new Set<CompanionChatApiLanguage>(['english', 'chinese', 'german', 'french']);
+const EXPLICIT_L2 = new Set<CompanionChatApiLanguage>([
+  'english',
+  'chinese',
+  'german',
+  'french',
+  'spanish',
+]);
 
-/** Явный запрос сменить/учить другой L2 («хочу английские слова»). */
+/** Явный запрос сменить/учить другой L2 («хочу английские слова», «лексика на испанском»). */
 export function detectExplicitL2Switch(seed: string): CompanionChatApiLanguage | null {
   const t = seed.trim();
   if (t.length < 4) return null;
@@ -10,14 +16,17 @@ export function detectExplicitL2Switch(seed: string): CompanionChatApiLanguage |
   const want = (langRe: string) =>
     new RegExp(
       `(?:` +
-        `(?:хочу|хотел|хотела|давай|нужно|надо|помоги|научи|учить|выучить|изучать|учитьс\\w*|learn|study|want\\s+to\\s+learn|give\\s+me|дай).{0,56}${langRe}` +
+        `(?:хочу|хотел|хотела|давай|нужно|надо|помоги|научи|учить|выучить|изучать|учитьс\\w*|learn|study|want\\s+to\\s+learn|give\\s+me|дай|переключ\\w*|switch).{0,80}${langRe}` +
         `|` +
-        `${langRe}.{0,48}(?:слов\\w*|words?|язык\\w*|language|phrases?|лексик\\w*|vocabulary|грамматик\\w*|grammar)` +
+        `${langRe}.{0,56}(?:слов\\w*|words?|язык\\w*|language|phrases?|лексик\\w*|vocabulary|грамматик\\w*|grammar|преподав\\w*)` +
+        `|` +
+        `(?:слов\\w*|лексик\\w*|words?|vocabulary|phrases?|язык\\w*).{0,56}(?:на|по[- ]?|in\\s+|for\\s+)?${langRe}` +
         `)`,
       'iu',
     ).test(t);
 
   if (want('(?:английск\\w*|\\benglish\\b)')) return 'english';
+  if (want('(?:испанск\\w*|\\bspanish\\b|espa[ñn]ol)')) return 'spanish';
   if (want('(?:китайск\\w*|\\bchinese\\b|中文|汉语)')) return 'chinese';
   if (want('(?:немецк\\w*|\\bgerman\\b|deutsch)')) return 'german';
   if (want('(?:французск\\w*|\\bfrench\\b|fran[cç]ais)')) return 'french';
@@ -59,6 +68,8 @@ function detectStrongTargetLanguage(seed: string): CompanionChatApiLanguage | nu
   ) {
     return 'french';
   }
+
+  if (/испанск|spanish|espa[ñn]ol|\bmadrid\b|\bbarcelona\b/iu.test(t)) return 'spanish';
 
   if (/англи|english|airport\s*english/iu.test(t)) return 'english';
 

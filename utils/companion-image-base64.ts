@@ -4,10 +4,10 @@ import { Image, Platform } from 'react-native';
 
 /**
  * OpenAI vision high-detail tiles up to ~2048 on the long edge.
- * Prefer high JPEG quality — text/homework must stay sharp for OCR.
+ * For homework photos keep text sharp, but avoid multi‑MB payloads that time out on Render.
  */
-const MAX_IMAGE_EDGE = 2048;
-const JPEG_QUALITY = 0.95;
+const MAX_IMAGE_EDGE = 1600;
+const JPEG_QUALITY = 0.88;
 
 function getImageSize(uri: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {

@@ -1,21 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Kalam_400Regular, useFonts } from '@expo-google-fonts/kalam';
 import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Haptics from '@/utils/safe-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
   Keyboard,
+  LayoutAnimation,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  UIManager,
   View,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const COMPOSER_LINE = 22;
+const COMPOSER_INPUT_MIN = COMPOSER_LINE;
+const COMPOSER_INPUT_MAX = COMPOSER_LINE * 8; // как GPT — растёт вверх до ~8 строк
 
 import {
   BoardLessonBubble,
@@ -23,13 +35,17 @@ import {
   BoardStudentText,
 } from '@/components/teacher/board-lesson-bubble';
 import { BoardChalkBackdrop } from '@/components/teacher/board-chalk-backdrop';
+import { FileMessageBubble } from '@/components/companion/file-message-bubble';
 import { ImageMessageBubble } from '@/components/companion/image-message-bubble';
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
 import { TeacherAttachGallery } from '@/components/teacher/teacher-attach-gallery';
 import { TeacherExerciseActions } from '@/components/teacher/teacher-exercise-actions';
+import { findTeacherVocabSourceText } from '@/utils/teacher-message-examples';
 import { useTeacherDrillSession } from '@/components/teacher/teacher-drill-session';
 import { TeacherMessageBody } from '@/components/teacher/teacher-message-body';
 import { WordAddSheetHost, useWordAddSheet } from '@/components/word-add-sheet';
+import { detectExplicitL2Switch } from '@/utils/teacher-lesson-language';
+import { setActiveStudyLanguage } from '@/utils/active-study-language';
 import {
   TEACHER_MUTED,
   TEACHER_MUTED_SOFT,
@@ -60,11 +76,11 @@ import type {
   TeacherExerciseItem,
   TeacherNextTopicRecommendation,
 } from '@/types/companion-chat-api';
-import { isImageMsg, type CompanionMsg } from '@/types/companion-message';
+import { isFileMsg, isImageMsg, type CompanionMsg } from '@/types/companion-message';
 import { persistCompanionAttachment } from '@/utils/companion-attachment-storage';
 import { prepareCompanionImageForApi } from '@/utils/companion-image-base64';
 import { messagesToCompanionApiHistory } from '@/utils/companion-chat-history';
-import { pickCompanionPhoto, takeCompanionPhoto } from '@/utils/pick-companion-photo';
+import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
 import { setTeacherLessonBootstrap } from '@/utils/teacher-lesson-bootstrap';
 import { resolveDrillTargetLanguage } from '@/utils/teacher-lesson-language';
 import {
@@ -142,6 +158,11 @@ export function TeacherBoardChat({
 }: Props) {
   const { t, locale } = useTranslation();
   const uiLanguage = teacherUiLanguageFromLocale(locale);
+
+  useEffect(() => {
+    setActiveStudyLanguage(language);
+    return () => setActiveStudyLanguage(null);
+  }, [language]);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { learnerLevel } = usePlacement();
@@ -167,6 +188,8 @@ export function TeacherBoardChat({
 
   const [messages, setMessages] = useState<CompanionMsg[]>([]);
   const [input, setInput] = useState('');
+  /** Высота текста; undefined = одна строка, растёт сама. */
+  const [inputHeight, setInputHeight] = useState<number | undefined>(undefined);
   const [attachOpen, setAttachOpen] = useState(false);
   const [typing, setTyping] = useState(false);
   const [sending, setSending] = useState(false);
@@ -180,6 +203,10 @@ export function TeacherBoardChat({
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
   const [threadViewportH, setThreadViewportH] = useState(0);
   const { clearWordSelections } = useWordAddSheet();
+
+  useEffect(() => {
+    if (!input) setInputHeight(undefined);
+  }, [input]);
 
   const dismissChatKeyboard = useCallback(() => {
     composerRef.current?.blur();
@@ -297,10 +324,16 @@ export function TeacherBoardChat({
     ) => {
       setTyping(true);
       try {
+        const switched = detectExplicitL2Switch(userText);
+        const replyLanguage = switched ?? language;
+        if (switched) {
+          drillLanguageRef.current = switched;
+          setActiveStudyLanguage(switched);
+        }
         const reply = await postTeacherChatReply({
           message: userText.trim() || (image ? teacherPhotoFallbackMessage(uiLanguage) : ''),
           conversationHistory: messagesToCompanionApiHistory(historyBefore),
-          language,
+          language: replyLanguage,
           uiLanguage,
           lessonTopic: lessonTopicRef.current,
           ...(learnerLevel ? { learnerLevel } : {}),
@@ -506,11 +539,103 @@ export function TeacherBoardChat({
     });
   }, [sendImageFromUri]);
 
-  const handleTakePhoto = useCallback(() => {
-    void takeCompanionPhoto().then((picked) => {
-      if (picked) void sendImageFromUri(picked.uri, picked.name);
-    });
-  }, [sendImageFromUri]);
+  const sendFileFromUri = useCallback(
+    async (uri: string, fileName: string, mimeType?: string | null) => {
+      if (sending || typing) return;
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Keyboard.dismiss();
+      setAttachOpen(false);
+      setSending(true);
+
+      const caption = input.trim();
+      const label = fileName.trim() || 'Файл';
+      const msgId = `file-${Date.now()}`;
+      const time = formatChatTime();
+      const userMsg: CompanionMsg = {
+        id: msgId,
+        from: 'me',
+        kind: 'file',
+        fileUri: uri,
+        fileName: label,
+        mimeType: mimeType ?? undefined,
+        text: caption || `📎 ${label}`,
+        time,
+        read: 'sent',
+      };
+
+      const nextThread = [...messagesRef.current, userMsg];
+      setMessages(nextThread);
+      if (caption) {
+        setInput('');
+        registerUserStudyText(caption);
+      }
+      ensureLesson(nextThread, caption || label);
+      if (lessonIdRef.current) {
+        saveCompanionThread(lessonIdRef.current, nextThread);
+      }
+      scrollToEnd();
+
+      trackUserMessage(caption || `📎 ${label}`);
+      try {
+        const storedUri = await persistCompanionAttachment(uri, msgId, label);
+        const storedMsg: CompanionMsg = { ...userMsg, fileUri: storedUri };
+        setMessages((prev) => prev.map((m) => (m.id === msgId ? storedMsg : m)));
+        const apiText = caption
+          ? `Пользователь отправил файл «${label}» с подписью: «${caption}». Ответь по смыслу подписи и беседы.`
+          : `Пользователь отправил файл «${label}» (${mimeType ?? 'тип неизвестен'}). Ответь уместно в контексте беседы.`;
+        await requestReply(apiText, [
+          ...messagesRef.current.filter((m) => m.id !== msgId),
+          storedMsg,
+        ]);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Не удалось отправить файл';
+        setMessages((prev) =>
+          prev.map((m) => (m.id === msgId ? { ...m, text: `📎 ${msg}`, read: 'read' } : m)),
+        );
+        setSending(false);
+        setTyping(false);
+      }
+    },
+    [
+      ensureLesson,
+      input,
+      registerUserStudyText,
+      requestReply,
+      saveCompanionThread,
+      sending,
+      trackUserMessage,
+      typing,
+    ],
+  );
+
+  const handleBrowseFiles = useCallback(async () => {
+    if (sending || typing) return;
+    if (Platform.OS === 'web') {
+      Alert.alert('Файлы', 'Выбор файлов доступен в приложении на iOS или Android.');
+      return;
+    }
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        multiple: false,
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      const asset = result.assets[0];
+      const { uri, name, mimeType } = asset;
+      const isImage =
+        mimeType?.startsWith('image/') === true ||
+        /\.(jpe?g|png|gif|webp|heic|bmp)$/i.test(name ?? '');
+
+      if (isImage) {
+        void sendImageFromUri(uri, name ?? undefined);
+        return;
+      }
+      void sendFileFromUri(uri, name?.trim() || 'Файл', mimeType);
+    } catch {
+      Alert.alert('Файлы', 'Не удалось открыть приложение «Файлы».');
+    }
+  }, [sendFileFromUri, sendImageFromUri, sending, typing]);
 
   const checkDrillExercise = useCallback(
     async (payload: {
@@ -771,6 +896,7 @@ export function TeacherBoardChat({
           break;
         }
       }
+      const vocabSource = findTeacherVocabSourceText(messages, idx >= 0 ? idx : messages.length - 1);
       return (
         <TeacherExerciseActions
           messageId={message.id}
@@ -782,6 +908,9 @@ export function TeacherBoardChat({
           uiLanguage={uiLanguage}
           lessonTopic={lessonTopicRef.current}
           lastUserMessage={lastUserMessage}
+          examplesExplanation={vocabSource?.text}
+          examplesCacheKey={vocabSource?.messageId}
+          examplesAvailable={Boolean(vocabSource)}
           onPrepare={prepareDrillForMessage}
           onPress={handlePracticePress}
           onBlocked={showDrillNotice}
@@ -885,8 +1014,11 @@ export function TeacherBoardChat({
             const isMe = m.from === 'me';
             const bubbleVariant = gameChrome ? 'game' : 'default';
             const photo = isImageMsg(m) && Boolean(m.imageUri);
+            const file = isFileMsg(m);
             const caption = m.text.trim();
             const showCaption = caption.length > 0 && caption !== '📷 Фото' && !caption.startsWith('📷 ');
+            const showFileCaption =
+              caption.length > 0 && !caption.startsWith('📎 ') && caption !== (m.fileName ?? '');
 
             if (isMe && photo && m.imageUri) {
               return (
@@ -895,6 +1027,27 @@ export function TeacherBoardChat({
                     <View style={styles.photoBody}>
                       <ImageMessageBubble uri={m.imageUri} outgoing />
                       {showCaption ? (
+                        <BoardLessonBubble side="student" compact variant={bubbleVariant}>
+                          <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
+                            {caption}
+                          </BoardStudentText>
+                        </BoardLessonBubble>
+                      ) : null}
+                    </View>
+                  </View>
+                </FadeInView>
+              );
+            }
+
+            if (isMe && file) {
+              return (
+                <FadeInView key={m.id} delay={idx * 60} offsetY={10} duration={380}>
+                  <View style={styles.photoOnlyWrap}>
+                    <View style={styles.photoBody}>
+                      <BoardLessonBubble side="student" compact variant={bubbleVariant}>
+                        <FileMessageBubble fileName={m.fileName?.trim() || 'Файл'} outgoing />
+                      </BoardLessonBubble>
+                      {showFileCaption ? (
                         <BoardLessonBubble side="student" compact variant={bubbleVariant}>
                           <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
                             {caption}
@@ -995,17 +1148,17 @@ export function TeacherBoardChat({
                 onPhotoSelected={(uri) => void sendImageFromUri(uri)}
               />
               <Pressable
-                onPress={handleTakePhoto}
+                onPress={() => void handleBrowseFiles()}
                 style={({ pressed }) => [
                   styles.attachGalleryBtn,
                   gameChrome && styles.attachGalleryBtnGame,
                   pressed && styles.attachGalleryBtnPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="Сделать фото">
-                <Ionicons name="camera-outline" size={18} color={gameChrome ? GAME_THEME.color.ink : APP_THEME.color.textSoft} />
+                accessibilityLabel="Выбрать файл">
+                <Ionicons name="document-outline" size={18} color={gameChrome ? GAME_THEME.color.ink : APP_THEME.color.textSoft} />
                 <Text style={[styles.attachGalleryLabel, gameChrome && styles.attachGalleryLabelGame]}>
-                  Камера
+                  Файлы
                 </Text>
               </Pressable>
               <Pressable
@@ -1025,80 +1178,193 @@ export function TeacherBoardChat({
             </View>
           ) : null}
 
-          <View style={[styles.composerShell, gameChrome ? styles.composerShellGame : styles.composerShellIos]}>
+          {gameChrome ? (
+            <View style={styles.composerShellGameGpt}>
+              <TextInput
+                ref={composerRef}
+                value={input}
+                onChangeText={(text) => {
+                  setInput(text);
+                  if (!text) setInputHeight(COMPOSER_INPUT_MIN);
+                }}
+                placeholder={t('teacher.boardChatPlaceholder')}
+                placeholderTextColor="rgba(26,26,26,0.38)"
+                style={[
+                  styles.composerInputGameGpt,
+                  {
+                    minHeight: COMPOSER_INPUT_MIN,
+                    maxHeight: COMPOSER_INPUT_MAX,
+                    // iOS сам растягивает multiline; height фиксируем на Android
+                    ...(Platform.OS === 'android'
+                      ? { height: inputHeight ?? COMPOSER_INPUT_MIN }
+                      : null),
+                  },
+                ]}
+                multiline
+                maxLength={2000}
+                editable={!sending}
+                blurOnSubmit={false}
+                scrollEnabled={(inputHeight ?? COMPOSER_INPUT_MIN) >= COMPOSER_INPUT_MAX - 2}
+                textAlignVertical="top"
+                onContentSizeChange={(e) => {
+                  const raw = Math.ceil(e.nativeEvent.contentSize.height);
+                  const next = Math.min(COMPOSER_INPUT_MAX, Math.max(COMPOSER_INPUT_MIN, raw));
+                  setInputHeight((prev) => {
+                    if (prev != null && Math.abs(prev - next) < 1) return prev;
+                    LayoutAnimation.configureNext({
+                      duration: 120,
+                      update: { type: LayoutAnimation.Types.easeInEaseOut },
+                    });
+                    return next;
+                  });
+                }}
+                onFocus={() => {
+                  clearWordSelections();
+                  setAttachOpen(false);
+                  setTimeout(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  }, 220);
+                }}
+              />
+              <View style={styles.composerToolbarGame}>
+                <Pressable
+                  onPress={handleAttachToggle}
+                  disabled={sending || typing}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel={attachOpen ? 'Закрыть вложения' : 'Прикрепить фото или файл'}
+                  style={({ pressed }) => [
+                    styles.attachBtnGameIn,
+                    attachOpen && styles.attachBtnGameOn,
+                    pressed && styles.attachBtnGamePressed,
+                    (sending || typing) && styles.attachBtnOff,
+                  ]}>
+                  <Ionicons
+                    name={attachOpen ? 'close' : 'add'}
+                    size={22}
+                    color={GAME_THEME.color.ink}
+                  />
+                </Pressable>
+                <Pressable
+                  onPress={() => void send()}
+                  onPressIn={pressSendIn}
+                  onPressOut={pressSendOut}
+                  disabled={!canSend}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Отправить">
+                  {({ pressed }) => (
+                    <Animated.View
+                      style={[
+                        styles.sendBtn,
+                        styles.sendBtnGameIn,
+                        canSend ? styles.sendBtnOnGame : styles.sendBtnOffGame,
+                        canSend && pressed && styles.sendBtnOnGamePressed,
+                        { transform: [{ scale: sendScale }] },
+                      ]}>
+                      <Ionicons
+                        name="arrow-up"
+                        size={18}
+                        color={canSend ? GAME_THEME.color.ink : 'rgba(26,26,26,0.32)'}
+                        style={styles.sendIcon}
+                      />
+                    </Animated.View>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+          <View style={[styles.composerShell, styles.composerShellIos]}>
             <Pressable
               onPress={handleAttachToggle}
               disabled={sending || typing}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel={attachOpen ? 'Закрыть вложения' : 'Прикрепить фото'}
+              accessibilityLabel={attachOpen ? 'Закрыть вложения' : 'Прикрепить фото или файл'}
               style={({ pressed }) => [
                 styles.attachBtn,
-                gameChrome && styles.attachBtnGame,
-                attachOpen && (gameChrome ? styles.attachBtnGameOn : styles.attachBtnOn),
+                attachOpen && styles.attachBtnOn,
                 pressed && styles.attachBtnPressed,
                 (sending || typing) && styles.attachBtnOff,
               ]}>
               <Ionicons
                 name={attachOpen ? 'close' : 'add'}
-                size={24}
-                color={
-                  gameChrome
-                    ? attachOpen
-                      ? GAME_THEME.color.ink
-                      : 'rgba(26,26,26,0.55)'
-                    : APP_THEME.color.textSoft
-                }
+                size={22}
+                color={APP_THEME.color.textSoft}
               />
             </Pressable>
 
-            <TextInput
-              ref={composerRef}
-              value={input}
-              onChangeText={setInput}
-              placeholder={t('teacher.boardChatPlaceholder')}
-              placeholderTextColor={gameChrome ? 'rgba(26,26,26,0.4)' : TEACHER_MUTED_SOFT}
-              style={[styles.composerInput, gameChrome && styles.composerInputGame]}
-              multiline
-              maxLength={2000}
-              editable={!sending}
-              blurOnSubmit={false}
-              onFocus={() => {
-                clearWordSelections();
-                setAttachOpen(false);
-                setTimeout(() => {
-                  scrollRef.current?.scrollToEnd({ animated: true });
-                }, 220);
-              }}
-            />
+            <View style={styles.composerField}>
+              <TextInput
+                ref={composerRef}
+                value={input}
+                onChangeText={(text) => {
+                  setInput(text);
+                  if (!text) setInputHeight(undefined);
+                }}
+                placeholder={t('teacher.boardChatPlaceholder')}
+                placeholderTextColor={TEACHER_MUTED_SOFT}
+                style={[
+                  styles.composerInput,
+                  {
+                    minHeight: COMPOSER_INPUT_MIN,
+                    maxHeight: COMPOSER_INPUT_MAX,
+                    ...(inputHeight != null ? { height: inputHeight } : null),
+                  },
+                ]}
+                multiline
+                maxLength={2000}
+                editable={!sending}
+                blurOnSubmit={false}
+                scrollEnabled={(inputHeight ?? 0) >= COMPOSER_INPUT_MAX - 2}
+                textAlignVertical="top"
+                onContentSizeChange={(e) => {
+                  const raw = Math.ceil(e.nativeEvent.contentSize.height) + 4;
+                  const next = Math.min(COMPOSER_INPUT_MAX, Math.max(COMPOSER_INPUT_MIN, raw));
+                  setInputHeight((prev) => {
+                    if (prev != null && Math.abs(prev - next) < 1) return prev;
+                    LayoutAnimation.configureNext({
+                      duration: 140,
+                      update: { type: LayoutAnimation.Types.easeInEaseOut },
+                    });
+                    return next;
+                  });
+                }}
+                onFocus={() => {
+                  clearWordSelections();
+                  setAttachOpen(false);
+                  setTimeout(() => {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  }, 220);
+                }}
+              />
+            </View>
             <Pressable
               onPress={() => void send()}
               onPressIn={pressSendIn}
               onPressOut={pressSendOut}
               disabled={!canSend}
               hitSlop={8}
-              accessibilityRole="button">
-              <Animated.View
-                style={[
-                  styles.sendBtn,
-                  canSend
-                    ? gameChrome
-                      ? styles.sendBtnOnGame
-                      : styles.sendBtnOn
-                    : gameChrome
-                      ? styles.sendBtnOffGame
-                      : styles.sendBtnOff,
-                  { transform: [{ scale: sendScale }] },
-                ]}>
-                <Ionicons
-                  name="arrow-up"
-                  size={18}
-                  color={canSend ? (gameChrome ? GAME_THEME.color.ink : '#FFFFFF') : 'rgba(26,26,26,0.35)'}
-                  style={styles.sendIcon}
-                />
-              </Animated.View>
+              accessibilityRole="button"
+              accessibilityLabel="Отправить">
+              {({ pressed }) => (
+                <Animated.View
+                  style={[
+                    styles.sendBtn,
+                    canSend ? styles.sendBtnOn : styles.sendBtnOff,
+                    { transform: [{ scale: sendScale }] },
+                  ]}>
+                  <Ionicons
+                    name="arrow-up"
+                    size={20}
+                    color={canSend ? '#FFFFFF' : 'rgba(26,26,26,0.32)'}
+                    style={styles.sendIcon}
+                  />
+                </Animated.View>
+              )}
             </Pressable>
           </View>
+          )}
         </Reanimated.View>
       </View>
     </View>
@@ -1192,8 +1458,7 @@ const styles = StyleSheet.create({
     borderBottomColor: APP_THEME.color.border,
   },
   headerGame: {
-    borderBottomWidth: 3,
-    borderBottomColor: GAME_THEME.color.ink,
+    borderBottomWidth: 0,
     backgroundColor: GAME_THEME.color.gold,
   },
   headerInner: {
@@ -1264,8 +1529,10 @@ const styles = StyleSheet.create({
   },
   teacherTextGame: {
     color: GAME_THEME.color.ink,
-    fontWeight: '600',
-    letterSpacing: -0.1,
+    fontSize: 16.5,
+    lineHeight: 24,
+    fontWeight: '500',
+    letterSpacing: -0.2,
   },
   composerWrap: {
     paddingHorizontal: 14,
@@ -1274,11 +1541,57 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   composerWrapGame: {
-    borderTopWidth: 3,
-    borderTopColor: GAME_THEME.color.ink,
+    borderTopWidth: 0,
     backgroundColor: GAME_THEME.color.cream,
     paddingHorizontal: 0,
-    paddingTop: 0,
+    paddingTop: 6,
+    overflow: 'visible',
+  },
+  /** Как ChatGPT: одна капсула — текст сверху, кнопки снизу, растёт вверх */
+  composerShellGameGpt: {
+    marginHorizontal: 12,
+    marginBottom: 2,
+    borderRadius: 26,
+    backgroundColor: '#F7FAFF',
+    borderWidth: 2.5,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.goldLip,
+    paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
+  composerInputGameGpt: {
+    width: '100%',
+    color: GAME_THEME.color.ink,
+    fontWeight: '700',
+    fontSize: 16,
+    lineHeight: COMPOSER_LINE,
+    letterSpacing: -0.25,
+    paddingTop: Platform.OS === 'ios' ? 2 : 0,
+    paddingBottom: 6,
+    paddingHorizontal: 4,
+    includeFontPadding: false,
+  },
+  composerToolbarGame: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
+  attachBtnGameIn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+  },
+  sendBtnGameIn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   composerBlur: {
     ...StyleSheet.absoluteFillObject,
@@ -1304,9 +1617,11 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     backgroundColor: GAME_THEME.color.cream,
     borderWidth: 0,
-    paddingLeft: 10,
-    paddingRight: 10,
-    paddingVertical: 10,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingVertical: 12,
+    gap: 8,
+    alignItems: 'flex-end',
   },
   attachPanel: {
     width: '100%',
@@ -1352,21 +1667,28 @@ const styles = StyleSheet.create({
     backgroundColor: APP_THEME.color.accentSoft,
   },
   attachBtnGame: {
-    borderRadius: 14,
-    backgroundColor: GAME_THEME.color.paper,
-    borderWidth: 2,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginBottom: 0,
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2.5,
     borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 3,
+    borderBottomWidth: 4,
     borderBottomColor: GAME_THEME.color.goldLip,
   },
   attachBtnOn: {
     backgroundColor: APP_THEME.color.accentGlass,
   },
   attachBtnGameOn: {
-    backgroundColor: GAME_THEME.color.cream,
+    backgroundColor: GAME_THEME.color.paperWarm,
   },
   attachBtnPressed: {
     opacity: 0.85,
+  },
+  attachBtnGamePressed: {
+    borderBottomWidth: 2.5,
+    transform: [{ translateY: 1.5 }],
   },
   attachBtnOff: {
     opacity: 0.4,
@@ -1381,18 +1703,48 @@ const styles = StyleSheet.create({
     maxWidth: '84%',
     alignItems: 'flex-end',
   },
-  composerInput: {
+  composerField: {
     flex: 1,
+    minWidth: 0,
+  },
+  composerFieldGame: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 22,
+    backgroundColor: '#F7FAFF',
+    borderWidth: 2.5,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.goldLip,
+    overflow: 'hidden',
+  },
+  composerFieldGameFilled: {
+    backgroundColor: GAME_THEME.color.cream,
+  },
+  composerInput: {
+    width: '100%',
     fontSize: 16,
-    lineHeight: 22,
+    lineHeight: COMPOSER_LINE,
     color: TEACHER_TITLE,
-    maxHeight: 120,
-    paddingVertical: 8,
+    paddingTop: Platform.OS === 'ios' ? 1 : 0,
+    paddingBottom: Platform.OS === 'ios' ? 1 : 0,
+    paddingHorizontal: 2,
     letterSpacing: -0.18,
+    includeFontPadding: false,
   },
   composerInputGame: {
+    width: '100%',
     color: GAME_THEME.color.ink,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 16,
+    lineHeight: COMPOSER_LINE,
+    letterSpacing: -0.25,
+    paddingTop: Platform.OS === 'ios' ? 1 : 0,
+    paddingBottom: Platform.OS === 'ios' ? 1 : 0,
   },
   sendBtn: {
     width: 36,
@@ -1410,18 +1762,32 @@ const styles = StyleSheet.create({
     backgroundColor: APP_THEME.color.accentSoft,
   },
   sendBtnOnGame: {
-    backgroundColor: GAME_THEME.color.gold,
-    borderWidth: 2,
+    width: 44,
+    height: 44,
+    marginBottom: 0,
+    overflow: 'visible',
+    backgroundColor: GAME_THEME.color.sky,
+    borderWidth: 2.5,
     borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 3,
+    borderBottomWidth: 4,
     borderBottomColor: GAME_THEME.color.goldLip,
-    borderRadius: 4,
+    borderRadius: 22,
+  },
+  sendBtnOnGamePressed: {
+    borderBottomWidth: 2.5,
   },
   sendBtnOffGame: {
-    backgroundColor: 'rgba(26,26,26,0.08)',
-    borderWidth: 2,
-    borderColor: 'rgba(26,26,26,0.25)',
-    borderRadius: 4,
+    width: 44,
+    height: 44,
+    marginBottom: 0,
+    overflow: 'visible',
+    backgroundColor: GAME_THEME.color.cream,
+    borderWidth: 2.5,
+    borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.goldLip,
+    borderRadius: 22,
+    opacity: 0.45,
   },
   sendIcon: {
     zIndex: 1,

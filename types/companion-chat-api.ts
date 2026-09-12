@@ -2,7 +2,13 @@
  * Контракт HTTP `/api/chat` (собеседник).
  * Расширяйте при добавлении voice mode (например, поле audio/mime).
  */
-export type CompanionChatApiLanguage = 'english' | 'chinese' | 'russian' | 'german' | 'french';
+export type CompanionChatApiLanguage =
+  | 'english'
+  | 'chinese'
+  | 'russian'
+  | 'german'
+  | 'french'
+  | 'spanish';
 
 export type CompanionChatHistoryRole = 'user' | 'assistant';
 
