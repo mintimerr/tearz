@@ -142,6 +142,8 @@ function coerceDragWordToBlankItem(item: TeacherExerciseItem): TeacherExerciseIt
     }
   }
 
+  segments = repairBlankSegments(segments, checkText);
+
   return { ...item, segments, numberedSentences };
 }
 
@@ -327,17 +329,115 @@ export function isGenericDrillInstruction(text: string): boolean {
   if (t.length > 120) return false;
   const lower = t.toLowerCase();
   if (
-    /^(напиши|write|type|введи|enter|перевед|translate|complete|заполни|choose|выбери|请|写)\b/i.test(
+    /^(напиши|впиши|write|type|введи|enter|перевед|translate|complete|заполни|choose|выбери|请|写)\b/i.test(
       t,
     )
   ) {
     return true;
   }
+  if (/правильн\w+\s+слов\w+\s+по\s+смыслу/i.test(lower)) return true;
+  if (/fill\s+in\s+the\s+(correct\s+)?word/i.test(lower)) return true;
   if (/перевод на (китайском|английском|немецком|французском|l2|chinese|english|german|french)/i.test(lower)) {
     return true;
   }
   if (/^(напиши|write|type)\s+.{0,24}(перевод|translation)\b/i.test(lower)) return true;
   return false;
+}
+
+/** Сколько букв/цифр в текстовых кусках вокруг пропуска. */
+export function blankStemLetterCount(segments: TeacherExerciseSegment[]): number {
+  const text = segments
+    .filter((s): s is Extract<TeacherExerciseSegment, { type: 'text' }> => s.type === 'text')
+    .map((s) => s.value)
+    .join('');
+  return (text.match(/[\p{L}\p{N}]/gu) ?? []).length;
+}
+
+/** Пропуск без surrounding text («…» один) — задание бессмысленно. */
+export function blankSegmentsHaveContext(segments: TeacherExerciseSegment[]): boolean {
+  if (!segments.some((s) => s.type === 'blank')) return false;
+  return blankStemLetterCount(segments) >= 4;
+}
+
+function tryMaskAnswerInSentence(
+  sentence: string,
+  answer: string,
+  blankId: string,
+): TeacherExerciseSegment[] | null {
+  const a = answer.trim();
+  const s = sentence.trim();
+  if (!a || !s || isGenericDrillInstruction(s)) return null;
+  if (BLANK_RE.test(s)) return null;
+  const lower = s.toLowerCase();
+  const aLower = a.toLowerCase();
+  const idx = lower.indexOf(aLower);
+  if (idx < 0) return null;
+  const before = s.slice(0, idx);
+  const after = s.slice(idx + a.length);
+  const around = `${before}${after}`;
+  if ((around.match(/[\p{L}\p{N}]/gu) ?? []).length < 4) return null;
+  const out: TeacherExerciseSegment[] = [];
+  if (before) out.push({ type: 'text', value: before });
+  out.push({ type: 'blank', id: blankId || 'b1', answer: a });
+  if (after) out.push({ type: 'text', value: after });
+  return out;
+}
+
+function attachBlankAnswers(
+  segments: TeacherExerciseSegment[],
+  answers: string[],
+): TeacherExerciseSegment[] {
+  let i = 0;
+  return segments.map((s) => {
+    if (s.type !== 'blank') return s;
+    const answer = answers[i++] ?? ('answer' in s ? s.answer : undefined);
+    return answer ? { type: 'blank', id: s.id, answer } : { type: 'blank', id: s.id };
+  });
+}
+
+/** Чинит blank-only segments из checkText / answer-in-sentence. */
+export function repairBlankSegments(
+  segments: TeacherExerciseSegment[],
+  checkText: string,
+): TeacherExerciseSegment[] {
+  if (blankSegmentsHaveContext(segments)) return segments;
+
+  const answers = segments
+    .filter((s): s is Extract<TeacherExerciseSegment, { type: 'blank' }> => s.type === 'blank')
+    .map((s) => ('answer' in s && s.answer ? s.answer.trim() : ''))
+    .filter(Boolean);
+
+  const candidates = [
+    checkText,
+    ...checkText.split('\n').map((line) => line.replace(/^\d+\.\s*/, '').trim()),
+  ].filter(Boolean);
+
+  for (const raw of candidates) {
+    const t = raw.trim();
+    if (!t || isGenericDrillInstruction(t)) continue;
+
+    if (BLANK_RE.test(t)) {
+      const parsed = attachBlankAnswers(parseSegmentsFromCheckText(t), answers);
+      if (blankSegmentsHaveContext(parsed)) return parsed;
+    }
+
+    for (let i = 0; i < answers.length; i++) {
+      const rebuilt = tryMaskAnswerInSentence(t, answers[i], `b${i + 1}`);
+      if (rebuilt && blankSegmentsHaveContext(rebuilt)) return rebuilt;
+    }
+  }
+
+  return segments;
+}
+
+function numberedBlankHasContext(
+  numbered: TeacherNumberedSentence[] | undefined,
+): boolean {
+  if (!numbered?.length) return false;
+  return numbered.some((s) => {
+    const letters = (s.text.match(/[\p{L}\p{N}]/gu) ?? []).length;
+    return letters >= 4 && BLANK_RE.test(s.text);
+  });
 }
 
 /** Фраза, которую ученик должен перевести (не instruction). */
@@ -635,12 +735,17 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     return null;
   }
 
+  let workingSegments = segments;
+  if (kind === 'type_word_in_blank' || isDragBlankExerciseKind(kind)) {
+    workingSegments = repairBlankSegments(segments, resolvedCheckText);
+  }
+
   const normalized = coerceWordToImageItem(
     coerceDragWordToBlankItem({
     id: asString(obj.id, 32) || `ex-${index + 1}`,
     kind,
     instruction: isFormExerciseKind(kind) ? normalizeFormInstruction(instruction) : instruction,
-    segments,
+    segments: workingSegments,
     choices:
       isChoiceExerciseKind(kind) || kind === 'identify_main_idea' ? choices : undefined,
     wordBank:
@@ -660,9 +765,23 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     passage: kind === 'identify_main_idea' ? passage : undefined,
     correctChoice:
       isChoiceExerciseKind(kind) || kind === 'identify_main_idea' ? correctChoice : undefined,
-    checkText: resolvedCheckText,
+    checkText:
+      kind === 'type_word_in_blank' || isDragBlankExerciseKind(kind)
+        ? segmentsToPromptText(workingSegments) || resolvedCheckText
+        : resolvedCheckText,
     }),
   );
+  if (!normalized) return null;
+
+  // type_word_in_blank / drag blank без контекста вокруг пропуска — выкидываем
+  if (
+    (normalized.kind === 'type_word_in_blank' || isDragBlankExerciseKind(normalized.kind)) &&
+    !numberedBlankHasContext(normalized.numberedSentences) &&
+    !blankSegmentsHaveContext(normalized.segments)
+  ) {
+    return null;
+  }
+
   return withShuffledChoiceOrder(normalized);
 }
 

@@ -1037,7 +1037,7 @@ const EXERCISE_BANK = [
   { kind: 'choose_word_form', difficulty: 15, bestFor: 'спряжение, время, согласование (Babbel)' },
   { kind: 'pick_similar', difficulty: 16, bestFor: 'похожие формы, confusables (their/there, 买/卖)' },
   { kind: 'spot_error', difficulty: 17, bestFor: 'типичная ошибка по теме запроса' },
-  { kind: 'type_word_in_blank', difficulty: 18, bestFor: 'активное вспоминание слова без wordBank' },
+  { kind: 'type_word_in_blank', difficulty: 18, bestFor: 'предложение с ___ + ввод слова без wordBank' },
   { kind: 'type_translation', difficulty: 19, bestFor: 'UI-фраза → напечатать перевод на L2 (Babbel)' },
   { kind: 'identify_main_idea', difficulty: 20, bestFor: 'короткий текст/объявление — главная мысль (DET)' },
   { kind: 'sentence_order', difficulty: 21, bestFor: 'порядок слов, синтаксис L2 (Duolingo)' },
@@ -2309,7 +2309,7 @@ function normalizeExerciseSetFromModel(raw) {
         : typeof item.text === 'string'
           ? item.text.trim()
           : '';
-    const segments = Array.isArray(item.segments)
+    let segments = Array.isArray(item.segments)
       ? item.segments
           .filter((s) => s && typeof s === 'object' && (s.type === 'text' || s.type === 'blank'))
           .slice(0, 40)
@@ -2456,13 +2456,89 @@ function normalizeExerciseSetFromModel(raw) {
       const t = typeof text === 'string' ? text.trim() : '';
       if (!t) return true;
       if (t.length > 120) return false;
-      if (/^(напиши|write|type|введи|enter|перевед|translate|complete|заполни|choose|выбери|请|写)\b/i.test(t)) {
+      if (/^(напиши|впиши|write|type|введи|enter|перевед|translate|complete|заполни|choose|выбери|请|写)\b/i.test(t)) {
         return true;
       }
+      if (/правильн\w+\s+слов\w+\s+по\s+смыслу/i.test(t)) return true;
+      if (/fill\s+in\s+the\s+(correct\s+)?word/i.test(t)) return true;
       if (/перевод на (китайском|английском|немецком|французском|l2|chinese|english|german|french)/i.test(t)) {
         return true;
       }
       return /^(напиши|write|type)\s+.{0,24}(перевод|translation)\b/i.test(t);
+    };
+
+    const blankStemLetters = (segs) => {
+      const text = (segs || [])
+        .filter((s) => s && s.type === 'text' && typeof s.value === 'string')
+        .map((s) => s.value)
+        .join('');
+      return (text.match(/[\p{L}\p{N}]/gu) || []).length;
+    };
+    const blankHasContext = (segs) =>
+      (segs || []).some((s) => s && s.type === 'blank') && blankStemLetters(segs) >= 4;
+    const numberedBlankOk = (rows) =>
+      Array.isArray(rows) &&
+      rows.some((s) => {
+        const t = typeof s?.text === 'string' ? s.text : '';
+        const letters = (t.match(/[\p{L}\p{N}]/gu) || []).length;
+        return letters >= 4 && /_{2,}|…{2,}|\.{3,}/.test(t);
+      });
+    const parseBlankSegmentsFromText = (text) => {
+      const re = /_{2,}|…{2,}|\.{3,}/g;
+      const out = [];
+      let last = 0;
+      let blankIdx = 0;
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        if (m.index > last) out.push({ type: 'text', value: text.slice(last, m.index) });
+        blankIdx += 1;
+        out.push({ type: 'blank', id: `b${blankIdx}` });
+        last = m.index + m[0].length;
+      }
+      if (last < text.length) out.push({ type: 'text', value: text.slice(last) });
+      return out;
+    };
+    const tryMaskAnswerInSentence = (sentence, answer) => {
+      const a = typeof answer === 'string' ? answer.trim() : '';
+      const s = typeof sentence === 'string' ? sentence.trim() : '';
+      if (!a || !s || isGenericInstruction(s) || /_{2,}|…{2,}|\.{3,}/.test(s)) return null;
+      const idx = s.toLowerCase().indexOf(a.toLowerCase());
+      if (idx < 0) return null;
+      const before = s.slice(0, idx);
+      const after = s.slice(idx + a.length);
+      if (((before + after).match(/[\p{L}\p{N}]/gu) || []).length < 4) return null;
+      const out = [];
+      if (before) out.push({ type: 'text', value: before });
+      out.push({ type: 'blank', id: 'b1', answer: a });
+      if (after) out.push({ type: 'text', value: after });
+      return out;
+    };
+    const repairBlankSegments = (segs, check) => {
+      if (blankHasContext(segs)) return segs;
+      const answers = (segs || [])
+        .filter((s) => s && s.type === 'blank' && typeof s.answer === 'string' && s.answer.trim())
+        .map((s) => s.answer.trim());
+      const candidates = [check, ...(typeof check === 'string' ? check.split('\n') : [])]
+        .map((x) => (typeof x === 'string' ? x.replace(/^\d+\.\s*/, '').trim() : ''))
+        .filter(Boolean);
+      for (const t of candidates) {
+        if (isGenericInstruction(t)) continue;
+        if (/_{2,}|…{2,}|\.{3,}/.test(t)) {
+          const parsed = parseBlankSegmentsFromText(t);
+          let ai = 0;
+          const withAns = parsed.map((s) => {
+            if (s.type !== 'blank') return s;
+            const answer = answers[ai++];
+            return answer ? { ...s, answer } : s;
+          });
+          if (blankHasContext(withAns)) return withAns;
+        }
+        for (const ans of answers) {
+          const rebuilt = tryMaskAnswerInSentence(t, ans);
+          if (rebuilt && blankHasContext(rebuilt)) return rebuilt;
+        }
+      }
+      return segs;
     };
 
     if (
@@ -2536,6 +2612,19 @@ function normalizeExerciseSetFromModel(raw) {
         (kind === 'match_pairs' ? 'Сопоставь слова и переводы' : '') ||
         (ORDER_KINDS.has(kind) ? 'Составь предложение из слов' : '') ||
         (CHOICE_KINDS.has(kind) ? 'Выбери правильный вариант' : '');
+    }
+
+    if (DRAG_BLANK_KINDS.has(kind) || kind === 'type_word_in_blank') {
+      segments = repairBlankSegments(segments, resolvedCheck);
+      const stem = segments
+        .map((s) => (s.type === 'text' ? s.value : '______'))
+        .join('')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      if (stem) resolvedCheck = stem;
+      if (!numberedBlankOk(numberedSentences) && !blankHasContext(segments)) {
+        continue; // пустой «...» без предложения — отбрасываем
+      }
     }
 
     let outChoices =
@@ -2650,6 +2739,8 @@ function buildExerciseBatchUserContent({
     `Variation id: ${seed}.${variationBlock}${avoidBlock}${mistakesBlock}${kindsBlock}\n\n` +
     `Сгенерируй ровно ${kinds.length} упражнений (kinds как выше)${nextTopicLine}.\n` +
     `Каждое задание должно напрямую тренировать то, о чём просил пользователь.\n` +
+    `BLANK: для type_word_in_blank / drag_word_to_blank / complete_dialogue — segments ОБЯЗАНЫ содержать text вокруг blank ` +
+    `(полное предложение на L2). Один голый blank без surrounding text — ЗАПРЕЩЁН.\n` +
     `DISTRACTORS: для choose_reply / what_do_you_say / multiple_choice / translate_sentence / choose_translation / select_missing_word — ` +
     `все 4 варианта одной темы и длины; неправильные = near-miss (другой нюанс/вежливость/мнение), ` +
     `НЕ рандом с другой темы (погода/магазин/кино/«я студент»). ` +
@@ -3158,7 +3249,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.3', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v4-distractors', vocabExamples: 'v1', drillFollowUp: 'personalized-v1' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.4', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v4-blank-context', vocabExamples: 'v1', drillFollowUp: 'personalized-v1' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */

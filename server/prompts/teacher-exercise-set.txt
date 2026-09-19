@@ -34,7 +34,11 @@
    checkText: предложение с пропуском на L2.
 
 2) type_word_in_blank — ввести слово (без wordBank)
-   segments с 1–2 blank; на каждом blank answer.
+   segments: ОБЯЗАТЕЛЬНО текст ДО и/или ПОСЛЕ blank (полное предложение на L2 с 1–2 пропусками).
+   На каждом blank — answer.
+   checkText: то же предложение с ___ .
+   ЗАПРЕЩЕНО: segments из одного только blank без surrounding text (ученик не видит контекст).
+   Пример: [{"type":"text","value":"I "},{"type":"blank","id":"b1","answer":"like"},{"type":"text","value":" coffee."}]
 
 3) choose_word_form — выбрать одно из трёх для пропуска
    formSlots: [{ "id":"f1", "prompt":"She ___ home every day.", "options":["go","goes","going"], "correct":"goes" }]

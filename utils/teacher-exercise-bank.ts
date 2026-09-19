@@ -29,7 +29,7 @@ export const EXERCISE_BANK: ReadonlyArray<{
   { kind: 'choose_word_form', difficulty: 15, bestFor: 'спряжение, время, согласование', source: 'Babbel' },
   { kind: 'pick_similar', difficulty: 16, bestFor: 'похожие формы / confusables', source: 'HelloChinese' },
   { kind: 'spot_error', difficulty: 17, bestFor: 'типичная ошибка по теме', source: 'HelloChinese' },
-  { kind: 'type_word_in_blank', difficulty: 18, bestFor: 'активное вспоминание без wordBank', source: 'ProgressMe' },
+  { kind: 'type_word_in_blank', difficulty: 18, bestFor: 'предложение с ___ + ввод слова без wordBank', source: 'ProgressMe' },
   { kind: 'type_translation', difficulty: 19, bestFor: 'UI-фраза → напечатать перевод на L2', source: 'Babbel' },
   { kind: 'identify_main_idea', difficulty: 20, bestFor: 'главная мысль короткого текста', source: 'DET' },
   { kind: 'sentence_order', difficulty: 21, bestFor: 'порядок слов', source: 'Duolingo' },
