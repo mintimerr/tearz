@@ -91,9 +91,73 @@ export function isVagueCoachNote(text) {
   return false;
 }
 
-function usableCoachNote(item) {
+/** Текст комментария без цитат изучаемого языка — по нему проверяем язык приложения. */
+export function commentaryProse(text) {
+  return String(text || '')
+    .replace(/«[^»]*»/g, ' ')
+    .replace(/“[^”]*”/g, ' ')
+    .replace(/"[^"]*"/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function scriptCounts(text) {
+  return {
+    cyr: (text.match(/[А-Яа-яЁё]/g) || []).length,
+    han: (text.match(/\p{Script=Han}/gu) || []).length,
+    lat: (text.match(/[A-Za-z]/g) || []).length,
+  };
+}
+
+/** Проза комментария (вне «кавычек» с L2) написана на языке интерфейса. */
+export function commentaryInUiLanguage(text, uiLanguage = 'ru') {
+  const ui = uiLanguage === 'en' || uiLanguage === 'zh' ? uiLanguage : 'ru';
+  const { cyr, han, lat } = scriptCounts(commentaryProse(text));
+  if (ui === 'ru') return cyr >= 8 && cyr > han && cyr > lat;
+  if (ui === 'en') return lat >= 8 && lat > cyr * 2 && lat > han;
+  return han >= 4 && han >= cyr && han + 1 >= lat;
+}
+
+/** Комментарий только называет выбранный вариант и не разбирает задание. */
+export function isSuperficialChoiceComment(text) {
+  const t = typeof text === 'string' ? text.trim() : '';
+  if (!t) return true;
+  return /остальн\w+.{0,48}(правильн|верн)|the other (sentences|options|lines) are (fine|correct|right)|其余.{0,12}(对的|正确)|выбрал[иа]?|you (chose|picked|selected)|你选了|ошибка (именно )?в «|the error is in «|^да\s*[—:-]\s*ошибка|это верный вариант|that (option|sentence) is correct|符合题目|верный вариант к заданию|matches the task/i.test(
+    t,
+  );
+}
+
+function hasTaskReason(text, ui) {
+  const t = commentaryProse(text);
+  if (ui === 'en') {
+    return /because|means|should|instead|grammar|word order|belong|rule|rather|tense|situation|blank|not the|wrong word|correct (form|sentence|word)/i.test(
+      t,
+    );
+  }
+  if (ui === 'zh') {
+    return /因为|意思|应该|而不是|语法|不属于|错误|要说|不是/.test(t);
+  }
+  return /потому|значит|нужно|надо|вместо|граммат|порядок|лишн|форма|время|сочета|уместн|группа|правило|ошиб|перевод|главн|реплик|ситуац|пропуск|пишется|это не|а не/i.test(
+    t,
+  );
+}
+
+/**
+ * Комментарий можно показать: язык приложения, и он про пункт задания,
+ * а не про сам факт выбора.
+ */
+export function isAcceptableTaskComment(text, uiLanguage = 'ru') {
+  const t = typeof text === 'string' ? text.trim() : '';
+  const ui = uiLanguage === 'en' || uiLanguage === 'zh' ? uiLanguage : 'ru';
+  if (!t || isVagueCoachNote(t) || isSuperficialChoiceComment(t)) return false;
+  if (!commentaryInUiLanguage(t, ui)) return false;
+  if (!hasTaskReason(t, ui)) return false;
+  return true;
+}
+
+function usableCoachNote(item, ui) {
   const note = readCoachNote(item);
-  return note && !isVagueCoachNote(note) ? note : '';
+  return isAcceptableTaskComment(note, ui) ? note : '';
 }
 
 function wrongPrefix(ui, note) {
@@ -128,9 +192,9 @@ function feedbackBucket(kind) {
  * Нужен короткий вызов модели: в задании нет готового coachNote,
  * а локальный шаблон не называет саму ошибку / нюанс.
  */
-export function feedbackNeedsModelWhy(kind, item) {
-  if (!WHY_KINDS.has(kind)) return false;
-  return !usableCoachNote(item);
+export function feedbackNeedsModelWhy(kind, item, uiLanguage = 'ru') {
+  if (!kind) return !isAcceptableTaskComment(readCoachNote(item), uiLanguage);
+  return !isAcceptableTaskComment(readCoachNote(item), uiLanguage);
 }
 
 /**
@@ -139,7 +203,7 @@ export function feedbackNeedsModelWhy(kind, item) {
 export function buildExerciseCheckFeedback(opts) {
   const { correct, kind = '', item, ideal = '', uiLanguage = 'ru', answer = '' } = opts ?? {};
   const ui = uiLanguage === 'en' || uiLanguage === 'zh' ? uiLanguage : 'ru';
-  const note = usableCoachNote(item);
+  const note = usableCoachNote(item, ui);
   const bucket = feedbackBucket(kind);
 
   const chosenRaw = (typeof answer === 'string' && answer.trim()) || (typeof ideal === 'string' && ideal.trim()) || '';
@@ -177,8 +241,8 @@ const wrongPools = {
     spot: [
       () =>
         chosen
-          ? `Не ${chosen}. Это предложение как раз нормальное — ошибка в другом варианте.`
-          : 'Ищите предложение, где сломаны слово или грамматика, а не тему.',
+          ? `Задание — найти предложение с ошибкой, и ${chosen} как раз без ошибки. Смотри слово или грамматику в других вариантах.`
+          : 'Задание — найти предложение, где сломаны слово или грамматика.',
     ],
     odd: [
       () =>
@@ -199,8 +263,8 @@ const wrongPools = {
     spot: [
       () =>
         chosen
-          ? `Not ${chosen}. That sentence is fine — the error is in another option.`
-          : 'Look for the sentence with a broken word or grammar, not a different topic.',
+          ? `The task is to find the sentence with a mistake, and ${chosen} is grammatical. Look at the word or the grammar in the other lines.`
+          : 'The task is to find the sentence where a word or the grammar is wrong.',
     ],
     odd: [
       () =>
@@ -221,8 +285,8 @@ const wrongPools = {
     spot: [
       () =>
         chosen
-          ? `不是 ${chosen}。这句是对的——错误在另一个选项里。`
-          : '找词或语法出错的那句，而不是换话题的那句。',
+          ? `题目是找出有错误的句子，而 ${chosen} 没有错误。看其他句子里的用词或语法。`
+          : '题目是找出用词或语法出错的那一句。',
     ],
     odd: [
       () => (chosen ? `${chosen} 和其他词是一类。多余的是另一组的词。` : '多余的是不属于同一组的词。'),
@@ -268,9 +332,11 @@ const pools = {
     ],
     spot: [
       () =>
-        chosen
-          ? `Да — ошибка в ${chosen}. Остальные предложения написаны правильно.`
-          : 'Вы нашли предложение с ошибкой.',
+        stim && chosen
+          ? `Задание ${stim} Ошибочное предложение — ${chosen}: здесь не то слово или не та форма.`
+          : chosen
+            ? `Нужно было найти предложение с ошибкой. Сломано ${chosen}: не то слово или не та форма.`
+            : 'Нужно было найти предложение, где сломаны слово или грамматика.',
     ],
     odd: [
       () =>
@@ -374,9 +440,11 @@ const pools = {
     ],
     spot: [
       () =>
-        chosen
-          ? `Yes — the error is in ${chosen}. The other sentences are fine.`
-          : 'You found the sentence with the error.',
+        stim && chosen
+          ? `The task ${stim} asks for the sentence with a mistake. That sentence is ${chosen}: a word or a grammar form is wrong.`
+          : chosen
+            ? `The task is to find the sentence with a mistake. The broken one is ${chosen}: a word or a grammar form is wrong.`
+            : 'The task is to find the sentence where a word or the grammar is wrong.',
     ],
     odd: [
       () =>
@@ -450,7 +518,12 @@ const pools = {
             : '这个选项符合句子。',
     ],
     spot: [
-      () => (chosen ? `对——错误在 ${chosen}。其余句子是对的。` : '你找到了有错误的句子。'),
+      () =>
+        stim && chosen
+          ? `题目${stim}要找有错误的句子。错句是 ${chosen}：用词或语法不对。`
+          : chosen
+            ? `题目是找出有错误的句子。错句是 ${chosen}：用词或语法不对。`
+            : '题目是找出用词或语法出错的那一句。',
     ],
     odd: [
       () => (chosen ? `${chosen} 是多余的：其余是一类，它是另一类。` : '多余的词选对了。'),
@@ -496,7 +569,8 @@ export function isGenericCheckOkFeedback(text, uiLanguage) {
   if (!t) return true;
   const ui = uiLanguage === 'en' || uiLanguage === 'zh' ? uiLanguage : 'ru';
   if (t === CHECK_OK[ui]) return true;
-  if (isVagueCoachNote(t)) return true;
+  if (isVagueCoachNote(t) || isSuperficialChoiceComment(t)) return true;
+  if (!commentaryInUiLanguage(t, ui)) return true;
   const hasConcreteQuote = /[«»“”"]/.test(t);
   const vagueRe =
     /уловил[аие]?\s+смысл|материал\s+усваивается|двигаемся\s+дальше|caught\s+the\s+(nuance|meaning)|keep\s+going|wording\s+fits\s+here|эта\s+формулировка\s+здесь\s+уместна|то,\s*что\s+нужно|就是这样|继续下一题/i;

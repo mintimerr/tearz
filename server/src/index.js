@@ -13,6 +13,7 @@ import {
   buildExerciseCheckFeedback,
   feedbackNeedsModelWhy,
   hashExerciseSeed,
+  isAcceptableTaskComment,
   isGenericCheckOkFeedback,
   isVagueCoachNote,
   readCoachNote,
@@ -2517,8 +2518,9 @@ function buildExerciseBatchUserContent({
     `НЕ рандом с другой темы (погода/магазин/кино/«я студент»). ` +
     `Если правильный угадывается отбрасыванием «не по теме» — перепиши. ` +
     `ПОРЯДОК: correctChoice НЕ всегда choices[0] — меняй позицию правильного (A/B/C/D) между заданиями.\n` +
-    `COACH: у КАЖДОГО упражнения поле coachNote — 1–2 предложения на UI-языке. Это комментарий преподавателя ПОСЛЕ верного ответа, он учит пункт ЭТОГО задания.\n` +
-    `spot_error: correctChoice = предложение С ОШИБКОЙ. coachNote называет сломанное слово или грамматику, что оно на самом деле значит (если слово не то), и даёт исправленное предложение. ЗАПРЕЩЕНО писать, что смысл или тон «совпадают».\n` +
+    `COACH: у КАЖДОГО упражнения поле coachNote — 1–2 предложения СТРОГО на языке интерфейса (UI). Слова L2 только внутри «». Не пиши объяснение на языке урока, если UI другой.\n` +
+    `coachNote разбирает САМО ЗАДАНИЕ (какая ошибка, что слово значит, какое правило), а не факт выбора. Запрещено: «вы выбрали», «ошибка в этом варианте», «остальные правильные», «смысл и тон совпадают».\n` +
+    `spot_error: correctChoice = предложение С ОШИБКОЙ. coachNote называет сломанное слово или грамматику, что оно на самом деле значит на UI-языке, и даёт исправленное предложение.\n` +
     `odd_one_out: какая группа у остальных и почему выбранное лишнее. choose_reply / what_do_you_say: привязка к конкретной реплике или ситуации и чем соседние варианты мимо. перевод / пропуск: чем этот вариант точнее near-miss.\n` +
     `Запрещены пустые похвалы: «молодец», «смысл и тон совпадают», «отличный выбор».\n` +
     `Только JSON: ${jsonHint}.`
@@ -3668,42 +3670,34 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
   }
 });
 
-async function explainGradedExercise({ apiKey, item, answer, correct, ui, ideal }) {
-  const m = uiLangMeta(ui);
-  const kind = typeof item?.kind === 'string' ? item.kind : '';
-  const choices = Array.isArray(item?.choices)
-    ? item.choices
-        .filter((c) => typeof c === 'string' && c.trim())
-        .slice(0, 6)
-        .map((c) => `- ${c.trim()}`)
-        .join('\n')
-    : '';
-  const checkText = typeof item?.checkText === 'string' ? item.checkText.trim() : '';
-  const instruction = typeof item?.instruction === 'string' ? item.instruction.trim() : '';
-  const passage = typeof item?.passage === 'string' ? item.passage.trim() : '';
-  const system =
-    `You are Tearz, a language teacher. The answer is ALREADY graded: correct=${Boolean(correct)}. Do not change the grade. ` +
-    `Output ONLY JSON {"feedback":"..."}. feedback is 1–2 sentences in ${m.explainLabel}. ` +
-    `No title. Never write «Вы молодец», «Well done», «做得好», «смысл и тон совпадают», «meaning and tone match». ` +
-    `Teach the specific point of THIS task. Quote the key target-language form in «».\n` +
-    `KIND RULES:\n` +
-    `- spot_error: correctChoice is the sentence that CONTAINS the mistake. Name the broken word or grammar, say what that word actually means if it is the wrong word, and give the corrected sentence. The learner was asked to FIND the error, not to pick a sentence whose meaning matches.\n` +
-    `- odd_one_out: name the group the other items share and why this one does not.\n` +
-    `- choose_reply / what_do_you_say: tie the right line to the exact previous turn or situation. If the learner is wrong, say what their line misses.\n` +
-    `- true_false: say why the statement is true or false, citing the rule.\n` +
-    `- identify_main_idea: say why this option is the main point and not a detail.\n` +
-    `- multiple_choice / collocation_choice: say why this option fits this phrase and what the near-miss gets wrong.\n` +
-    `If correct=false, start from their mistake, then the fix. If correct=true, explain why their choice is the one the task asked for.`;
-  const user =
-    `kind: ${kind}\n` +
-    (instruction ? `instruction: ${instruction}\n` : '') +
-    `task: ${checkText}\n` +
-    (passage ? `passage: ${passage.slice(0, 800)}\n` : '') +
-    (choices ? `choices:\n${choices}\n` : '') +
-    `correct option: ${ideal || (typeof item?.correctChoice === 'string' ? item.correctChoice : '')}\n` +
-    `learner answer: ${answer}\n` +
-    `graded correct: ${Boolean(correct)}`;
+function exerciseTaskFacts(item) {
+  if (!item || typeof item !== 'object') return '';
+  const lines = [];
+  if (Array.isArray(item.segments) && item.segments.length) {
+    const line = item.segments
+      .map((s) => {
+        if (!s || typeof s !== 'object') return '';
+        if (s.type === 'blank') return `____(${typeof s.answer === 'string' ? s.answer : ''})`;
+        return typeof s.value === 'string' ? s.value : '';
+      })
+      .join('');
+    if (line.trim()) lines.push(`sentence with answers: ${line.slice(0, 500)}`);
+  }
+  if (Array.isArray(item.correctOrder) && item.correctOrder.length) {
+    lines.push(`correct order: ${item.correctOrder.join(' ')}`);
+  }
+  if (Array.isArray(item.formSlots) && item.formSlots.length) {
+    for (const slot of item.formSlots.slice(0, 4)) {
+      if (!slot || typeof slot !== 'object') continue;
+      lines.push(
+        `form: ${slot.prompt || ''} → ${slot.correct || ''} (options: ${(slot.options || []).join(' / ')})`,
+      );
+    }
+  }
+  return lines.join('\n');
+}
 
+async function requestExerciseComment(apiKey, { system, user }) {
   const openaiRes = await fetch(OPENAI_URL, {
     method: 'POST',
     headers: {
@@ -3715,10 +3709,10 @@ async function explainGradedExercise({ apiKey, item, answer, correct, ui, ideal 
       model: TEACHER_FAST_MODEL,
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: user.slice(0, 4000) },
+        { role: 'user', content: user.slice(0, 4500) },
       ],
-      temperature: 0.3,
-      max_tokens: 320,
+      temperature: 0.2,
+      max_tokens: 360,
       response_format: { type: 'json_object' },
     }),
   });
@@ -3734,14 +3728,67 @@ async function explainGradedExercise({ apiKey, item, answer, correct, ui, ideal 
   return feedback.slice(0, 500);
 }
 
+async function explainGradedExercise({ apiKey, item, answer, correct, ui, ideal }) {
+  const m = uiLangMeta(ui);
+  const kind = typeof item?.kind === 'string' ? item.kind : '';
+  const choices = Array.isArray(item?.choices)
+    ? item.choices
+        .filter((c) => typeof c === 'string' && c.trim())
+        .slice(0, 6)
+        .map((c) => `- ${c.trim()}`)
+        .join('\n')
+    : '';
+  const checkText = typeof item?.checkText === 'string' ? item.checkText.trim() : '';
+  const instruction = typeof item?.instruction === 'string' ? item.instruction.trim() : '';
+  const passage = typeof item?.passage === 'string' ? item.passage.trim() : '';
+  const facts = exerciseTaskFacts(item);
+  const system =
+    `You write the Tearz comment shown under a finished drill card.\n` +
+    `APP LANGUAGE: ${m.explainLabel}. This is absolute.\n` +
+    `Every word of feedback is ${m.explainLabel}. Target-language forms go ONLY inside «».\n` +
+    `If the app is Russian, the explanation is Russian — not Chinese, not English.\n` +
+    `If the app is English, the explanation is English — not Russian, not Chinese.\n` +
+    `If the app is Chinese, the explanation is Chinese — not Russian, not English.\n` +
+    `Grade is already decided: correct=${Boolean(correct)}. Do not change it. Output ONLY JSON {"feedback":"..."}.\n` +
+    `Do NOT comment on the click. Forbidden: "you chose", "you picked", "the others are correct", "ошибка в этом варианте", "остальные правильные", "вы выбрали", "именно этот вариант", "Да — ошибка в", "смысл и тон", "meaning and tone", "Вы молодец", "Well done".\n` +
+    `DO explain the task itself: what the question asks, then the language fact that decides it.\n` +
+    `spot_error: the keyed option is the sentence that CONTAINS the mistake. Name the wrong word or grammar, say in ${m.explainLabel} what that word actually means, and give the corrected sentence inside «».\n` +
+    `odd_one_out: name the group the other items share and why one item is outside it.\n` +
+    `choose_reply / what_do_you_say: what this situation or previous line requires, and why the right line meets it.\n` +
+    `translation: what the source means in ${m.explainLabel}, and how a near-miss changes that meaning.\n` +
+    `blank / form / order: which form this sentence needs and why.\n` +
+    `Two short sentences. No title.`;
+  const user =
+    `APP LANGUAGE: ${m.explainLabel}\n` +
+    `kind: ${kind}\n` +
+    (instruction ? `instruction: ${instruction}\n` : '') +
+    `task: ${checkText}\n` +
+    (passage ? `passage: ${passage.slice(0, 800)}\n` : '') +
+    (facts ? `${facts}\n` : '') +
+    (choices ? `choices:\n${choices}\n` : '') +
+    `keyed answer: ${ideal || (typeof item?.correctChoice === 'string' ? item.correctChoice : '')}\n` +
+    `learner answer: ${answer}\n` +
+    `graded correct: ${Boolean(correct)}\n` +
+    `Write feedback in ${m.explainLabel} about this task, not about the fact that an option was selected.`;
+
+  let feedback = await requestExerciseComment(apiKey, { system, user });
+  if (isAcceptableTaskComment(feedback, ui)) return feedback;
+  const retryUser =
+    `${user}\n\nREJECTED DRAFT (do not repeat it):\n${feedback || '(empty)'}\n` +
+    `Rewrite from scratch in ${m.explainLabel} only. ` +
+    `Explain the language point of the task (the wrong word and its real meaning, the grammar, the situation). ` +
+    `Do not say the learner picked an option.`;
+  feedback = await requestExerciseComment(apiKey, { system, user: retryUser });
+  if (isAcceptableTaskComment(feedback, ui)) return feedback;
+  return '';
+}
+
 async function maybeExplainCheck({ apiKey, item, answer, correct, ui, ideal, feedback }) {
   const kind = typeof item?.kind === 'string' ? item.kind : '';
-  if (!feedbackNeedsModelWhy(kind, item)) return feedback;
+  if (!feedbackNeedsModelWhy(kind, item, ui)) return feedback;
   try {
     const explained = await explainGradedExercise({ apiKey, item, answer, correct, ui, ideal });
-    if (explained && !isGenericCheckOkFeedback(explained, ui) && !isVagueCoachNote(explained)) {
-      return explained;
-    }
+    if (isAcceptableTaskComment(explained, ui)) return explained;
   } catch (e) {
     console.warn('[exercise-check] explain failed:', e instanceof Error ? e.message : e);
   }
@@ -3787,8 +3834,9 @@ app.post('/api/teacher-exercise-check', async (req, res) => {
     '\n\nNOW CHECK A LEARNER ANSWER TO ONE PRACTICE TASK. Output ONLY valid JSON with exactly these keys: "correct" boolean, "title" string, "feedback" string, "idealAnswer" string. ' +
     `Use ${m.explainLabel} for title and feedback. Be warm but honest. If the answer is good enough, correct=true and title can be "${m.praiseOk}". If not, correct=false and title can be "${m.praiseAlmost}". ` +
     'Feedback must be concise and concrete in the UI language: quote the learner answer in «…» and briefly say WHY it fits (or what to fix). ' +
-    'When correct=true, NEVER use vague praise alone (no "you caught the meaning", "хорошо уловили смысл", "смысл и тон совпадают", "материал усваивается"). Tie the comment to the chosen words/option and the actual task. ' +
-    'If kind is spot_error, the correct option is the sentence that CONTAINS the error: name the broken word or grammar, say what it really means, and give the corrected sentence. Do NOT say that sentence matches the meaning or tone. ' +
+    `When correct=true, NEVER use vague praise alone (no "you caught the meaning", "хорошо уловили смысл", "смысл и тон совпадают", "материал усваивается", "you chose", "остальные правильные"). ` +
+    `feedback prose is ONLY in ${m.explainLabel}; target-language forms only inside «». Explain the task itself (the error, the rule, the situation), not the fact that an option was selected. ` +
+    'If kind is spot_error, the correct option is the sentence that CONTAINS the error: name the broken word or grammar, say what it really means in the UI language, and give the corrected sentence. Do NOT say that sentence matches the meaning or tone. ' +
     'If kind is odd_one_out, say which group the other items share. If kind is choose_reply or what_do_you_say, tie the line to the exact situation. ' +
     'When correct=false: (1) what is off, (2) the highest-impact fix, (3) one better version. Accept near-native variants and natural synonyms as correct when meaning and grammar are fine. ' +
     'Do not mark wrong for minor punctuation/spacing alone. Do not invent errors. Do not overpraise wrong answers. idealAnswer = one clean model solution.\n' +

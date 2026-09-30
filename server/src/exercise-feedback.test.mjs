@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   buildExerciseCheckFeedback,
+  commentaryInUiLanguage,
   feedbackNeedsModelWhy,
+  isAcceptableTaskComment,
   isGenericCheckOkFeedback,
   isVagueCoachNote,
 } from './exercise-feedback.js';
@@ -36,7 +38,7 @@ test('spot_error does not praise meaning and tone', () => {
   }
 });
 
-test('spot_error uses coachNote instead of a generic line', () => {
+test('spot_error uses a Russian note that explains the mistake', () => {
   const note =
     '«医嘱» значит «назначение врача», а не «польза». Нужно: «按时吃饭对身体有益。»';
   const feedback = buildExerciseCheckFeedback({
@@ -48,11 +50,48 @@ test('spot_error uses coachNote instead of a generic line', () => {
     answer: SPOT.correctChoice,
   });
   assert.equal(feedback, note);
-  assert.equal(feedbackNeedsModelWhy('spot_error', { ...SPOT, coachNote: note }), false);
+  assert.equal(isAcceptableTaskComment(note, 'ru'), true);
+  assert.equal(feedbackNeedsModelWhy('spot_error', { ...SPOT, coachNote: note }, 'ru'), false);
+});
+
+test('russian app ignores a comment written in Chinese', () => {
+  const note = '医嘱的意思是医嘱，不是有益。应该说按时吃饭对身体有益。这是用词错误。';
+  const feedback = buildExerciseCheckFeedback({
+    correct: true,
+    kind: 'spot_error',
+    item: { ...SPOT, coachNote: note },
+    ideal: SPOT.correctChoice,
+    uiLanguage: 'ru',
+    answer: SPOT.correctChoice,
+  });
+  assert.notEqual(feedback, note);
+  assert.equal(commentaryInUiLanguage(feedback, 'ru'), true);
+  assert.match(feedback, /[А-Яа-яЁё]/);
+  assert.equal(feedbackNeedsModelWhy('spot_error', { ...SPOT, coachNote: note }, 'ru'), true);
+});
+
+test('english app gets an English comment, not a Russian one', () => {
+  const feedback = buildExerciseCheckFeedback({
+    correct: true,
+    kind: 'spot_error',
+    item: { ...SPOT, checkText: 'Which sentence is wrong?' },
+    ideal: SPOT.correctChoice,
+    uiLanguage: 'en',
+    answer: SPOT.correctChoice,
+  });
+  assert.equal(commentaryInUiLanguage(feedback, 'en'), true);
+  assert.doesNotMatch(feedback, /[А-Яа-яЁё]/);
+  assert.match(feedback, /mistake|wrong|grammar/i);
+});
+
+test('a line that only names the picked sentence is not enough', () => {
+  const line = 'Да — ошибка в «吃饭规定的时间对身体有医嘱。». Остальные предложения написаны правильно.';
+  assert.equal(isAcceptableTaskComment(line, 'ru'), false);
+  assert.equal(feedbackNeedsModelWhy('spot_error', { ...SPOT, coachNote: line }, 'ru'), true);
 });
 
 test('spot_error without a note still asks the model for the actual error', () => {
-  assert.equal(feedbackNeedsModelWhy('spot_error', SPOT), true);
+  assert.equal(feedbackNeedsModelWhy('spot_error', SPOT, 'ru'), true);
 });
 
 test('vague praise is rejected even when it quotes the answer', () => {
