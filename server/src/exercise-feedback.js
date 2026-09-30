@@ -15,18 +15,6 @@ const CHECK_OK = {
   zh: '答案与标准一致。',
 };
 
-/** Виды, где без конкретного «почему» комментарий врёт про задание. */
-const WHY_KINDS = new Set([
-  'spot_error',
-  'odd_one_out',
-  'choose_reply',
-  'what_do_you_say',
-  'true_false',
-  'identify_main_idea',
-  'multiple_choice',
-  'collocation_choice',
-]);
-
 const ORDER_KINDS = new Set(['sentence_order', 'build_from_meaning']);
 const FORM_KINDS = new Set(['choose_word_form', 'pick_similar']);
 const DRAG_BLANK_KINDS = new Set(['drag_word_to_blank', 'complete_dialogue', 'fill_blank']);
