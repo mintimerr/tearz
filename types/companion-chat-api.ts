@@ -194,6 +194,11 @@ export type TeacherExerciseItem = {
   passage?: string;
   /** identify_main_idea / multiple_choice — правильный вариант */
   correctChoice?: string;
+  /**
+   * Реплика преподавателя после верного ответа: почему этот вариант
+   * (какая ошибка, какая группа, чем перевод точнее). На UI-языке.
+   */
+  coachNote?: string;
   checkText: string;
 };
 
