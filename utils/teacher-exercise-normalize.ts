@@ -682,6 +682,7 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
   const minSentences = minSentencesRaw && minSentencesRaw >= 3 ? Math.min(8, Math.floor(minSentencesRaw)) : undefined;
   const voicePrompt = asString(obj.voicePrompt, 600) || undefined;
   const instruction = asString(obj.instruction, 160) || undefined;
+  const coachNote = asString(obj.coachNote ?? obj.why, 500) || undefined;
   const partialGaps = maskedSentence ? normalizePartialGaps(obj.partialGaps, maskedSentence) : undefined;
 
   const draft: Partial<TeacherExerciseItem> = {
@@ -765,6 +766,7 @@ export function normalizeTeacherExerciseItem(raw: unknown, index: number): Teach
     passage: kind === 'identify_main_idea' ? passage : undefined,
     correctChoice:
       isChoiceExerciseKind(kind) || kind === 'identify_main_idea' ? correctChoice : undefined,
+    coachNote,
     checkText:
       kind === 'type_word_in_blank' || isDragBlankExerciseKind(kind)
         ? segmentsToPromptText(workingSegments) || resolvedCheckText

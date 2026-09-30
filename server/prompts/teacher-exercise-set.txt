@@ -164,7 +164,14 @@ Duolingo / Memrise / Babbel / Busuu (новые kinds)
 * nextTopic.title / reason / connection — на UI-языке.
 * Если в запросе есть «Недавние ошибки ученика» — приоритет №0: закрыть эти пробелы; distractors = типичные промахи из списка.
 * Нельзя менять L2 внутри набора.
-* Не включай ответы в instruction для ученика (ключи только в JSON: correct / answer / correctChoice / selectIsReal).
+* Не включай ответы в instruction для ученика (ключи только в JSON: correct / answer / correctChoice / selectIsReal / coachNote).
+* coachNote — ОБЯЗАТЕЛЬНО у каждого упражнения, СТРОГО на языке интерфейса (не на L2). Слова изучаемого языка только внутри «». Если приложение на русском — весь комментарий по-русски, даже когда предложение на китайском.
+  Это разбор САМОГО задания, не похвала выбранного варианта. Запрещено: «вы выбрали», «ошибка в этом варианте», «остальные правильные», «смысл и тон совпадают».
+  - spot_error: correctChoice — предложение С ОШИБКОЙ. coachNote на UI-языке называет сломанное слово или грамматику, что неверное слово значит, и даёт исправленное предложение.
+  - odd_one_out: какая группа у остальных и почему это слово лишнее.
+  - choose_reply / what_do_you_say: привязка к конкретной реплике или ситуации и чем соседние варианты мимо.
+  - перевод, пропуск, collocation: чем выбранный вариант точнее near-miss.
+  Запрещены пустые похвалы: «молодец», «смысл и тон совпадают», «отличный выбор».
 * Каждый запрос — новый набор; Variation id обязателен; при «не повторять» — другой угол, но тот же учебный фокус.
 * Уровень выводи из диалога молча: для A1 — короче и конкретнее; для B2+ — сложнее и нюанснее.
 * Distractors = near-miss уровня, не абсурд.
@@ -192,7 +199,7 @@ Duolingo / Memrise / Babbel / Busuu (новые kinds)
 
 {
   "exercises": [
-    { "kind": "...", ...поля по типу..., "instruction": "до 12 слов", "checkText": "..." }
+    { "kind": "...", ...поля по типу..., "instruction": "до 12 слов", "checkText": "...", "coachNote": "1–2 предложения: почему этот ответ верен именно здесь" }
   ],
   "nextTopic": {
     "title": "...",
@@ -245,7 +252,8 @@ what_do_you_say:
 spot_error:
 "checkText": "(UI) Which sentence is wrong?",
 "choices": ["She goes home every day.", "She go home every day.", "She went home yesterday."],
-"correctChoice": "She go home every day."
+"correctChoice": "She go home every day.",
+"coachNote": "«She go» — у he/she нет -s. Нужно: «She goes home every day.»"
 
 build_from_meaning:
 "checkText": "(UI) Build: «I love tea.»",
