@@ -5,12 +5,12 @@
  */
 
 import type { PlacementQuestion } from '@/types/placement-api';
-import { itemMetaFromLegacyQuestion } from '../shared/assessment/src/legacy-bridge.js';
+import { itemMetaFromLegacyQuestion } from '@tearz/assessment';
 import {
+  createSessionId,
   freezePresentedItemSnapshot,
   type CanonicalResponse,
-} from '../shared/assessment/src/placement/index.js';
-import { createSessionId } from '../shared/assessment/src/placement/session.js';
+} from '@tearz/assessment/placement';
 
 let assessmentSessionId = createSessionId();
 let canonicalResponses: CanonicalResponse[] = [];

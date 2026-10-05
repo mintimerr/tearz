@@ -35,7 +35,7 @@ import {
   deserializeSnapshot,
   type PlacementContentItem,
   type PlacementSessionSnapshot,
-} from '../shared/assessment/src/placement/index.js';
+} from '@tearz/assessment/placement';
 
 const SESSION_KEY_PREFIX = '@tearz/placement-session.v2:';
 const serviceCache = new Map<string, PlacementOrchestrationService>();
