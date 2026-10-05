@@ -1,0 +1,125 @@
+{
+  "title": "FINAL RELEASE HARDENING REPORT",
+  "product": "Tearz placement",
+  "generatedAt": "2026-10-05T11:30:00.000Z",
+  "status": "READY FOR RELEASE",
+  "A_p0_bugs_found": [
+    {
+      "id": "P0-1",
+      "title": "Q15 resume finalized unanswered pending item",
+      "detail": "presentNext() checked presentedItems.length >= 15 before re-presenting an unanswered Q15, so kill/restore on the final item could finalize without scoring."
+    },
+    {
+      "id": "P0-2",
+      "title": "Sequential double answer() scored the next item",
+      "detail": "After answer()+presentNext, a second answer() without item binding scored the newly presented question (double evidence)."
+    },
+    {
+      "id": "P0-3",
+      "title": "Completed session cleared before PlacementRecord save",
+      "detail": "Engine cleared AsyncStorage on done before UI persisted PlacementRecord — kill window could lose the result."
+    },
+    {
+      "id": "P0-4",
+      "title": "Corrupt session deserialize had no fail-safe recovery policy",
+      "detail": "Invalid JSON / missing bank items / impossible questionNumber lacked structured clear-and-restart recovery."
+    }
+  ],
+  "B_p0_bugs_fixed": [
+    "presentNext: unanswered pending re-presented before length/finalize check (Q15-safe)",
+    "answer(itemId): stale itemId returns cached step — cannot score next question",
+    "Completed snapshot persisted until PlacementRecord save / next start",
+    "recoverPlacementSession + loadAndRecoverPlacementSession clears only placement session key",
+    "Telemetry emit wrapped try/catch (service-wide)",
+    "UI checkingRef + service answering reentrancy retained",
+    "Q15 finalize cached (completedStep) idempotent"
+  ],
+  "C_remaining_p1_p2": [
+    "P1: Full device UI accessibility pass (CJK/RU glyph + small iPhone) — smoke artifact generated for visual review, not automated device farm",
+    "P1: Release Expo/Metro binary build not executed in this hardening run (source bundle paths verified)",
+    "P2: Procedural mintFallback code still physically present but hard-locked off by production flags (never called when bank-first)"
+  ],
+  "D_tests_before_after": {
+    "before": 211,
+    "after": 249,
+    "delta": 38,
+    "result": "249/249 pass"
+  },
+  "E_chaos_5000": {
+    "sessions": 5000,
+    "perLanguage": 1000,
+    "languages": ["en", "fr", "zh", "de", "ru"],
+    "criticalFailures": 0,
+    "asserts": [
+      "no crash",
+      "no NaN score",
+      "no duplicate questionNumber",
+      "exactly 15 scored responses",
+      "finalize idempotent",
+      "double-submit same itemId does not change canonical length",
+      "valid CEFR"
+    ]
+  },
+  "F_offline": {
+    "bankFirst": true,
+    "runtimeLlm": 0,
+    "runtimeNetworkQuestionGeneration": 0,
+    "allFiveLanguagesCompleteOffline": true,
+    "note": "Placement Q1–Q15 uses bundled v1 banks only"
+  },
+  "G_resume_q15_double_submit": {
+    "corruptRecovery": "pass",
+    "doubleSubmit": "pass (itemId-bound)",
+    "q15IdempotentFinalize": "pass",
+    "killRestartFinalItem": "pass"
+  },
+  "H_old_user_migration": {
+    "legacyPlacementRecordWithoutSkillProfile": "pass",
+    "skipTestA1Record": "pass",
+    "teacherGoalPreserved": "pass",
+    "invalidCefrFallbackA1": "pass",
+    "noForcedRetake": true
+  },
+  "I_bank_invariants": {
+    "totalItems": 1123,
+    "perLang": { "en": 234, "fr": 209, "zh": 248, "de": 220, "ru": 212 },
+    "checksums": "pass",
+    "qualityGate": "PASS",
+    "lifecycle": "approved_provisional",
+    "validateScript": "npm run validate:banks → OK"
+  },
+  "J_bundle_build": {
+    "bundledLoaderImports": "shared/assessment/banks/v1/{en,fr,zh,de,ru} only",
+    "archiveRefsInLoadTs": "none",
+    "bankJsonBytesMb": 1.36,
+    "releaseExpoBinary": "not run in this session — source wiring verified"
+  },
+  "K_latency": {
+    "transitionTotalMs_p50": 0.91,
+    "transitionTotalMs_p95": 1.004,
+    "transitionTotalMs_max": 1.294,
+    "blockers": []
+  },
+  "L_telemetry_safety": {
+    "throwingAnalyticsCompletesSession": true,
+    "emitTryCatch": true,
+    "uiTransitionTelemetryTryCatch": true
+  },
+  "M_exact_release_blockers": [],
+  "matrix_coverage": {
+    "languages": ["en", "fr", "zh", "de", "ru"],
+    "scenarios": [
+      "fresh",
+      "resume",
+      "offline",
+      "double-submit",
+      "Q15 restart",
+      "old-user migration",
+      "skip placement",
+      "all-correct",
+      "all-wrong",
+      "timeouts",
+      "chaos-1000/lang"
+    ]
+  }
+}

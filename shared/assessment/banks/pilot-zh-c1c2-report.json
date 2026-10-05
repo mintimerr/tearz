@@ -1,0 +1,294 @@
+{
+  "phase": "B.3-zh-c1c2-micro",
+  "generated": 48,
+  "approvedPass": 28,
+  "c1Pass": 13,
+  "c2Pass": 15,
+  "byLevelSkill": {
+    "C1:grammar": {
+      "gen": 6,
+      "pass": 6,
+      "revise": 0,
+      "reject": 0
+    },
+    "C1:vocabulary": {
+      "gen": 6,
+      "pass": 4,
+      "revise": 0,
+      "reject": 2
+    },
+    "C1:reading": {
+      "gen": 6,
+      "pass": 2,
+      "revise": 0,
+      "reject": 4
+    },
+    "C1:functional": {
+      "gen": 6,
+      "pass": 1,
+      "revise": 2,
+      "reject": 3
+    },
+    "C2:grammar": {
+      "gen": 6,
+      "pass": 6,
+      "revise": 0,
+      "reject": 0
+    },
+    "C2:vocabulary": {
+      "gen": 6,
+      "pass": 6,
+      "revise": 0,
+      "reject": 0
+    },
+    "C2:reading": {
+      "gen": 6,
+      "pass": 2,
+      "revise": 0,
+      "reject": 4
+    },
+    "C2:functional": {
+      "gen": 6,
+      "pass": 1,
+      "revise": 0,
+      "reject": 5
+    }
+  },
+  "rejectCodeCounts": {
+    "LEXICAL_RARITY_ONLY": 4,
+    "INSUFFICIENT_INFERENCE_DEMAND": 26,
+    "LENGTH_CUE": 10
+  },
+  "rejectedOrRevised": [
+    {
+      "level": "C1",
+      "skill": "vocabulary",
+      "conceptKey": "zh.c1.vocab_colloc_chengdan",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LEXICAL_RARITY_ONLY",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:LEXICAL_RARITY_ONLY"
+      ],
+      "stemUnits": 34
+    },
+    {
+      "level": "C1",
+      "skill": "vocabulary",
+      "conceptKey": "zh.c1.vocab_near_biaotai",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LEXICAL_RARITY_ONLY",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:LEXICAL_RARITY_ONLY"
+      ],
+      "stemUnits": 34
+    },
+    {
+      "level": "C1",
+      "skill": "reading",
+      "conceptKey": "zh.c1.read_email_soft_no",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "stemUnits": 48
+    },
+    {
+      "level": "C1",
+      "skill": "reading",
+      "conceptKey": "zh.c1.read_register_shift",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "stemUnits": 47
+    },
+    {
+      "level": "C1",
+      "skill": "reading",
+      "conceptKey": "zh.c1.read_implication_hiring",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "stemUnits": 43
+    },
+    {
+      "level": "C1",
+      "skill": "reading",
+      "conceptKey": "zh.c1.read_stance_review",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "stemUnits": 39
+    },
+    {
+      "level": "C1",
+      "skill": "functional",
+      "conceptKey": "zh.c1.func_pushback_scope",
+      "gate": "REVISE",
+      "reasons": [
+        "warn:LENGTH_CUE"
+      ],
+      "stemUnits": 46
+    },
+    {
+      "level": "C1",
+      "skill": "functional",
+      "conceptKey": "zh.c1.func_request_extension",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LENGTH_CUE"
+      ],
+      "stemUnits": 33
+    },
+    {
+      "level": "C1",
+      "skill": "functional",
+      "conceptKey": "zh.c1.func_hedged_disagree",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LENGTH_CUE"
+      ],
+      "stemUnits": 32
+    },
+    {
+      "level": "C1",
+      "skill": "functional",
+      "conceptKey": "zh.c1.func_clarify_written",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LENGTH_CUE"
+      ],
+      "stemUnits": 33
+    },
+    {
+      "level": "C1",
+      "skill": "functional",
+      "conceptKey": "zh.c1.func_soft_refuse_invite",
+      "gate": "REVISE",
+      "reasons": [
+        "warn:LENGTH_CUE"
+      ],
+      "stemUnits": 38
+    },
+    {
+      "level": "C2",
+      "skill": "reading",
+      "conceptKey": "zh.c2.read_ambiguity_which",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "stemUnits": 49
+    },
+    {
+      "level": "C2",
+      "skill": "reading",
+      "conceptKey": "zh.c2.read_rhetorical_contrast",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "stemUnits": 54
+    },
+    {
+      "level": "C2",
+      "skill": "reading",
+      "conceptKey": "zh.c2.read_indirect_request",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "stemUnits": 51
+    },
+    {
+      "level": "C2",
+      "skill": "reading",
+      "conceptKey": "zh.c2.read_info_structure",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "stemUnits": 45
+    },
+    {
+      "level": "C2",
+      "skill": "functional",
+      "conceptKey": "zh.c2.func_partial_align",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LENGTH_CUE"
+      ],
+      "stemUnits": 29
+    },
+    {
+      "level": "C2",
+      "skill": "functional",
+      "conceptKey": "zh.c2.func_implicature_close",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LENGTH_CUE"
+      ],
+      "stemUnits": 29
+    },
+    {
+      "level": "C2",
+      "skill": "functional",
+      "conceptKey": "zh.c2.func_register_repair",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LENGTH_CUE"
+      ],
+      "stemUnits": 32
+    },
+    {
+      "level": "C2",
+      "skill": "functional",
+      "conceptKey": "zh.c2.func_stance_align_public",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LENGTH_CUE"
+      ],
+      "stemUnits": 34
+    },
+    {
+      "level": "C2",
+      "skill": "functional",
+      "conceptKey": "zh.c2.func_clarify_ambiguity",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:LENGTH_CUE"
+      ],
+      "stemUnits": 39
+    }
+  ],
+  "gateWeakened": false,
+  "acceptance": {
+    "targetC1": 12,
+    "targetC2": 12,
+    "minAcceptableC1": 8,
+    "minAcceptableC2": 8,
+    "c1Ok": true,
+    "c2Ok": true
+  },
+  "note": "Quality > coverage. discourseUnits fixes CJK length bias; thresholds not lowered for English."
+}

@@ -1,0 +1,591 @@
+{
+  "generatedAt": "2026-10-05T10:15:48.486Z",
+  "pilot": "v2",
+  "targetSlots": 240,
+  "slotsBuilt": 240,
+  "overall": {
+    "generated": 506,
+    "pass": 144,
+    "revise": 64,
+    "reject": 204,
+    "duplicate": 94,
+    "deterministicReject": 74,
+    "semanticReject": 74,
+    "adversarialReject": 74,
+    "nonsenseDistractorRejects": 70,
+    "constructMismatchRejects": 16,
+    "naturalnessRejects": 0,
+    "cefrDepthRejects": 48,
+    "crossLanguageCloneRejects": 0,
+    "rejectionReasons": {
+      "DUPLICATE_ITEM": 94,
+      "det:ANSWER_LEAK": 6,
+      "crit:ANSWER_LEAK": 6,
+      "gate:REVISE": 64,
+      "det:LENGTH_CUE": 68,
+      "crit:LENGTH_CUE": 68,
+      "sem:CEFR_MISMATCH_SUSPECT": 74,
+      "adv:CEFR_MISMATCH_SUSPECT": 74,
+      "crit:CEFR_MISMATCH_SUSPECT": 148,
+      "crit:DISTRACTOR_NOT_PARALLEL": 70,
+      "crit:INSUFFICIENT_INFERENCE_DEMAND": 48,
+      "crit:CONSTRUCT_ONLY_INCIDENTAL": 8,
+      "crit:CONSTRUCT_MISMATCH": 8,
+      "det:OPTION_TOO_LONG": 2,
+      "crit:OPTION_TOO_LONG": 2
+    }
+  },
+  "perLanguage": {
+    "en": {
+      "generated": 101,
+      "PASS": 30,
+      "REVISE": 14,
+      "REJECT": 34,
+      "duplicate": 23,
+      "approved": 30,
+      "promptVersions": [
+        "en_item_generation_v2"
+      ]
+    },
+    "fr": {
+      "generated": 104,
+      "PASS": 27,
+      "REVISE": 10,
+      "REJECT": 48,
+      "duplicate": 19,
+      "approved": 27,
+      "promptVersions": [
+        "fr_item_generation_v2"
+      ]
+    },
+    "zh": {
+      "generated": 93,
+      "PASS": 34,
+      "REVISE": 8,
+      "REJECT": 32,
+      "duplicate": 19,
+      "approved": 34,
+      "promptVersions": [
+        "zh_item_generation_v2"
+      ]
+    },
+    "de": {
+      "generated": 105,
+      "PASS": 26,
+      "REVISE": 18,
+      "REJECT": 46,
+      "duplicate": 15,
+      "approved": 26,
+      "promptVersions": [
+        "de_item_generation_v2"
+      ]
+    },
+    "ru": {
+      "generated": 103,
+      "PASS": 27,
+      "REVISE": 14,
+      "REJECT": 44,
+      "duplicate": 18,
+      "approved": 27,
+      "promptVersions": [
+        "ru_item_generation_v2"
+      ]
+    }
+  },
+  "coverage": {
+    "byCefr": {
+      "A1": 35,
+      "A2": 35,
+      "B1": 27,
+      "B2": 22,
+      "C1": 11,
+      "C2": 14
+    },
+    "bySkill": {
+      "grammar": 33,
+      "vocabulary": 60,
+      "reading": 25,
+      "functional": 26
+    },
+    "byConstruct": {
+      "en.grammar.be_have_do": 1,
+      "en.grammar.pronouns_possessives": 1,
+      "en.vocab.everyday_basic": 3,
+      "en.reading.signs_short_messages": 2,
+      "en.functional.basic_situations": 2,
+      "en.grammar.present_simple_continuous": 1,
+      "en.grammar.basic_past_can": 1,
+      "en.vocab.practical_collocations": 2,
+      "en.reading.practical_notices": 1,
+      "en.functional.invites_apologies": 1,
+      "en.grammar.present_perfect_intro": 1,
+      "en.grammar.conditionals_relative_passive": 1,
+      "en.vocab.mid_collocations": 2,
+      "en.reading.main_idea_detail": 2,
+      "en.functional.advice_clarification": 1,
+      "en.grammar.reported_verb_patterns": 1,
+      "en.vocab.precision_polysemy": 2,
+      "en.reading.argument_inference": 1,
+      "en.grammar.advanced_modality_focus": 1,
+      "en.vocab.idiomatic_nuance": 2,
+      "en.vocab.fine_distinctions_c2": 1,
+      "fr.grammar.etre_avoir_articles": 1,
+      "fr.grammar.present_negation_questions": 1,
+      "fr.vocab.quotidien": 3,
+      "fr.reading.panneaux_messages": 3,
+      "fr.functional.situations_base": 1,
+      "fr.grammar.possessifs_prepositions": 1,
+      "fr.grammar.passe_compose_futur": 1,
+      "fr.vocab.collocations_courantes": 4,
+      "fr.reading.notices_pratiques": 1,
+      "fr.functional.invitations_excuses": 1,
+      "fr.grammar.imparfait_cod": 1,
+      "fr.vocab.precision_lexicale": 4,
+      "fr.reading.inference_registre": 1,
+      "fr.reading.idee_principale": 1,
+      "fr.grammar.fine_mood_c2": 1,
+      "fr.vocab.distinctions_fines_c2": 1,
+      "fr.functional.implication_c2": 1,
+      "zh.grammar.shi_you_measure": 1,
+      "zh.grammar.questions_negation": 1,
+      "zh.vocab.richang": 3,
+      "zh.reading.signs_messages": 3,
+      "zh.functional.basic_exchanges": 3,
+      "zh.grammar.location_possession": 1,
+      "zh.grammar.aspect_le_guo": 1,
+      "zh.vocab.collocations": 4,
+      "zh.reading.practical_notices": 2,
+      "zh.functional.invitations_apologies": 2,
+      "zh.grammar.complements_basic": 1,
+      "zh.grammar.ba_bei_comparatives": 1,
+      "zh.reading.main_idea": 2,
+      "zh.functional.advice_clarification": 2,
+      "zh.vocab.precision": 4,
+      "zh.reading.inference_register": 1,
+      "zh.vocab.fine_distinctions_c2": 1,
+      "zh.functional.pragmatic_nuance_c2": 1,
+      "de.grammar.sein_haben_articles": 1,
+      "de.grammar.present_negation_questions": 1,
+      "de.vocab.alltag": 3,
+      "de.functional.basisaustausch": 3,
+      "de.grammar.akkusativ_modals": 1,
+      "de.grammar.perfekt_dativ": 1,
+      "de.vocab.collocations": 4,
+      "de.reading.praktische_hinweise": 1,
+      "de.functional.einladungen_entschuldigungen": 1,
+      "de.grammar.adjective_endings_comparatives": 1,
+      "de.grammar.subordinate_weil_dass": 1,
+      "de.functional.rat_klaerung": 1,
+      "de.vocab.precision": 4,
+      "de.reading.inference_register": 1,
+      "de.reading.hauptidee": 1,
+      "de.vocab.fine_distinctions_c2": 1,
+      "ru.grammar.byt_gender_nominative": 1,
+      "ru.grammar.present_negation_questions": 1,
+      "ru.vocab.bytovoj": 3,
+      "ru.functional.basic_exchanges": 3,
+      "ru.grammar.accusative_possession": 1,
+      "ru.grammar.past_prepositional": 1,
+      "ru.vocab.collocations": 4,
+      "ru.reading.practical_notices": 1,
+      "ru.functional.invitations_apologies": 1,
+      "ru.grammar.genitive_dative": 1,
+      "ru.grammar.aspect_verbs_of_motion": 1,
+      "ru.functional.advice_clarification": 2,
+      "ru.vocab.precision": 4,
+      "ru.reading.inference_register": 1,
+      "ru.grammar.stylistic_distinctions_c2": 1,
+      "ru.vocab.fine_distinctions_c2": 1
+    },
+    "byItemType": {
+      "grammarForm": 33,
+      "vocabularyChoice": 60,
+      "readingComprehension": 25,
+      "functionalPhrase": 26
+    },
+    "difficultyWithin": {
+      "low": 47,
+      "mid": 52,
+      "high": 45
+    }
+  },
+  "qualityBreakout": {
+    "nonsenseDistractorRejects": 70,
+    "constructMismatchRejects": 16,
+    "naturalnessRejects": 0,
+    "cefrDepthRejects": 48,
+    "crossLanguageCloneRejects": 0,
+    "duplicateRejects": 94,
+    "crossLanguageNearDuplicateGroups": [],
+    "crossLanguageConceptReuseRate": 0
+  },
+  "rejectionReasons": {
+    "DUPLICATE_ITEM": 94,
+    "det:ANSWER_LEAK": 6,
+    "crit:ANSWER_LEAK": 6,
+    "gate:REVISE": 64,
+    "det:LENGTH_CUE": 68,
+    "crit:LENGTH_CUE": 68,
+    "sem:CEFR_MISMATCH_SUSPECT": 74,
+    "adv:CEFR_MISMATCH_SUSPECT": 74,
+    "crit:CEFR_MISMATCH_SUSPECT": 148,
+    "crit:DISTRACTOR_NOT_PARALLEL": 70,
+    "crit:INSUFFICIENT_INFERENCE_DEMAND": 48,
+    "crit:CONSTRUCT_ONLY_INCIDENTAL": 8,
+    "crit:CONSTRUCT_MISMATCH": 8,
+    "det:OPTION_TOO_LONG": 2,
+    "crit:OPTION_TOO_LONG": 2
+  },
+  "rejectedSamples": [
+    {
+      "language": "en",
+      "slotKey": "en|reading|A2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:ANSWER_LEAK",
+        "crit:ANSWER_LEAK"
+      ],
+      "itemId": "bank.en.reading.A2.1.a1.ab765b510d3804ff"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|A2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:ANSWER_LEAK",
+        "crit:ANSWER_LEAK"
+      ],
+      "itemId": "bank.en.reading.A2.1.a2.42aa889e1632b86c"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|A2|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.A2.0.a0.56dc572a81550772"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|A2|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.A2.1.a0.5a0fa366d2685bc4"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|B1|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.B1.0.a0.2f5a76e7bc3fabf5"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|B1|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.B1.1.a0.10a249ac54d0dc69"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B1|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.en.functional.B1.0.a0.095bcea983b87788"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.en.functional.B1.1.a0.337cd9a51c5127a0"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B2|0",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.B2.0.a0.d2ce29f3440e1244"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.B2.1.a0.898309dd73c75709"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B2|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.B2.0.a0.4a373db751dabc77"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B2|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.B2.0.a1.54fa25dbea7acb66"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B2|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.B2.0.a2.74bb9b4fc0312ec6"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B2|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.B2.1.a0.65103ff838db94ad"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B2|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.B2.1.a1.238a1596626b93e5"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B2|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.B2.1.a2.a83bc51f6a264f9a"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|C1|0",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.C1.0.a0.76af02d41062d6c3"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|C1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.C1.1.a0.9372fa7035860d48"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE",
+        "crit:DISTRACTOR_NOT_PARALLEL"
+      ],
+      "itemId": "bank.en.reading.C1.0.a0.d204997ea58e461e"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "itemId": "bank.en.reading.C1.0.a1.11a9df1796bc9581"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "itemId": "bank.en.reading.C1.0.a2.7ce631e3ea28bc0b"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE",
+        "crit:DISTRACTOR_NOT_PARALLEL"
+      ],
+      "itemId": "bank.en.reading.C1.1.a0.9b35ea6b4b7caaf6"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "itemId": "bank.en.reading.C1.1.a1.0dc3370938ad6598"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE",
+        "crit:INSUFFICIENT_INFERENCE_DEMAND"
+      ],
+      "itemId": "bank.en.reading.C1.1.a2.8e34a376f49dbc34"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|C1|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.en.functional.C1.0.a0.8162136e109b8dcb"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|C1|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.en.functional.C1.0.a1.854b7d54fb148545"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|C1|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.en.functional.C1.0.a2.271d9f65de7a21b9"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|C1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.en.functional.C1.1.a0.2cd5ceccd8c954da"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|C1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.en.functional.C1.1.a1.3ffcb2ed13ad4cbe"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|C1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.en.functional.C1.1.a2.d395f432935beb12"
+    }
+  ],
+  "crossLanguageAudit": {
+    "totalItems": 144,
+    "crossLanguageNearDuplicateGroups": [],
+    "crossLanguageConceptReuseRate": 0,
+    "languagesCompared": [
+      "en",
+      "fr",
+      "zh",
+      "de",
+      "ru"
+    ]
+  },
+  "v1VsV2": {
+    "v1Pass": 154,
+    "v1Generated": 573,
+    "v1Cefr": {
+      "A1": 36,
+      "A2": 35,
+      "B1": 33,
+      "B2": 18,
+      "C1": 17,
+      "C2": 15
+    },
+    "v2Pass": 144,
+    "v2Generated": 506,
+    "v2Cefr": {
+      "A1": 35,
+      "A2": 35,
+      "B1": 27,
+      "B2": 22,
+      "C1": 11,
+      "C2": 14
+    },
+    "note": "v2 prioritises quality over fill rate; gaps allowed"
+  },
+  "reasonCodeTallies": {
+    "nonsense": 70,
+    "construct": 16,
+    "naturalness": 0,
+    "cefrDepth": 48
+  },
+  "artifacts": {
+    "humanReviewJson": "/Users/mitya/cortex-mobile/shared/assessment/banks/pilot-v2-human-review.json",
+    "humanReviewMarkdown": "/Users/mitya/cortex-mobile/shared/assessment/banks/pilot-v2-human-review.md",
+    "archive": "/Users/mitya/cortex-mobile/shared/assessment/banks/pilot-v1-archive"
+  }
+}

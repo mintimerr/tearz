@@ -1,0 +1,437 @@
+{
+  "phase": "C-final-release-audit",
+  "prefixesFoundOriginal": 1527,
+  "prefixesStripped": 1527,
+  "retiredDuplicates": 877,
+  "grandTotalAfter": 1123,
+  "nonsensePass": [],
+  "perLang": [
+    {
+      "language": "en",
+      "itemCount": 234,
+      "checksum": "sha256:02ad6c1e592f057cabd626a09c704cdc96643237a9be8ed9e3cf44d367b54d70",
+      "integrity": true,
+      "exactDup": 0,
+      "nearDup": 0.17094017094017094,
+      "artifacts": {
+        "todo": 0,
+        "bracket": 0,
+        "brace": 0,
+        "debug": 0,
+        "meta": 0,
+        "prefix": 0
+      },
+      "byCefr": {
+        "A1": 40,
+        "A2": 44,
+        "B1": 37,
+        "B2": 35,
+        "C1": 57,
+        "C2": 21
+      },
+      "bySkill": {
+        "grammar": 58,
+        "vocabulary": 47,
+        "reading": 69,
+        "functional": 60
+      },
+      "bundleBytes": 271895,
+      "gapsVs400": 166
+    },
+    {
+      "language": "fr",
+      "itemCount": 209,
+      "checksum": "sha256:c423e2603184277cdbe2d0fa865afa8cfe198ce334911bf764f12927e73edef2",
+      "integrity": true,
+      "exactDup": 0,
+      "nearDup": 0.18660287081339713,
+      "artifacts": {
+        "todo": 0,
+        "bracket": 0,
+        "brace": 0,
+        "debug": 0,
+        "meta": 0,
+        "prefix": 0
+      },
+      "byCefr": {
+        "A1": 24,
+        "A2": 45,
+        "B1": 26,
+        "B2": 34,
+        "C1": 56,
+        "C2": 24
+      },
+      "bySkill": {
+        "grammar": 59,
+        "vocabulary": 34,
+        "reading": 62,
+        "functional": 54
+      },
+      "bundleBytes": 250775,
+      "gapsVs400": 191
+    },
+    {
+      "language": "zh",
+      "itemCount": 248,
+      "checksum": "sha256:463dbc5b6ccfe53f6c4b9b00788ed534b899f10b5187585719f318325c2c5d20",
+      "integrity": true,
+      "exactDup": 0,
+      "nearDup": 0.016129032258064516,
+      "artifacts": {
+        "todo": 0,
+        "bracket": 0,
+        "brace": 0,
+        "debug": 0,
+        "meta": 0,
+        "prefix": 0
+      },
+      "byCefr": {
+        "A1": 20,
+        "A2": 48,
+        "B1": 42,
+        "B2": 39,
+        "C1": 61,
+        "C2": 38
+      },
+      "bySkill": {
+        "grammar": 62,
+        "vocabulary": 50,
+        "reading": 67,
+        "functional": 69
+      },
+      "bundleBytes": 285685,
+      "gapsVs400": 152
+    },
+    {
+      "language": "de",
+      "itemCount": 220,
+      "checksum": "sha256:45478435455b39629836275eb1459ec03430980d9c6f108047fb38b74e43ab6f",
+      "integrity": true,
+      "exactDup": 0,
+      "nearDup": 0.23636363636363636,
+      "artifacts": {
+        "todo": 0,
+        "bracket": 0,
+        "brace": 0,
+        "debug": 0,
+        "meta": 0,
+        "prefix": 0
+      },
+      "byCefr": {
+        "A1": 25,
+        "A2": 44,
+        "B1": 31,
+        "B2": 36,
+        "C1": 55,
+        "C2": 29
+      },
+      "bySkill": {
+        "grammar": 62,
+        "vocabulary": 41,
+        "reading": 58,
+        "functional": 59
+      },
+      "bundleBytes": 259694,
+      "gapsVs400": 180
+    },
+    {
+      "language": "ru",
+      "itemCount": 212,
+      "checksum": "sha256:a18b854f4e9d354f23dd2cdf2284c3734a20aa47dc77f8c0cd52d5db77e183bf",
+      "integrity": true,
+      "exactDup": 0,
+      "nearDup": 0.21226415094339623,
+      "artifacts": {
+        "todo": 0,
+        "bracket": 0,
+        "brace": 0,
+        "debug": 0,
+        "meta": 0,
+        "prefix": 0
+      },
+      "byCefr": {
+        "A1": 14,
+        "A2": 45,
+        "B1": 42,
+        "B2": 29,
+        "C1": 58,
+        "C2": 24
+      },
+      "bySkill": {
+        "grammar": 50,
+        "vocabulary": 42,
+        "reading": 62,
+        "functional": 58
+      },
+      "bundleBytes": 290666,
+      "gapsVs400": 188
+    }
+  ],
+  "performance": {
+    "phase": "C-release-performance",
+    "runsPerLanguage": 24,
+    "perLang": [
+      {
+        "language": "en",
+        "itemCount": 234,
+        "checksum": "sha256:02ad6c1e592f057cabd626a09c704cdc96643237a9be8ed9e3cf44d367b54d70",
+        "remainingPrefixes": 0,
+        "bundleBytes": 271895,
+        "runs": 24,
+        "completed": 24,
+        "exhausted": 0,
+        "mintCalls": 0,
+        "duplicatePresentations": 0,
+        "latency": {
+          "answerEvaluationMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0.001,
+            "max": 0.005
+          },
+          "assessmentUpdateMs": {
+            "n": 360,
+            "p50": 1.173,
+            "p95": 2.539,
+            "max": 6.966
+          },
+          "selectionMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0,
+            "max": 0.007
+          },
+          "transitionTotalMs": {
+            "n": 360,
+            "p50": 1.173,
+            "p95": 2.539,
+            "max": 6.966
+          }
+        }
+      },
+      {
+        "language": "fr",
+        "itemCount": 209,
+        "checksum": "sha256:c423e2603184277cdbe2d0fa865afa8cfe198ce334911bf764f12927e73edef2",
+        "remainingPrefixes": 0,
+        "bundleBytes": 250775,
+        "runs": 24,
+        "completed": 24,
+        "exhausted": 0,
+        "mintCalls": 0,
+        "duplicatePresentations": 0,
+        "latency": {
+          "answerEvaluationMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0.001,
+            "max": 0.002
+          },
+          "assessmentUpdateMs": {
+            "n": 360,
+            "p50": 0.984,
+            "p95": 1.257,
+            "max": 2.929
+          },
+          "selectionMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0,
+            "max": 0.001
+          },
+          "transitionTotalMs": {
+            "n": 360,
+            "p50": 0.985,
+            "p95": 1.258,
+            "max": 2.929
+          }
+        }
+      },
+      {
+        "language": "zh",
+        "itemCount": 248,
+        "checksum": "sha256:463dbc5b6ccfe53f6c4b9b00788ed534b899f10b5187585719f318325c2c5d20",
+        "remainingPrefixes": 0,
+        "bundleBytes": 285685,
+        "runs": 24,
+        "completed": 24,
+        "exhausted": 0,
+        "mintCalls": 0,
+        "duplicatePresentations": 0,
+        "latency": {
+          "answerEvaluationMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0.001,
+            "max": 0.009
+          },
+          "assessmentUpdateMs": {
+            "n": 360,
+            "p50": 1.012,
+            "p95": 1.569,
+            "max": 4.75
+          },
+          "selectionMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0,
+            "max": 0.001
+          },
+          "transitionTotalMs": {
+            "n": 360,
+            "p50": 1.012,
+            "p95": 1.57,
+            "max": 4.751
+          }
+        }
+      },
+      {
+        "language": "de",
+        "itemCount": 220,
+        "checksum": "sha256:45478435455b39629836275eb1459ec03430980d9c6f108047fb38b74e43ab6f",
+        "remainingPrefixes": 0,
+        "bundleBytes": 259694,
+        "runs": 24,
+        "completed": 24,
+        "exhausted": 0,
+        "mintCalls": 0,
+        "duplicatePresentations": 0,
+        "latency": {
+          "answerEvaluationMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0.001,
+            "max": 0.019
+          },
+          "assessmentUpdateMs": {
+            "n": 360,
+            "p50": 0.957,
+            "p95": 1.309,
+            "max": 3.922
+          },
+          "selectionMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "transitionTotalMs": {
+            "n": 360,
+            "p50": 0.957,
+            "p95": 1.311,
+            "max": 3.922
+          }
+        }
+      },
+      {
+        "language": "ru",
+        "itemCount": 212,
+        "checksum": "sha256:a18b854f4e9d354f23dd2cdf2284c3734a20aa47dc77f8c0cd52d5db77e183bf",
+        "remainingPrefixes": 0,
+        "bundleBytes": 290666,
+        "runs": 24,
+        "completed": 24,
+        "exhausted": 0,
+        "mintCalls": 0,
+        "duplicatePresentations": 0,
+        "latency": {
+          "answerEvaluationMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0,
+            "max": 0.001
+          },
+          "assessmentUpdateMs": {
+            "n": 360,
+            "p50": 0.928,
+            "p95": 1.147,
+            "max": 5.271
+          },
+          "selectionMs": {
+            "n": 360,
+            "p50": 0,
+            "p95": 0,
+            "max": 0.001
+          },
+          "transitionTotalMs": {
+            "n": 360,
+            "p50": 0.928,
+            "p95": 1.148,
+            "max": 5.271
+          }
+        }
+      }
+    ],
+    "blockers": []
+  },
+  "freeze": {
+    "releaseLabel": "production-dogfood-v1",
+    "frozenAt": "2026-10-05T11:01:56.750Z",
+    "bankVersion": "v1",
+    "policy": [
+      "Do not silently edit item content",
+      "Substantive content change requires new itemVersion / new item id",
+      "Rejected/retired items retain historical identity for canonical replay",
+      "All items remain approved_provisional — no calibration"
+    ],
+    "note": "Honest post-prefix inventory after retiring Case-N-masked duplicates. Gaps vs 400 are reported; not backfilled.",
+    "languages": {
+      "en": {
+        "itemCount": 234,
+        "checksum": "sha256:02ad6c1e592f057cabd626a09c704cdc96643237a9be8ed9e3cf44d367b54d70",
+        "gapsVs400": 166
+      },
+      "fr": {
+        "itemCount": 209,
+        "checksum": "sha256:c423e2603184277cdbe2d0fa865afa8cfe198ce334911bf764f12927e73edef2",
+        "gapsVs400": 191
+      },
+      "zh": {
+        "itemCount": 248,
+        "checksum": "sha256:463dbc5b6ccfe53f6c4b9b00788ed534b899f10b5187585719f318325c2c5d20",
+        "gapsVs400": 152
+      },
+      "de": {
+        "itemCount": 220,
+        "checksum": "sha256:45478435455b39629836275eb1459ec03430980d9c6f108047fb38b74e43ab6f",
+        "gapsVs400": 180
+      },
+      "ru": {
+        "itemCount": 212,
+        "checksum": "sha256:a18b854f4e9d354f23dd2cdf2284c3734a20aa47dc77f8c0cd52d5db77e183bf",
+        "gapsVs400": 188
+      }
+    }
+  },
+  "tests": {
+    "count": 211,
+    "pass": 211
+  },
+  "telemetryReady": {
+    "itemId": true,
+    "itemVersion": "optional_on_answered_event",
+    "language": true,
+    "cefrTarget": true,
+    "skill": true,
+    "construct": true,
+    "difficulty": true,
+    "correct": true,
+    "timedOut": true,
+    "responseTimeMs": true,
+    "questionNumber": true,
+    "thetaBeforeAfter": true,
+    "finalVerifiedLevel": "PlacementRecord.level",
+    "assessmentSessionId": true,
+    "noPII": true,
+    "noExternalBenchmarkRequired": true
+  },
+  "phaseCClaimedBeforeStrip": 2000,
+  "honestUniqueAfterStrip": 1123,
+  "releaseBlockers": [],
+  "releaseGaps": [
+    "Unique inventory below Phase C 400/lang target after retiring Case-N-masked duplicates (en 234, fr 209, zh 248, de 220, ru 212)",
+    "Near-duplicate stem-prefix rate elevated for en/fr/de/ru (~0.17–0.24) due to shared combinatorial templates — exact duplicates = 0"
+  ],
+  "verdict": "READY FOR PRODUCTION DOGFOOD",
+  "verdictNote": "Engineering blockers = 0. Sessions complete without LLM. Bank frozen as honest unique inventory. Do not claim 2000 unique items until gaps are filled with genuine new content in a later factory cycle."
+}

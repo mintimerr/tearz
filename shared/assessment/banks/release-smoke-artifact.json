@@ -1,0 +1,1944 @@
+{
+  "purpose": "visual smoke of extreme CEFR×skill items — no generation",
+  "generatedAt": "2026-10-05T11:26:12.163Z",
+  "languages": {
+    "en": {
+      "itemCount": 234,
+      "sampleCount": 32,
+      "samples": [
+        {
+          "tag": "A1-low-grammar",
+          "id": "bank.en.grammar.A1.0.a0.e54d7a1104ad1f39",
+          "stem": "She ____ from Canada.",
+          "choices": [
+            "is",
+            "are",
+            "am",
+            "be"
+          ],
+          "correctChoice": "is"
+        },
+        {
+          "tag": "A1-high-grammar",
+          "id": "bank.en.grammar.A1.14.p0.d3bca430c6e09649",
+          "stem": "There ____ no milk in the fridge.",
+          "choices": [
+            "are",
+            "am",
+            "be",
+            "is"
+          ],
+          "correctChoice": "is"
+        },
+        {
+          "tag": "A1-low-vocabulary",
+          "id": "bank.en.vocabulary.A1.0.a0.d30268db32176a1a",
+          "stem": "I usually have ____ at 8.",
+          "choices": [
+            "breakfast",
+            "lunch",
+            "dinner",
+            "snack"
+          ],
+          "correctChoice": "breakfast"
+        },
+        {
+          "tag": "A1-high-vocabulary",
+          "id": "bank.en.vocabulary.A1.5.p0.f90dacb24deb45bb",
+          "stem": "Please open the ____; it is hot in here.",
+          "choices": [
+            "window",
+            "mirror",
+            "picture",
+            "carpet"
+          ],
+          "correctChoice": "window"
+        },
+        {
+          "tag": "A1-low-reading",
+          "id": "bank.en.reading.A1.0.a0.0851f0e718c273ee",
+          "stem": "Sign: \"Closed for lunch 13:00–14:00.\" When can you shop?",
+          "choices": [
+            "Before 13:00 or after 14:00",
+            "Only at 13:00",
+            "All afternoon without a break",
+            "Never today"
+          ],
+          "correctChoice": "Before 13:00 or after 14:00"
+        },
+        {
+          "tag": "A1-high-reading",
+          "id": "bank.en.reading.A1.5.p0.ed0e5f5c013f153a",
+          "stem": "Note: \"Library open until 7 pm.\" What is true?",
+          "choices": [
+            "It closes in the evening",
+            "It never opens again",
+            "It opens at midnight",
+            "It is closed all day"
+          ],
+          "correctChoice": "It closes in the evening"
+        },
+        {
+          "tag": "A1-low-functional",
+          "id": "bank.en.functional.A1.0.a0.1b31552aada87e7b",
+          "stem": "In a shop you want the price. What do you say?",
+          "choices": [
+            "How much is this?",
+            "How many is this?",
+            "What time is this?",
+            "Where is the toilet?"
+          ],
+          "correctChoice": "How much is this?"
+        },
+        {
+          "tag": "A1-high-functional",
+          "id": "bank.en.functional.A1.8.p0.6ade502eb4f779c1",
+          "stem": "You meet Priya for the first time. What do you say?",
+          "choices": [
+            "Who are you then",
+            "Nice to meet you",
+            "Go away please",
+            "I am leaving now"
+          ],
+          "correctChoice": "Nice to meet you"
+        },
+        {
+          "tag": "A2-low-grammar",
+          "id": "bank.en.grammar.A2.3.p0.cd11aceca3f1d040",
+          "stem": "This route is ____ for walking.",
+          "choices": [
+            "more good",
+            "best",
+            "good",
+            "better"
+          ],
+          "correctChoice": "better"
+        },
+        {
+          "tag": "A2-low-vocabulary",
+          "id": "bank.en.vocabulary.A2.3.p1.e08a9afa42059f54",
+          "stem": "He gave me useful ____ about the city.",
+          "choices": [
+            "advise",
+            "advices",
+            "advice",
+            "advisory"
+          ],
+          "correctChoice": "advice"
+        },
+        {
+          "tag": "A2-low-reading",
+          "id": "bank.en.reading.A2.3.p1.28719ae114c56104",
+          "stem": "Text: \"Lift out of order — use stairs.\" How do you go up?",
+          "choices": [
+            "Wait for the lift",
+            "Call a taxi upstairs",
+            "Use the stairs now",
+            "Stay on this floor"
+          ],
+          "correctChoice": "Use the stairs now"
+        },
+        {
+          "tag": "A2-low-functional",
+          "id": "bank.en.functional.A2.3.p0.fae03b0daf5105da",
+          "stem": "You need to cancel an appointment. What do you say?",
+          "choices": [
+            "Never call me again",
+            "I was never booked",
+            "Delete your calendar",
+            "I need to cancel, please"
+          ],
+          "correctChoice": "I need to cancel, please"
+        },
+        {
+          "tag": "B1-low-grammar",
+          "id": "bank.en.grammar.B1.3.p0.289e151d9b0fe4cd",
+          "stem": "I ____ in this city for four years now.",
+          "choices": [
+            "live",
+            "am living",
+            "have lived",
+            "lived"
+          ],
+          "correctChoice": "have lived"
+        },
+        {
+          "tag": "B1-low-vocabulary",
+          "id": "bank.en.vocabulary.B1.1.a1.62b52e14d92dcfdf",
+          "stem": "We need to ____ a decision today.",
+          "choices": [
+            "make",
+            "do",
+            "take",
+            "put"
+          ],
+          "correctChoice": "make"
+        },
+        {
+          "tag": "B1-low-reading",
+          "id": "bank.en.reading.B1.3.p0.2fb95bbc2744577a",
+          "stem": "Policy: \"Unused tickets can be refunded within 48 hours of purchase.\" When is a refund possible?",
+          "choices": [
+            "Any time after the show",
+            "Only before you buy it",
+            "Within two days if unused",
+            "Never for unused tickets"
+          ],
+          "correctChoice": "Within two days if unused"
+        },
+        {
+          "tag": "B1-low-functional",
+          "id": "bank.en.functional.B1.6.p0.2cf14d3102672af5",
+          "stem": "You need to confirm whether Tuesday is still the due date. What do you say?",
+          "choices": [
+            "Please cancel the whole project today.",
+            "I will ignore the deadline for now.",
+            "Can you lend me your laptop?",
+            "Just to confirm — is Friday still the deadline?"
+          ],
+          "correctChoice": "Just to confirm — is Friday still the deadline?"
+        },
+        {
+          "tag": "B2-low-grammar",
+          "id": "bank.en.grammar.B2.0.p0.982e2a675713f898",
+          "stem": "By the time we finally arrived at the cinema, the film ____ already.",
+          "choices": [
+            "has started",
+            "started",
+            "had started",
+            "was starting"
+          ],
+          "correctChoice": "had started"
+        },
+        {
+          "tag": "B2-low-vocabulary",
+          "id": "bank.en.vocabulary.B2.0.a0.6ae91b56169b152e",
+          "stem": "The company plans to ____ salaries next year.",
+          "choices": [
+            "raise",
+            "rise",
+            "arise",
+            "arouse"
+          ],
+          "correctChoice": "raise"
+        },
+        {
+          "tag": "B2-low-reading",
+          "id": "bank.en.reading.B2.0.a0.e9fba37b2301d2d2",
+          "stem": "Brief: \"Growth is likely, though supply risks remain material.\" What stance does the writer take?",
+          "choices": [
+            "Optimistic but hedged",
+            "Certain collapse",
+            "No opinion",
+            "Pure celebration"
+          ],
+          "correctChoice": "Optimistic but hedged"
+        },
+        {
+          "tag": "B2-low-functional",
+          "id": "bank.en.functional.B2.0.a0.5233387529c7fe4b",
+          "stem": "In a meeting you partly disagree with a risk assessment. What do you say?",
+          "choices": [
+            "I take your point, though I would weigh the risks differently.",
+            "You are completely wrong about everything.",
+            "I agree with every detail without reservation.",
+            "Let us change the subject to lunch plans."
+          ],
+          "correctChoice": "I take your point, though I would weigh the risks differently."
+        },
+        {
+          "tag": "C1-low-grammar",
+          "id": "bank.en.grammar.C1.3.p0.53af0bce9c723e30",
+          "stem": "Not until the revised figures arrived ____ the panel willing to reopen the refund clause.",
+          "choices": [
+            "were",
+            "are",
+            "was",
+            "is"
+          ],
+          "correctChoice": "was"
+        },
+        {
+          "tag": "C1-low-vocabulary",
+          "id": "bank.en.vocabulary.C1.3.p0.58cd60602cff3750",
+          "stem": "The counsel’s wording was carefully ____: it acknowledged the complaint while avoiding any admission of liability regarding the refund clause.",
+          "choices": [
+            "blunt",
+            "casual",
+            "hedged",
+            "joking"
+          ],
+          "correctChoice": "hedged"
+        },
+        {
+          "tag": "C1-low-reading",
+          "id": "bank.en.reading.C1.0.p0.61b9368a86b0515f",
+          "stem": "Minutes from leadership: \"Members thanked the authors for the draft on the refund clause. The group noted the proposal with interest and moved to other business without a vote or a request for follow-up.\" What is the mos",
+          "choices": [
+            "Unanimous approval of funding",
+            "Polite non-commitment rather than endorsement",
+            "A request for immediate implementation",
+            "A clerical error in the minutes"
+          ],
+          "correctChoice": "Polite non-commitment rather than endorsement"
+        },
+        {
+          "tag": "C1-low-functional",
+          "id": "bank.en.functional.C1.3.p0.d6907e77365acad4",
+          "stem": "the legal team seeks your sign-off under time pressure. The file on the refund clause is incomplete. What do you say?",
+          "choices": [
+            "Sign anyway to save time today",
+            "Ignore missing pages entirely",
+            "I can’t sign until the file is complete",
+            "Approve and fix papers later"
+          ],
+          "correctChoice": "I can’t sign until the file is complete"
+        },
+        {
+          "tag": "C2-low-grammar",
+          "id": "bank.en.grammar.C2.1.a1.f9b77e18f28cf529",
+          "stem": "The amendment is contingent ____ written approval from legal before it can take effect.",
+          "choices": [
+            "on",
+            "to",
+            "for",
+            "with"
+          ],
+          "correctChoice": "on"
+        },
+        {
+          "tag": "C2-high-grammar",
+          "id": "bank.en.grammar.C2.0.a0.71a6eb405b58f6d5",
+          "stem": "After the legal review, the board insisted that the indemnity clause ____ unchanged in the final text.",
+          "choices": [
+            "remain",
+            "remains",
+            "remained",
+            "remaining"
+          ],
+          "correctChoice": "remain"
+        },
+        {
+          "tag": "C2-low-vocabulary",
+          "id": "bank.en.vocabulary.C2.1.a1.f8313c1a28ab4436",
+          "stem": "After the revised shipment logs appeared, several analysts said the new figures ____ doubt on the earlier forecast that inventories would clear by June.",
+          "choices": [
+            "cast",
+            "threw",
+            "placed",
+            "made"
+          ],
+          "correctChoice": "cast"
+        },
+        {
+          "tag": "C2-high-vocabulary",
+          "id": "bank.en.vocabulary.C2.0.a0.ffdd62ecc774f9fe",
+          "stem": "Her closing line thanked the panel “for an intriguing direction” and suggested it “may sit better in a later phase,” while offering no next step. The stance is best described as ____ rather than endorsement.",
+          "choices": [
+            "non-committal",
+            "enthusiastic",
+            "hostile",
+            "procedural"
+          ],
+          "correctChoice": "non-committal"
+        },
+        {
+          "tag": "C2-low-reading",
+          "id": "bank.en.reading.C2.1.p0.1299dec6a778c42b",
+          "stem": "After reviewing the supporting annex and the prior discussion thread, consider the following excerpt carefully. Press line: \"We are looking into the reports and will update stakeholders as appropriate regarding the launc",
+          "choices": [
+            "A precise refund schedule",
+            "Process without fixed outcome",
+            "A personal apology tomorrow",
+            "Proof that claims are true"
+          ],
+          "correctChoice": "Process without fixed outcome"
+        },
+        {
+          "tag": "C2-high-reading",
+          "id": "bank.en.reading.C2.2.p0.b1a802027eee5860",
+          "stem": "Given the institutional tone and what is left unsaid, read this passage and answer. the legal team summary: \"The recommendation is noted. No action items were assigned.\" What follows most naturally?",
+          "choices": [
+            "Shelving without explicit no",
+            "Kick-off of full delivery",
+            "Mandatory staff celebration",
+            "Automatic legal settlement"
+          ],
+          "correctChoice": "Shelving without explicit no"
+        },
+        {
+          "tag": "C2-low-functional",
+          "id": "bank.en.functional.C2.1.a1.5fcdf66c9219ff61",
+          "stem": "You want to show partial alignment with a strategy without giving full endorsement. What do you say?",
+          "choices": [
+            "I am sympathetic to the aim, pending clearer success metrics.",
+            "I approve every detail without any conditions.",
+            "I reject the aim but praise the metrics loudly.",
+            "Sympathy here equals a signed legal commitment."
+          ],
+          "correctChoice": "I am sympathetic to the aim, pending clearer success metrics."
+        },
+        {
+          "tag": "C2-high-functional",
+          "id": "bank.en.functional.C2.0.a0.6a21b84ed01a764b",
+          "stem": "You want to decline a proposal without a blunt refusal, leaving the relationship intact. What do you say?",
+          "choices": [
+            "That direction is intriguing; it may sit better in a later phase.",
+            "No, and do not contact us again about this.",
+            "The idea is worthless and should be abandoned today.",
+            "We approve the proposal in full with immediate funding."
+          ],
+          "correctChoice": "That direction is intriguing; it may sit better in a later phase."
+        }
+      ]
+    },
+    "fr": {
+      "itemCount": 209,
+      "sampleCount": 32,
+      "samples": [
+        {
+          "tag": "A1-low-grammar",
+          "id": "bank.fr.grammar.A1.0.a0.6bf9539607630101",
+          "stem": "Nous ____ français.",
+          "choices": [
+            "sommes",
+            "êtes",
+            "suis",
+            "est"
+          ],
+          "correctChoice": "sommes"
+        },
+        {
+          "tag": "A1-high-grammar",
+          "id": "bank.fr.grammar.A1.14.p4.c1a88db895cc4c48",
+          "stem": "Amine ____ de Belgique.",
+          "choices": [
+            "sont",
+            "suis",
+            "êtes",
+            "est"
+          ],
+          "correctChoice": "est"
+        },
+        {
+          "tag": "A1-low-vocabulary",
+          "id": "bank.fr.vocabulary.A1.0.a0.b31914da3295a63f",
+          "stem": "Le matin, je prends un ____.",
+          "choices": [
+            "petit-déjeuner",
+            "déjeuner",
+            "dîner",
+            "goûter"
+          ],
+          "correctChoice": "petit-déjeuner"
+        },
+        {
+          "tag": "A1-high-vocabulary",
+          "id": "bank.fr.vocabulary.A1.5.p0.c8b334a3ce011f4a",
+          "stem": "J’ai un ____ chez le dentiste à 16 h.",
+          "choices": [
+            "rendez-vous",
+            "invitation",
+            "visite",
+            "appel"
+          ],
+          "correctChoice": "rendez-vous"
+        },
+        {
+          "tag": "A1-low-reading",
+          "id": "bank.fr.reading.A1.0.a0.e5111a390ce11e99",
+          "stem": "Panneau : « Fermé pour pause 13 h–14 h. » Quand peut-on entrer ?",
+          "choices": [
+            "Avant 13 h ou après 14 h",
+            "Seulement à 13 h",
+            "Toute l’après-midi sans pause",
+            "Jamais aujourd’hui"
+          ],
+          "correctChoice": "Avant 13 h ou après 14 h"
+        },
+        {
+          "tag": "A1-high-reading",
+          "id": "bank.fr.reading.A1.1.a1.23d3f31edc9ca9ec",
+          "stem": "Tableau : « Bus 12 → Gare. » Où va le bus 12 ?",
+          "choices": [
+            "À la gare",
+            "Vers le bus 12 seulement",
+            "Partout en ville",
+            "Nulle part"
+          ],
+          "correctChoice": "À la gare"
+        },
+        {
+          "tag": "A1-low-functional",
+          "id": "bank.fr.functional.A1.0.a0.2d7e2f764b84b9c8",
+          "stem": "Dans un magasin, vous voulez le prix. Que dites-vous ?",
+          "choices": [
+            "C’est combien ?",
+            "C’est comment ?",
+            "C’est quand ?",
+            "Où sont les toilettes ?"
+          ],
+          "correctChoice": "C’est combien ?"
+        },
+        {
+          "tag": "A1-high-functional",
+          "id": "bank.fr.functional.A1.8.p0.ecc7babac015086b",
+          "stem": "Vous rencontrez Yanis pour la première fois. Que dites-vous ?",
+          "choices": [
+            "Qui êtes-vous exactement",
+            "Enchanté de vous rencontrer",
+            "Allez-vous-en tout de suite",
+            "Je m’en vais immédiatement"
+          ],
+          "correctChoice": "Enchanté de vous rencontrer"
+        },
+        {
+          "tag": "A2-low-grammar",
+          "id": "bank.fr.grammar.A2.3.p0.f1787d0f0cf93e9f",
+          "stem": "Ils ____ pizza vendredi.",
+          "choices": [
+            "mangent",
+            "manger",
+            "mangeaient",
+            "ont mangé"
+          ],
+          "correctChoice": "ont mangé"
+        },
+        {
+          "tag": "A2-low-vocabulary",
+          "id": "bank.fr.vocabulary.A2.3.p0.76a17050f398ceb5",
+          "stem": "Je peux ____ ton stylo une minute ?",
+          "choices": [
+            "prêter",
+            "louer",
+            "posséder",
+            "emprunter"
+          ],
+          "correctChoice": "emprunter"
+        },
+        {
+          "tag": "A2-low-reading",
+          "id": "bank.fr.reading.A2.3.p0.5559812ddb120f1f",
+          "stem": "Avis : « Prenez un numéro et attendez. » Que faire d’abord ?",
+          "choices": [
+            "Attendre sans numéro",
+            "Partir tout de suite",
+            "Appeler un manager",
+            "Prendre un numéro"
+          ],
+          "correctChoice": "Prendre un numéro"
+        },
+        {
+          "tag": "A2-low-functional",
+          "id": "bank.fr.functional.A2.3.p0.d7fe1c5249008ef5",
+          "stem": "Vous voulez réserver une table pour trois vendredi. Que dites-vous ?",
+          "choices": [
+            "Donnez-nous à manger",
+            "Nous possédons le lieu",
+            "Fermez plus tôt",
+            "Pourrions-nous réserver ?"
+          ],
+          "correctChoice": "Pourrions-nous réserver ?"
+        },
+        {
+          "tag": "B1-low-grammar",
+          "id": "bank.fr.grammar.B1.6.p0.71b7e64b80b2684b",
+          "stem": "Voici le rapport ____ nous avons discuté hier en réunion.",
+          "choices": [
+            "que",
+            "qui",
+            "où",
+            "dont"
+          ],
+          "correctChoice": "dont"
+        },
+        {
+          "tag": "B1-low-vocabulary",
+          "id": "bank.fr.vocabulary.B1.1.a1.d143d8fcf2d318dc",
+          "stem": "Il faut ____ une décision aujourd’hui.",
+          "choices": [
+            "prendre",
+            "faire",
+            "mettre",
+            "poser"
+          ],
+          "correctChoice": "prendre"
+        },
+        {
+          "tag": "B1-low-reading",
+          "id": "bank.fr.reading.B1.9.p0.1660d9a85349d774",
+          "stem": "Brief : « La croissance est probable, même si les risques d’approvisionnement autour de la date de lancement restent matériels. » Quelle est la posture ?",
+          "choices": [
+            "Optimisme clairement prudent",
+            "Effondrement certain annoncé",
+            "Aucune opinion exprimée",
+            "Pure célébration du succès"
+          ],
+          "correctChoice": "Optimisme clairement prudent"
+        },
+        {
+          "tag": "B1-low-functional",
+          "id": "bank.fr.functional.B1.1.a1.c9e53ce3ffc11f6a",
+          "stem": "Vous voulez confirmer que vendredi reste l’échéance. Que dites-vous ?",
+          "choices": [
+            "Juste pour confirmer : vendredi reste la date limite ?",
+            "Annulez tout le projet aujourd’hui.",
+            "Je vais ignorer l’échéance pour l’instant.",
+            "Pouvez-vous me prêter votre ordinateur ?"
+          ],
+          "correctChoice": "Juste pour confirmer : vendredi reste la date limite ?"
+        },
+        {
+          "tag": "B2-low-grammar",
+          "id": "bank.fr.grammar.B2.0.p1.67a3c5821876f084",
+          "stem": "Elle a dit qu’elle ____ les clés à la maison.",
+          "choices": [
+            "laisse",
+            "avait laissées",
+            "laissait",
+            "laissera"
+          ],
+          "correctChoice": "avait laissées"
+        },
+        {
+          "tag": "B2-low-vocabulary",
+          "id": "bank.fr.vocabulary.B2.0.a0.b6f67f3a5983fc19",
+          "stem": "L’entreprise compte ____ les salaires l’an prochain.",
+          "choices": [
+            "augmenter",
+            "agrandir",
+            "allonger",
+            "amplifier"
+          ],
+          "correctChoice": "augmenter"
+        },
+        {
+          "tag": "B2-low-reading",
+          "id": "bank.fr.reading.B2.0.a0.f5e94b8411f6dbb3",
+          "stem": "Note : « La croissance est probable, même si les risques d’approvisionnement restent réels. » Quelle posture ?",
+          "choices": [
+            "Optimiste mais prudente",
+            "Effondrement certain",
+            "Aucune opinion",
+            "Célébration pure"
+          ],
+          "correctChoice": "Optimiste mais prudente"
+        },
+        {
+          "tag": "B2-low-functional",
+          "id": "bank.fr.functional.B2.0.p0.b5e44bec6f30f2f9",
+          "stem": "Marc vous demande de couvrir un créneau. Vous pouvez jusqu’à 18 h. Que dites-vous ?",
+          "choices": [
+            "Je refuse tout créneau",
+            "Faites-le vous-même",
+            "Je peux aider jusqu’à 18 h",
+            "Je démissionne"
+          ],
+          "correctChoice": "Je peux aider jusqu’à 18 h"
+        },
+        {
+          "tag": "C1-low-grammar",
+          "id": "bank.fr.grammar.C1.3.p0.336e29085508feb3",
+          "stem": "Dans les notes d’audit, rarement ____ une documentation aussi soignée dès le premier jet sur la clause de remboursement.",
+          "choices": [
+            "on trouve",
+            "trouve on",
+            "trouve-t-on",
+            "trouvons-nous"
+          ],
+          "correctChoice": "trouve-t-on"
+        },
+        {
+          "tag": "C1-low-vocabulary",
+          "id": "bank.fr.vocabulary.C1.3.p0.c469979b6ab2228f",
+          "stem": "Dans la note aux investisseurs sur la clause de remboursement, les auteurs cherchent à ____ les inquiétudes restantes sans promettre de remboursement ni de nouveau calendrier.",
+          "choices": [
+            "amplifier",
+            "ignorer",
+            "atténuer",
+            "célébrer"
+          ],
+          "correctChoice": "atténuer"
+        },
+        {
+          "tag": "C1-low-reading",
+          "id": "bank.fr.reading.C1.3.p0.13d9f1e2de2997d7",
+          "stem": "Procès-verbal de le comité : « Les membres ont remercié les auteurs pour le projet sur le périmètre pilote. Le groupe a pris note avec intérêt, puis est passé aux autres points sans vote ni suite demandée. » Lecture prag",
+          "choices": [
+            "Non-engagement poli plutôt qu’approbation",
+            "Approbation unanime du financement",
+            "Demande de mise en œuvre immédiate",
+            "Erreur de secrétariat"
+          ],
+          "correctChoice": "Non-engagement poli plutôt qu’approbation"
+        },
+        {
+          "tag": "C1-low-functional",
+          "id": "bank.fr.functional.C1.0.p0.5c23e16fca639705",
+          "stem": "Une partie prenante exige une déclaration publique aujourd’hui sur le gel des embauches. Il faut une revue juridique. Que dites-vous ?",
+          "choices": [
+            "Publiez n’importe quelle déclaration",
+            "Il faut passer par le juridique d’abord",
+            "Ignorez totalement le conseil",
+            "Admettez la responsabilité"
+          ],
+          "correctChoice": "Il faut passer par le juridique d’abord"
+        },
+        {
+          "tag": "C2-low-grammar",
+          "id": "bank.fr.grammar.C2.1.a1.85625083f3c18cea",
+          "stem": "____ en compte les délais fournisseurs, l’équipe a reporté le lancement de deux semaines.",
+          "choices": [
+            "En tenant",
+            "Tenant",
+            "Tenir",
+            "Ayant tient"
+          ],
+          "correctChoice": "En tenant"
+        },
+        {
+          "tag": "C2-high-grammar",
+          "id": "bank.fr.grammar.C2.5.p0.0e90a3af27c09570",
+          "stem": "Dans les notes d’audit, rarement ____ une documentation aussi soignée dès le premier jet sur le gel des embauches.",
+          "choices": [
+            "on trouve",
+            "trouve-t-on",
+            "trouve on",
+            "trouvons-nous"
+          ],
+          "correctChoice": "trouve-t-on"
+        },
+        {
+          "tag": "C2-low-vocabulary",
+          "id": "bank.fr.vocabulary.C2.1.a1.448627e7156a2691",
+          "stem": "Après la publication des nouveaux journaux d’expédition, plusieurs analystes ont dit que ces chiffres ____ le doute sur la prévision antérieure de déstockage en juin.",
+          "choices": [
+            "jetaient",
+            "mettaient",
+            "faisaient",
+            "portaient"
+          ],
+          "correctChoice": "jetaient"
+        },
+        {
+          "tag": "C2-high-vocabulary",
+          "id": "bank.fr.vocabulary.C2.2.p0.00bdaf9eac9e4a8e",
+          "stem": "Sa phrase finale remerciait la direction « pour une piste intrigante » et suggérait qu’elle « trouverait mieux sa place plus tard », sans suite. La posture est surtout ____.",
+          "choices": [
+            "non engageante",
+            "enthousiaste",
+            "hostile",
+            "procédurale"
+          ],
+          "correctChoice": "non engageante"
+        },
+        {
+          "tag": "C2-low-reading",
+          "id": "bank.fr.reading.C2.1.a1.cb6a154f1b4af1d7",
+          "stem": "Clause : « Les participants peuvent se retirer après notification, laquelle doit être écrite et remise au secrétariat au moins dix jours avant la date d’effet. » Qu’est-ce qui doit être écrit ?",
+          "choices": [
+            "La notification",
+            "Le retrait seulement après l’événement",
+            "Les participants eux-mêmes",
+            "Rien de particulier"
+          ],
+          "correctChoice": "La notification"
+        },
+        {
+          "tag": "C2-high-reading",
+          "id": "bank.fr.reading.C2.14.p0.3a91a02dedfddb24",
+          "stem": "Compte tenu du ton institutionnel et de ce qui reste non dit, lisez ce passage puis répondez. Synthèse de l’équipe juridique : « La recommandation est notée. Aucune action n’a été assignée. » Que s’ensuit le plus naturel",
+          "choices": [
+            "Mise de côté sans non explicite",
+            "Lancement de la livraison",
+            "Célébration obligatoire",
+            "Règlement juridique automatique"
+          ],
+          "correctChoice": "Mise de côté sans non explicite"
+        },
+        {
+          "tag": "C2-low-functional",
+          "id": "bank.fr.functional.C2.0.p0.1ee6125341f6a824",
+          "stem": "On vous presse sur le plafond budgétaire. Vous voulez différer sans refus brutal. Que dites-vous ?",
+          "choices": [
+            "Non — n’en reparlez plus jamais",
+            "L’idée ne vaut rien ; abandonnez",
+            "Piste intéressante avec preuves plus claires",
+            "Nous approuvons tout avec budget"
+          ],
+          "correctChoice": "Piste intéressante avec preuves plus claires"
+        },
+        {
+          "tag": "C2-high-functional",
+          "id": "bank.fr.functional.C2.5.p0.73d74c22497d0860",
+          "stem": "On vous presse sur la date de lancement. Vous voulez différer sans refus brutal. Que dites-vous ?",
+          "choices": [
+            "Non — n’en reparlez plus jamais",
+            "Piste intéressante avec preuves plus claires",
+            "L’idée ne vaut rien ; abandonnez",
+            "Nous approuvons tout avec budget"
+          ],
+          "correctChoice": "Piste intéressante avec preuves plus claires"
+        }
+      ]
+    },
+    "zh": {
+      "itemCount": 248,
+      "sampleCount": 32,
+      "samples": [
+        {
+          "tag": "A1-low-grammar",
+          "id": "bank.zh.grammar.A1.0.a0.3ee3b4d3ef8ec85c",
+          "stem": "我 ____ 学生。",
+          "choices": [
+            "是",
+            "在",
+            "有",
+            "很"
+          ],
+          "correctChoice": "是"
+        },
+        {
+          "tag": "A1-high-grammar",
+          "id": "bank.zh.grammar.A1.11.p2.f501753eafb691be",
+          "stem": "小张 ____ 深圳人。",
+          "choices": [
+            "是",
+            "在",
+            "有",
+            "很"
+          ],
+          "correctChoice": "是"
+        },
+        {
+          "tag": "A1-low-vocabulary",
+          "id": "bank.zh.vocabulary.A1.0.a0.ae523d69f268b900",
+          "stem": "早上我吃 ____ 。",
+          "choices": [
+            "早饭",
+            "午饭",
+            "晚饭",
+            "夜宵"
+          ],
+          "correctChoice": "早饭"
+        },
+        {
+          "tag": "A1-high-vocabulary",
+          "id": "bank.zh.vocabulary.A1.1.a1.3daebec1d7988a4b",
+          "stem": "下雨了，带上 ____ 。",
+          "choices": [
+            "雨伞",
+            "雨衣",
+            "雨水",
+            "雨点"
+          ],
+          "correctChoice": "雨伞"
+        },
+        {
+          "tag": "A1-low-reading",
+          "id": "bank.zh.reading.A1.0.a0.9a4151d40346229d",
+          "stem": "告示：「午餐休息 13:00–14:00 不营业。」什么时候可以买东西？",
+          "choices": [
+            "13:00前或14:00后",
+            "只在13:00",
+            "整个下午不停业",
+            "今天不行"
+          ],
+          "correctChoice": "13:00前或14:00后"
+        },
+        {
+          "tag": "A1-high-reading",
+          "id": "bank.zh.reading.A1.1.a1.7d9d116b45f93011",
+          "stem": "站牌：「12路 → 火车站。」12路去哪里？",
+          "choices": [
+            "去火车站",
+            "只去12路",
+            "绕城不停",
+            "哪也不去"
+          ],
+          "correctChoice": "去火车站"
+        },
+        {
+          "tag": "A1-low-functional",
+          "id": "bank.zh.functional.A1.0.a0.99c8e47ae323c4ac",
+          "stem": "在商店想问价钱，你说？",
+          "choices": [
+            "这个多少钱？",
+            "这个多少个？",
+            "现在几点？",
+            "厕所在哪里？"
+          ],
+          "correctChoice": "这个多少钱？"
+        },
+        {
+          "tag": "A1-high-functional",
+          "id": "bank.zh.functional.A1.8.p0.b6e466c58a0e7d37",
+          "stem": "你第一次见到小陈。你说？",
+          "choices": [
+            "你到底是谁",
+            "很高兴认识你",
+            "请你走开",
+            "我要离开了"
+          ],
+          "correctChoice": "很高兴认识你"
+        },
+        {
+          "tag": "A2-low-grammar",
+          "id": "bank.zh.grammar.A2.3.p0.3e21e4321337e3da",
+          "stem": "他们周五 ____ 披萨。",
+          "choices": [
+            "吃着",
+            "要吃",
+            "吃过吗",
+            "吃了"
+          ],
+          "correctChoice": "吃了"
+        },
+        {
+          "tag": "A2-low-vocabulary",
+          "id": "bank.zh.vocabulary.A2.3.p0.42a3171b804dec6d",
+          "stem": "能 ____ 一下你的笔吗？",
+          "choices": [
+            "借给",
+            "租",
+            "拥有",
+            "借"
+          ],
+          "correctChoice": "借"
+        },
+        {
+          "tag": "A2-low-reading",
+          "id": "bank.zh.reading.A2.3.p0.8ee660c32a64a4f1",
+          "stem": "提示：「请取号等候。」你应该先做什么？",
+          "choices": [
+            "不取号就等",
+            "马上离开",
+            "先打电话给经理",
+            "先取一个号"
+          ],
+          "correctChoice": "先取一个号"
+        },
+        {
+          "tag": "A2-low-functional",
+          "id": "bank.zh.functional.A2.3.p0.dd01c1ea3845c249",
+          "stem": "你想订三人周五的位子。你说？",
+          "choices": [
+            "免费给我们吃",
+            "这店是我们的",
+            "请提早打烊",
+            "可以订位吗？"
+          ],
+          "correctChoice": "可以订位吗？"
+        },
+        {
+          "tag": "B1-low-grammar",
+          "id": "bank.zh.grammar.B1.1.a1.c51537114dae5583",
+          "stem": "请把窗户 ____ 。",
+          "choices": [
+            "打开",
+            "开了开",
+            "打开着",
+            "打一打"
+          ],
+          "correctChoice": "打开"
+        },
+        {
+          "tag": "B1-low-vocabulary",
+          "id": "bank.zh.vocabulary.B1.1.a1.3168d0b3181b81a6",
+          "stem": "我们今天必须 ____ 决定。",
+          "choices": [
+            "做出",
+            "做到",
+            "放到",
+            "拿到"
+          ],
+          "correctChoice": "做出"
+        },
+        {
+          "tag": "B1-low-reading",
+          "id": "bank.zh.reading.B1.1.a1.e2ee8171d677bcb5",
+          "stem": "聊天：「你周四替我，我周一替你，可以吗？」提出什么？",
+          "choices": [
+            "换班",
+            "两人都放假",
+            "辞职",
+            "降薪"
+          ],
+          "correctChoice": "换班"
+        },
+        {
+          "tag": "B1-low-functional",
+          "id": "bank.zh.functional.B1.1.a1.19f18e6a4bfa10f9",
+          "stem": "你想确认周五是否仍是截止日期。你说？",
+          "choices": [
+            "确认一下：周五还是截止日期吗？",
+            "请今天取消整个项目。",
+            "我先不管截止日期。",
+            "能借我一下电脑吗？"
+          ],
+          "correctChoice": "确认一下：周五还是截止日期吗？"
+        },
+        {
+          "tag": "B2-low-grammar",
+          "id": "bank.zh.grammar.B2.0.p0.b07d03d26816f0fa",
+          "stem": "我的车 ____ 修好了。",
+          "choices": [
+            "把",
+            "让",
+            "被",
+            "叫"
+          ],
+          "correctChoice": "被"
+        },
+        {
+          "tag": "B2-low-vocabulary",
+          "id": "bank.zh.vocabulary.B2.0.a0.63e3f09932324c82",
+          "stem": "公司计划明年 ____ 工资。",
+          "choices": [
+            "提高",
+            "上升",
+            "升起",
+            "抬起"
+          ],
+          "correctChoice": "提高"
+        },
+        {
+          "tag": "B2-low-reading",
+          "id": "bank.zh.reading.B2.0.a0.0afac188eac6cf09",
+          "stem": "简报：「增长很可能出现，尽管供应风险仍不可忽视。」作者态度？",
+          "choices": [
+            "乐观但有保留",
+            "必然崩溃",
+            "没有看法",
+            "纯粹庆祝"
+          ],
+          "correctChoice": "乐观但有保留"
+        },
+        {
+          "tag": "B2-low-functional",
+          "id": "bank.zh.functional.B2.0.a0.9e1476c94818ed9e",
+          "stem": "会上你部分不同意风险评估。你说？",
+          "choices": [
+            "我理解你的观点，不过我会换个角度权衡风险。",
+            "你在所有点上都完全错了。",
+            "我毫无保留地同意每一处细节。",
+            "我们还是聊聊午饭吧。"
+          ],
+          "correctChoice": "我理解你的观点，不过我会换个角度权衡风险。"
+        },
+        {
+          "tag": "C1-low-grammar",
+          "id": "bank.zh.grammar.C1.high.0.2d67e7960c1ae7e0",
+          "stem": "法务备忘中写明：须经法务部门书面同意后，该修订方可 ____ 生效；口头承诺不具约束力。",
+          "choices": [
+            "正式",
+            "随便",
+            "赶紧",
+            "临时"
+          ],
+          "correctChoice": "正式"
+        },
+        {
+          "tag": "C1-low-vocabulary",
+          "id": "bank.zh.vocabulary.C1.high.0.5812b4947f8143a9",
+          "stem": "在给投资者的风险备忘录里，作者试图 ____ 对延期的剩余顾虑，但并未承诺退款，也没有给出新的时间表。",
+          "choices": [
+            "缓解",
+            "放大",
+            "忽视",
+            "庆祝"
+          ],
+          "correctChoice": "缓解"
+        },
+        {
+          "tag": "C1-low-reading",
+          "id": "bank.zh.reading.C1.high.0.e93739b11fa9ec73",
+          "stem": "审稿意见：「文章结构清楚，文笔克制。不过核心论断依赖一个作者几乎未加检验的前提，这削弱了后文建议的力度。」主要批评是什么？",
+          "choices": [
+            "论断的基础检验不足",
+            "文字混乱难读",
+            "完全没有论点",
+            "前提早已被证明"
+          ],
+          "correctChoice": "论断的基础检验不足"
+        },
+        {
+          "tag": "C1-low-functional",
+          "id": "bank.zh.functional.C1.3.p0.f9ee7d6263769183",
+          "stem": "结合机构语气与未明说之处，阅读这段文字后回答。 小美坚持立刻敲定退款条款。你想婉拒又不伤关系。你说？",
+          "choices": [
+            "不行，以后别再提这件事",
+            "想法毫无价值，今天就该放弃",
+            "这个方向值得看，证据更充分后再定",
+            "现在全盘批准并立即拨款"
+          ],
+          "correctChoice": "这个方向值得看，证据更充分后再定"
+        },
+        {
+          "tag": "C2-low-grammar",
+          "id": "bank.zh.grammar.C2.high.0.2f025e70a0f58a52",
+          "stem": "若无昨日在核算中发现的那处误差，预算 ____ 在上周的常委会上就已获得通过。",
+          "choices": [
+            "本可以",
+            "一定会",
+            "正在",
+            "从来都"
+          ],
+          "correctChoice": "本可以"
+        },
+        {
+          "tag": "C2-high-grammar",
+          "id": "bank.zh.grammar.C2.high.5.387abe16b0e0dec6",
+          "stem": "之所以迟迟不公开路线图，____ 供应链与合规节点仍存在未关闭的风险项。",
+          "choices": [
+            "是因为",
+            "所以才",
+            "即使",
+            "除非"
+          ],
+          "correctChoice": "是因为"
+        },
+        {
+          "tag": "C2-low-vocabulary",
+          "id": "bank.zh.vocabulary.C2.high.0.347bc3a57629bd02",
+          "stem": "她结尾感谢评委提出「有意思的方向」，并说它「或许更适合下一阶段」，却未给出下一步。这一立场更接近 ____ ，而非支持。",
+          "choices": [
+            "留有余地",
+            "热情支持",
+            "敌意回绝",
+            "例行表态"
+          ],
+          "correctChoice": "留有余地"
+        },
+        {
+          "tag": "C2-high-vocabulary",
+          "id": "bank.zh.vocabulary.C2.high.5.7a04f1678a83fbf8",
+          "stem": "「感谢分发草案」之后立刻「转入其他议题且无表决」，会话含义上往往 ____ 该提案缺乏推进动能。",
+          "choices": [
+            "暗示",
+            "证明数学上",
+            "否认",
+            "庆祝"
+          ],
+          "correctChoice": "暗示"
+        },
+        {
+          "tag": "C2-low-reading",
+          "id": "bank.zh.reading.C2.high.0.5bfa5402147de692",
+          "stem": "会议纪要：「委员感谢作者分发草案。委员会对该提案表示兴趣并记录在案，随后未要求后续文件也未表决，便迅速转入其他议题。」最可能的语用解读是？",
+          "choices": [
+            "礼貌地不表态，而非批准",
+            "一致通过拨款",
+            "要求立即实施",
+            "秘书记录错误"
+          ],
+          "correctChoice": "礼貌地不表态，而非批准"
+        },
+        {
+          "tag": "C2-high-reading",
+          "id": "bank.zh.reading.C2.14.p0.99ff05199e9ea103",
+          "stem": "请关注语用含义，而不只是表面措辞，再看下文。 结合机构语气与未明说之处，阅读这段文字后回答。 产品委员会摘要：「建议已阅。未分配任何行动项。」接下来最自然的是？",
+          "choices": [
+            "未明说拒绝的搁置",
+            "启动完整交付",
+            "强制全员庆祝",
+            "自动达成和解"
+          ],
+          "correctChoice": "未明说拒绝的搁置"
+        },
+        {
+          "tag": "C2-low-functional",
+          "id": "bank.zh.functional.C2.high.0.d6a2c040df4cc233",
+          "stem": "对方提案方向有吸引力，但现阶段资源与合规都不支持推进。你想婉拒又不伤关系。你说？",
+          "choices": [
+            "这个方向有意思，或许更适合放到下一阶段再评估。",
+            "不行，以后别再联系我们谈这个。",
+            "这个想法毫无价值，今天就该放弃。",
+            "我们全盘批准并立即拨款。"
+          ],
+          "correctChoice": "这个方向有意思，或许更适合放到下一阶段再评估。"
+        },
+        {
+          "tag": "C2-high-functional",
+          "id": "bank.zh.functional.C2.11.p0.1b6944f0598b144b",
+          "stem": "与风险小组讨论时，你认同目标方向，但不能无条件背书招聘冻结的执行细节。你说？",
+          "choices": [
+            "我无条件批准每一个细节",
+            "我否定目标，却大力称赞指标",
+            "这种认同等于已签法律承诺",
+            "我认同目标，但需要更清晰成功指标"
+          ],
+          "correctChoice": "我认同目标，但需要更清晰成功指标"
+        }
+      ]
+    },
+    "de": {
+      "itemCount": 220,
+      "sampleCount": 32,
+      "samples": [
+        {
+          "tag": "A1-low-grammar",
+          "id": "bank.de.grammar.A1.0.a0.a1e30daff177663e",
+          "stem": "Wir ____ aus Berlin.",
+          "choices": [
+            "sind",
+            "bist",
+            "bin",
+            "ist"
+          ],
+          "correctChoice": "sind"
+        },
+        {
+          "tag": "A1-high-grammar",
+          "id": "bank.de.grammar.A1.14.p1.229cffda76b73b56",
+          "stem": "Anna ____ heute zu Hause.",
+          "choices": [
+            "sind",
+            "bist",
+            "ist",
+            "seid"
+          ],
+          "correctChoice": "ist"
+        },
+        {
+          "tag": "A1-low-vocabulary",
+          "id": "bank.de.vocabulary.A1.0.a0.a633c918342a196b",
+          "stem": "Morgens esse ich oft ____.",
+          "choices": [
+            "Frühstück",
+            "Mittagessen",
+            "Abendessen",
+            "Snack"
+          ],
+          "correctChoice": "Frühstück"
+        },
+        {
+          "tag": "A1-high-vocabulary",
+          "id": "bank.de.vocabulary.A1.1.a1.316c890359edcdcf",
+          "stem": "Für den Zug brauche ich eine ____.",
+          "choices": [
+            "Fahrkarte",
+            "Quittung",
+            "Speisekarte",
+            "Kartei"
+          ],
+          "correctChoice": "Fahrkarte"
+        },
+        {
+          "tag": "A1-low-reading",
+          "id": "bank.de.reading.A1.0.a0.566ddbd560dbe06a",
+          "stem": "Schild: „Mittagspause 13:00–14:00 geschlossen.“ Wann können Sie einkaufen?",
+          "choices": [
+            "Vor 13:00 oder nach 14:00",
+            "Nur um 13:00",
+            "Den ganzen Nachmittag ohne Pause",
+            "Heute gar nicht"
+          ],
+          "correctChoice": "Vor 13:00 oder nach 14:00"
+        },
+        {
+          "tag": "A1-high-reading",
+          "id": "bank.de.reading.A1.1.a1.96e65b14bb08b992",
+          "stem": "Tafel: „Bus 12 → Bahnhof.“ Wohin fährt Bus 12?",
+          "choices": [
+            "Zum Bahnhof",
+            "Nur zu Bus 12",
+            "Durch die ganze Stadt",
+            "Nirgendwohin"
+          ],
+          "correctChoice": "Zum Bahnhof"
+        },
+        {
+          "tag": "A1-low-functional",
+          "id": "bank.de.functional.A1.0.a0.89f259b4597465c3",
+          "stem": "Im Laden möchten Sie den Preis wissen. Was sagen Sie?",
+          "choices": [
+            "Was kostet das?",
+            "Wie viele ist das?",
+            "Wie spät ist das?",
+            "Wo ist die Toilette?"
+          ],
+          "correctChoice": "Was kostet das?"
+        },
+        {
+          "tag": "A1-high-functional",
+          "id": "bank.de.functional.A1.8.p0.76e77955fc2e8965",
+          "stem": "Sie treffen Mia zum ersten Mal. Was sagen Sie?",
+          "choices": [
+            "Wer sind Sie denn eigentlich",
+            "Freut mich, Sie kennenzulernen",
+            "Gehen Sie bitte sofort weg",
+            "Ich gehe jetzt sofort fort"
+          ],
+          "correctChoice": "Freut mich, Sie kennenzulernen"
+        },
+        {
+          "tag": "A2-low-grammar",
+          "id": "bank.de.grammar.A2.3.p0.0d5869a46cf360de",
+          "stem": "Wir ____ Pizza am Freitag gegessen.",
+          "choices": [
+            "sind",
+            "habt",
+            "seid",
+            "haben"
+          ],
+          "correctChoice": "haben"
+        },
+        {
+          "tag": "A2-low-vocabulary",
+          "id": "bank.de.vocabulary.A2.3.p0.a2add66eea338487",
+          "stem": "Kann ich kurz deinen Stift ____?",
+          "choices": [
+            "verleihen",
+            "mieten",
+            "besitzen",
+            "leihen"
+          ],
+          "correctChoice": "leihen"
+        },
+        {
+          "tag": "A2-low-reading",
+          "id": "bank.de.reading.A2.3.p0.9d3c6a7951a5f953",
+          "stem": "Hinweis: „Nummer ziehen und warten.“ Was tun Sie zuerst?",
+          "choices": [
+            "Ohne Nummer warten",
+            "Sofort weggehen",
+            "Den Chef anrufen",
+            "Eine Nummer ziehen"
+          ],
+          "correctChoice": "Eine Nummer ziehen"
+        },
+        {
+          "tag": "A2-low-functional",
+          "id": "bank.de.functional.A2.3.p0.6d6a97c11e70d29b",
+          "stem": "Sie möchten einen Tisch für drei am Freitag reservieren. Was sagen Sie?",
+          "choices": [
+            "Geben Sie uns Essen",
+            "Wir besitzen das Lokal",
+            "Schließen Sie früher",
+            "Könnten wir reservieren?"
+          ],
+          "correctChoice": "Könnten wir reservieren?"
+        },
+        {
+          "tag": "B1-low-grammar",
+          "id": "bank.de.grammar.B1.6.p0.42b215ac51343338",
+          "stem": "Kai wohnt hier, seit sie den Job ____.",
+          "choices": [
+            "bekommt",
+            "bekommen wird",
+            "bekam",
+            "bekommen hat"
+          ],
+          "correctChoice": "bekommen hat"
+        },
+        {
+          "tag": "B1-low-vocabulary",
+          "id": "bank.de.vocabulary.B1.1.a1.de6e6c65b2414508",
+          "stem": "Wir müssen heute eine Entscheidung ____.",
+          "choices": [
+            "treffen",
+            "machen",
+            "tun",
+            "stellen"
+          ],
+          "correctChoice": "treffen"
+        },
+        {
+          "tag": "B1-low-reading",
+          "id": "bank.de.reading.B1.9.p0.811f6097875c0b79",
+          "stem": "Briefing: „Wachstum ist wahrscheinlich, auch wenn Lieferrisiken um das Launch-Datum erheblich bleiben.“ Welche Haltung zeigt der Text?",
+          "choices": [
+            "Optimistisch, klar abgefedert",
+            "Sicherer Totalzusammenbruch",
+            "Keine Meinung erkennbar",
+            "Reine Erfolgsfeier"
+          ],
+          "correctChoice": "Optimistisch, klar abgefedert"
+        },
+        {
+          "tag": "B1-low-functional",
+          "id": "bank.de.functional.B1.1.a1.fe17a321e1b04733",
+          "stem": "Sie wollen klären, ob Freitag noch die Frist ist. Was sagen Sie?",
+          "choices": [
+            "Nur zur Sicherheit — ist Freitag noch die Deadline?",
+            "Bitte streichen Sie das ganze Projekt heute.",
+            "Ich ignoriere die Frist vorerst.",
+            "Können Sie mir Ihren Laptop leihen?"
+          ],
+          "correctChoice": "Nur zur Sicherheit — ist Freitag noch die Deadline?"
+        },
+        {
+          "tag": "B2-low-grammar",
+          "id": "bank.de.grammar.B2.6.p0.07ad6a01b20d785f",
+          "stem": "Als wir ankamen, ____ der Zug schon abgefahren.",
+          "choices": [
+            "war",
+            "ist",
+            "hatte",
+            "wurde"
+          ],
+          "correctChoice": "war"
+        },
+        {
+          "tag": "B2-low-vocabulary",
+          "id": "bank.de.vocabulary.B2.0.a0.cb5f7dfe30048d15",
+          "stem": "Das Unternehmen will die Gehälter ____.",
+          "choices": [
+            "erhöhen",
+            "erholen",
+            "erheben",
+            "erhöht"
+          ],
+          "correctChoice": "erhöhen"
+        },
+        {
+          "tag": "B2-low-reading",
+          "id": "bank.de.reading.B2.0.a1.cc4ce40307283b40",
+          "stem": "Mail: „Wir schätzen das Konzept; der Zeitpunkt ist das Hindernis.“ Was ist impliziert?",
+          "choices": [
+            "Eine vorläufige Absage",
+            "Sofortige Zustimmung",
+            "Eine Zahlungsaufforderung",
+            "Lob ohne Vorbehalt"
+          ],
+          "correctChoice": "Eine vorläufige Absage"
+        },
+        {
+          "tag": "B2-low-functional",
+          "id": "bank.de.functional.B2.0.p0.660cfe50a9b6905b",
+          "stem": "Kai bittet Sie, eine Schicht zu übernehmen. Sie können bis 18 Uhr. Was sagen Sie?",
+          "choices": [
+            "Ich lehne jede Schicht ab",
+            "Machen Sie es selbst",
+            "Ich kann bis sechs helfen",
+            "Ich kündige jetzt"
+          ],
+          "correctChoice": "Ich kann bis sechs helfen"
+        },
+        {
+          "tag": "C1-low-grammar",
+          "id": "bank.de.grammar.C1.3.p0.789ce54bf28b85ff",
+          "stem": "In den aktuellen Prüfungsnotizen trifft man selten ____ so sorgfältige Dokumentation schon im frühen Entwurf zu die Erstattungsklausel.",
+          "choices": [
+            "an",
+            "über",
+            "auf",
+            "bei"
+          ],
+          "correctChoice": "auf"
+        },
+        {
+          "tag": "C1-low-vocabulary",
+          "id": "bank.de.vocabulary.C1.3.p0.a0fc7407e5da9d69",
+          "stem": "Im Memo an Investoren zu die Erstattungsklausel versuchen die Autoren, Restbedenken zu ____, ohne Erstattung oder neuen Zeitplan zuzusagen.",
+          "choices": [
+            "verstärken",
+            "ignorieren",
+            "abmildern",
+            "feiern"
+          ],
+          "correctChoice": "abmildern"
+        },
+        {
+          "tag": "C1-low-reading",
+          "id": "bank.de.reading.C1.0.p0.68bc5f5b344275fb",
+          "stem": "Angesichts des institutionellen Tons und des Ungesagten lesen Sie diese Passage und antworten Sie. Die Kanzlei schrieb: „Ohne Präjudiz bestreitet die Firma die Darstellung der Ereignisse um den Einstellungsstopp, lädt ab",
+          "choices": [
+            "Volle Anerkennung aller Ansprüche",
+            "Strittige Fakten, begrenzte Gespräche",
+            "Totaler Redeverzicht",
+            "Feier der Beschwerde"
+          ],
+          "correctChoice": "Strittige Fakten, begrenzte Gespräche"
+        },
+        {
+          "tag": "C1-low-functional",
+          "id": "bank.de.functional.C1.0.p0.99b28cf9ffdd97f3",
+          "stem": "Ein Stakeholder verlangt heute eine öffentliche Aussage zu den Einstellungsstopp. Sie brauchen Rechtsprüfung. Was sagen Sie?",
+          "choices": [
+            "Sofort irgendeine Aussage posten",
+            "Zuerst die Rechtsprüfung abwarten",
+            "Rechtsrat komplett ignorieren",
+            "Haftung öffentlich eingestehen"
+          ],
+          "correctChoice": "Zuerst die Rechtsprüfung abwarten"
+        },
+        {
+          "tag": "C2-low-grammar",
+          "id": "bank.de.grammar.C2.1.a1.e1ef5f94ceeb457c",
+          "stem": "Die Änderung ist ____ der schriftlichen Freigabe durch Legal abhängig, bevor sie wirksam wird.",
+          "choices": [
+            "von",
+            "zu",
+            "für",
+            "mit"
+          ],
+          "correctChoice": "von"
+        },
+        {
+          "tag": "C2-high-grammar",
+          "id": "bank.de.grammar.C2.5.p0.2e1b884c2de2e0ad",
+          "stem": "In den aktuellen Prüfungsnotizen trifft man selten ____ so sorgfältige Dokumentation schon im frühen Entwurf zu das Launch-Datum.",
+          "choices": [
+            "an",
+            "auf",
+            "über",
+            "bei"
+          ],
+          "correctChoice": "auf"
+        },
+        {
+          "tag": "C2-low-vocabulary",
+          "id": "bank.de.vocabulary.C2.1.a1.a15969861d0e5a66",
+          "stem": "Nach den neuen Versandprotokollen sagten mehrere Analysten, die Zahlen ____ Zweifel an der früheren Prognose, dass Bestände bis Juni abgebaut wären.",
+          "choices": [
+            "wecken",
+            "werfen",
+            "machen",
+            "legen"
+          ],
+          "correctChoice": "wecken"
+        },
+        {
+          "tag": "C2-high-vocabulary",
+          "id": "bank.de.vocabulary.C2.5.p0.eb829080366cbdcf",
+          "stem": "Im Memo an Investoren zu das Launch-Datum versuchen die Autoren, Restbedenken zu ____, ohne Erstattung oder neuen Zeitplan zuzusagen.",
+          "choices": [
+            "verstärken",
+            "abmildern",
+            "ignorieren",
+            "feiern"
+          ],
+          "correctChoice": "abmildern"
+        },
+        {
+          "tag": "C2-low-reading",
+          "id": "bank.de.reading.C2.0.p0.1a8949a57081d74b",
+          "stem": "Protokoll von der Arbeitsgruppe: „Die Mitglieder dankten für den Entwurf zu die Budgetgrenze. Die Gruppe nahm ihn mit Interesse zur Kenntnis und ging ohne Abstimmung und ohne Nachforderung zu anderen Punkten über.“ Wahrs",
+          "choices": [
+            "Einstimmige Mittelbewilligung jetzt",
+            "Auftrag zur Sofortumsetzung",
+            "Höfliche Nichtfestlegung statt Ja",
+            "Klarer Protokollfehler nur"
+          ],
+          "correctChoice": "Höfliche Nichtfestlegung statt Ja"
+        },
+        {
+          "tag": "C2-high-reading",
+          "id": "bank.de.reading.C2.14.p0.1241e0617ec45e42",
+          "stem": "Angesichts des institutionellen Tons und des Ungesagten lesen Sie diese Passage und antworten Sie. Kurzfassung von dem Legal-Team: „Die Empfehlung wird zur Kenntnis genommen. Es wurden keine Maßnahmen vergeben.“ Was folg",
+          "choices": [
+            "Beiseitelegen ohne klares Nein",
+            "Start der Volllieferung",
+            "Pflichtfeier fürs Team",
+            "Automatischer Rechtsvergleich"
+          ],
+          "correctChoice": "Beiseitelegen ohne klares Nein"
+        },
+        {
+          "tag": "C2-low-functional",
+          "id": "bank.de.functional.C2.3.p0.011f591fe401b446",
+          "stem": "dem Rat will Ihre Freigabe unter Zeitdruck. Die Akte zu den Einstellungsstopp ist unvollständig. Was sagen Sie?",
+          "choices": [
+            "Trotzdem unterschreiben, Zeit sparen for now as noted",
+            "Fehlende Seiten ignorieren for now as noted in full",
+            "Freigeben und später nachbessern for now as noted",
+            "Ohne vollständige Akte unterschreibe ich nicht"
+          ],
+          "correctChoice": "Ohne vollständige Akte unterschreibe ich nicht"
+        },
+        {
+          "tag": "C2-high-functional",
+          "id": "bank.de.functional.C2.11.p0.dcced995f7beb7ab",
+          "stem": "In der Sitzung mit dem Rat teilen Sie das Ziel hinter den Einstellungsstopp, wollen aber keine ungeprüfte Lieferung. Was sagen Sie?",
+          "choices": [
+            "Ich genehmige jedes Detail ungeprüft",
+            "Ziel lehne ich ab, lobe Kennzahlen",
+            "Sympathie gleicht einem Vertrag",
+            "Ziel teile ich, unter klaren Kennzahlen"
+          ],
+          "correctChoice": "Ziel teile ich, unter klaren Kennzahlen"
+        }
+      ]
+    },
+    "ru": {
+      "itemCount": 212,
+      "sampleCount": 31,
+      "samples": [
+        {
+          "tag": "A1-low-grammar",
+          "id": "bank.ru.grammar.A1.0.a0.ac6e90ee171b07e4",
+          "stem": "Это ____ книга.",
+          "choices": [
+            "моя",
+            "мой",
+            "моё",
+            "мои"
+          ],
+          "correctChoice": "моя"
+        },
+        {
+          "tag": "A1-high-grammar",
+          "id": "bank.ru.grammar.A1.2.p0.519e2ef2dccaa2f9",
+          "stem": "У меня ____ новый пропуск.",
+          "choices": [
+            "нет",
+            "был",
+            "будет",
+            "есть"
+          ],
+          "correctChoice": "есть"
+        },
+        {
+          "tag": "A1-low-vocabulary",
+          "id": "bank.ru.vocabulary.A1.0.a0.62de4cbf54216025",
+          "stem": "Утром я обычно ем ____.",
+          "choices": [
+            "завтрак",
+            "обед",
+            "ужин",
+            "перекус"
+          ],
+          "correctChoice": "завтрак"
+        },
+        {
+          "tag": "A1-high-vocabulary",
+          "id": "bank.ru.vocabulary.A1.1.a1.e8447df47b29a595",
+          "stem": "Мне нужен ____ на поезд.",
+          "choices": [
+            "билет",
+            "чек",
+            "меню",
+            "карта"
+          ],
+          "correctChoice": "билет"
+        },
+        {
+          "tag": "A1-low-reading",
+          "id": "bank.ru.reading.A1.0.a0.7cf9e5d0af1ef276",
+          "stem": "Табличка: «Обед 13:00–14:00, закрыто.» Когда можно зайти?",
+          "choices": [
+            "До 13:00 или после 14:00",
+            "Только в 13:00",
+            "Весь день без перерыва",
+            "Сегодня нельзя"
+          ],
+          "correctChoice": "До 13:00 или после 14:00"
+        },
+        {
+          "tag": "A1-high-reading",
+          "id": "bank.ru.reading.A1.8.p0.31df7df998233c9d",
+          "stem": "Объявление: «Закрыто на обед 12:00–13:00.» Когда можно делать покупки?",
+          "choices": [
+            "Только ровно в обед",
+            "До или после обеда",
+            "Весь день без перерыва",
+            "Сегодня уже нельзя"
+          ],
+          "correctChoice": "До или после обеда"
+        },
+        {
+          "tag": "A1-low-functional",
+          "id": "bank.ru.functional.A1.0.a0.8300132ca44f73eb",
+          "stem": "В магазине вы хотите узнать цену. Что сказать?",
+          "choices": [
+            "Сколько это стоит?",
+            "Сколько это штук?",
+            "Который час?",
+            "Где туалет?"
+          ],
+          "correctChoice": "Сколько это стоит?"
+        },
+        {
+          "tag": "A1-high-functional",
+          "id": "bank.ru.functional.A1.8.p0.a11984f9794ff61b",
+          "stem": "Вы впервые встречаете Омар. Что сказать?",
+          "choices": [
+            "Кто вы такой вообще",
+            "Приятно познакомиться",
+            "Уходите отсюда сейчас",
+            "Я ухожу прямо сейчас"
+          ],
+          "correctChoice": "Приятно познакомиться"
+        },
+        {
+          "tag": "A2-low-grammar",
+          "id": "bank.ru.grammar.A2.3.p0.ea00f79339ef5dc7",
+          "stem": "Они ____ пиццу в пятница.",
+          "choices": [
+            "едят",
+            "есть",
+            "съедят",
+            "ели"
+          ],
+          "correctChoice": "ели"
+        },
+        {
+          "tag": "A2-low-vocabulary",
+          "id": "bank.ru.vocabulary.A2.3.p0.a5bd716b784702c3",
+          "stem": "Можно на минуту ____ твою ручку?",
+          "choices": [
+            "дать",
+            "снять",
+            "иметь",
+            "взять"
+          ],
+          "correctChoice": "взять"
+        },
+        {
+          "tag": "A2-low-reading",
+          "id": "bank.ru.reading.A2.9.p0.c98edfad0c1d915d",
+          "stem": "Заметка: «Библиотека до 20:00.» Что верно?",
+          "choices": [
+            "Она не открывается",
+            "Она закрывается вечером",
+            "Она открыта в полночь",
+            "Она закрыта весь день"
+          ],
+          "correctChoice": "Она закрывается вечером"
+        },
+        {
+          "tag": "A2-low-functional",
+          "id": "bank.ru.functional.A2.3.p0.a7e0a83207410126",
+          "stem": "Вы хотите забронировать стол на троих в пятница. Что сказать?",
+          "choices": [
+            "Дайте еду бесплатно for now",
+            "Мы владеем местом for now",
+            "Закройте раньше for now as noted",
+            "Можно забронировать стол?"
+          ],
+          "correctChoice": "Можно забронировать стол?"
+        },
+        {
+          "tag": "B1-low-grammar",
+          "id": "bank.ru.grammar.B1.1.a1.8e7b655439140586",
+          "stem": "Это коллега, ____ вчера звонил.",
+          "choices": [
+            "который",
+            "которая",
+            "которое",
+            "которые"
+          ],
+          "correctChoice": "который"
+        },
+        {
+          "tag": "B1-low-vocabulary",
+          "id": "bank.ru.vocabulary.B1.1.a1.1bb1bb0574da9f35",
+          "stem": "Нужно ____ решение сегодня.",
+          "choices": [
+            "принять",
+            "сделать",
+            "взять",
+            "поставить"
+          ],
+          "correctChoice": "принять"
+        },
+        {
+          "tag": "B1-low-reading",
+          "id": "bank.ru.reading.B1.9.p0.243e372f9f5c448a",
+          "stem": "Бриф: «Рост вероятен, хотя риски поставок вокруг «дату запуска» остаются существенными.» Какова позиция автора?",
+          "choices": [
+            "Оптимизм с оговорками",
+            "Гарантированный крах",
+            "Нет мнения",
+            "Чистое торжество"
+          ],
+          "correctChoice": "Оптимизм с оговорками"
+        },
+        {
+          "tag": "B1-low-functional",
+          "id": "bank.ru.functional.B1.3.p0.3e6c4c2d958f9367",
+          "stem": "Елена просит подменить смену. Вы можете до 18:00. Что сказать?",
+          "choices": [
+            "Отказываюсь от любых смен",
+            "Делайте сами",
+            "Могу помочь до шести",
+            "Я увольняюсь"
+          ],
+          "correctChoice": "Могу помочь до шести"
+        },
+        {
+          "tag": "B2-low-grammar",
+          "id": "bank.ru.grammar.B2.0.a1.c3e9a2412141bfd9",
+          "stem": "Если бы у меня было больше времени, я ____ дольше.",
+          "choices": [
+            "остался бы",
+            "останусь",
+            "остался",
+            "остаюсь"
+          ],
+          "correctChoice": "остался бы"
+        },
+        {
+          "tag": "B2-low-vocabulary",
+          "id": "bank.ru.vocabulary.B2.0.a0.67fa40da74b2106e",
+          "stem": "Компания планирует ____ зарплаты.",
+          "choices": [
+            "повысить",
+            "повыситься",
+            "поднять",
+            "подняться"
+          ],
+          "correctChoice": "повысить"
+        },
+        {
+          "tag": "B2-low-reading",
+          "id": "bank.ru.reading.B2.0.a1.651a399f46d5a661",
+          "stem": "Письмо: «Мы ценим идею; сроки — препятствие.» Что подразумевается?",
+          "choices": [
+            "Мягкий отказ на сейчас",
+            "Немедленное одобрение",
+            "Просьба об оплате",
+            "Похвала без оговорок"
+          ],
+          "correctChoice": "Мягкий отказ на сейчас"
+        },
+        {
+          "tag": "B2-low-functional",
+          "id": "bank.ru.functional.B2.0.a1.b7052a4277ce4ed5",
+          "stem": "Вам нужно ещё два дня на отчёт. Что сказать?",
+          "choices": [
+            "Можно ли продлить срок на два дня?",
+            "Я сразу выхожу из проекта.",
+            "Удалите отчёт с общего диска.",
+            "Срок никогда не был важен."
+          ],
+          "correctChoice": "Можно ли продлить срок на два дня?"
+        },
+        {
+          "tag": "C1-low-grammar",
+          "id": "bank.ru.grammar.C1.3.p0.0b78f2c5b7ee8230",
+          "stem": "В последних аудиторских заметках редко ____ столь аккуратную документацию уже в раннем черновике по теме «заморозку найма».",
+          "choices": [
+            "встречаем",
+            "встретишь",
+            "встречаешь",
+            "встретили"
+          ],
+          "correctChoice": "встречаешь"
+        },
+        {
+          "tag": "C1-low-vocabulary",
+          "id": "bank.ru.vocabulary.C1.3.p0.90cbed109223ac9e",
+          "stem": "В записке для инвесторов о «пункт о возврате» авторы пытаются ____ оставшиеся опасения, не обещая возврат денег и не предлагая новый график.",
+          "choices": [
+            "усилить",
+            "игнорировать",
+            "смягчить",
+            "отметить"
+          ],
+          "correctChoice": "смягчить"
+        },
+        {
+          "tag": "C1-low-reading",
+          "id": "bank.ru.reading.C1.0.p0.e21566a01ce7f60a",
+          "stem": "Протокол руководство: «Члены поблагодарили авторов за проект по теме «пункт о возврате». Группа приняла предложение к сведению с интересом и без голосования и без запроса продолжения перешла к другим вопросам.» Наиболее ",
+          "choices": [
+            "Единогласное финансирование",
+            "Вежливое неучастие, а не одобрение",
+            "Просьба о немедленном внедрении",
+            "Ошибка секретаря"
+          ],
+          "correctChoice": "Вежливое неучастие, а не одобрение"
+        },
+        {
+          "tag": "C1-low-functional",
+          "id": "bank.ru.functional.C1.0.p0.d8b5fc68d032d3af",
+          "stem": "Стейкхолдер требует публичного заявления сегодня по «заморозку найма». Нужна юридическая проверка. Что сказать?",
+          "choices": [
+            "Публикуйте любое заявление сейчас",
+            "Сначала нужна юридическая проверка",
+            "Игнорируйте юристов полностью",
+            "Признайте ответственность публично"
+          ],
+          "correctChoice": "Сначала нужна юридическая проверка"
+        },
+        {
+          "tag": "C2-low-grammar",
+          "id": "bank.ru.grammar.C2.0.a1.a2441629b0a2d0f1",
+          "stem": "Поправка зависит ____ письменного согласования юридического отдела, прежде чем вступит в силу.",
+          "choices": [
+            "от",
+            "к",
+            "для",
+            "с"
+          ],
+          "correctChoice": "от"
+        },
+        {
+          "tag": "C2-low-vocabulary",
+          "id": "bank.ru.vocabulary.C2.1.a1.6ca1c74c790c4763",
+          "stem": "После новых журналов отгрузки несколько аналитиков сказали, что цифры ____ сомнение в прежнем прогнозе о распродаже запасов к июню.",
+          "choices": [
+            "сеют",
+            "бросают",
+            "делают",
+            "кладут"
+          ],
+          "correctChoice": "сеют"
+        },
+        {
+          "tag": "C2-high-vocabulary",
+          "id": "bank.ru.vocabulary.C2.0.a0.837fa05871cd591d",
+          "stem": "В финале она поблагодарила комиссию за «интересное направление» и заметила, что оно «лучше подойдёт на следующий этап», не предложив шага дальше. Позиция скорее ____, чем поддержка.",
+          "choices": [
+            "уклончивая",
+            "восторженная",
+            "враждебная",
+            "формальная"
+          ],
+          "correctChoice": "уклончивая"
+        },
+        {
+          "tag": "C2-low-reading",
+          "id": "bank.ru.reading.C2.1.a1.83faca7a3223b1b1",
+          "stem": "Пункт договора: «Участники могут выйти после уведомления, которое должно быть письменным и передано в секретариат не менее чем за десять дней до даты вступления.» Что должно быть письменным?",
+          "choices": [
+            "Уведомление",
+            "Выход только после события",
+            "Сами участники",
+            "Ничего конкретного"
+          ],
+          "correctChoice": "Уведомление"
+        },
+        {
+          "tag": "C2-high-reading",
+          "id": "bank.ru.reading.C2.14.p0.25f66eef964eb1e0",
+          "stem": "Сфокусируйтесь на прагматическом следствии, а не только на поверхностной формулировке ниже. Учитывая институциональный тон и недосказанное, прочитайте отрывок и ответьте. Краткое резюме юротдел: «Рекомендация принята к с",
+          "choices": [
+            "Откладывание без явного «нет»",
+            "Старт полной поставки",
+            "Обязательный праздник",
+            "Автоматическое урегулирование"
+          ],
+          "correctChoice": "Откладывание без явного «нет»"
+        },
+        {
+          "tag": "C2-low-functional",
+          "id": "bank.ru.functional.C2.0.p0.62516f082d5a4cb7",
+          "stem": "Вас торопят с решением по поводу «лимит бюджета». Нужно отложить без резкого отказа. Что сказать?",
+          "choices": [
+            "Нет — больше никогда это не поднимайте",
+            "Идея ничего не стоит; просто бросьте её",
+            "Направление интересное; лучше с ясными данными",
+            "Одобряем всё сразу с полным финансированием"
+          ],
+          "correctChoice": "Направление интересное; лучше с ясными данными"
+        },
+        {
+          "tag": "C2-high-functional",
+          "id": "bank.ru.functional.C2.11.p0.958aaf2a2409f9fd",
+          "stem": "На встрече с совет вы разделяете цель по «заморозку найма», но не готовы к бесконтрольной поставке. Что сказать?",
+          "choices": [
+            "Одобряю каждую деталь без условий",
+            "Цель отвергаю, но хвалю метрики",
+            "Симпатия равна подписанному контракту",
+            "Цель разделяю, при ясных метриках"
+          ],
+          "correctChoice": "Цель разделяю, при ясных метриках"
+        }
+      ]
+    }
+  }
+}

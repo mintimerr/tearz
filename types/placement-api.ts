@@ -98,6 +98,8 @@ export type PlacementStepRequestBody = {
   userEntropy?: number;
   /** Unique placement attempt id — ties client/server/analytics/record. */
   assessmentSessionId?: string;
+  /** Bind answer to the question id currently on screen — blocks stale double-submit. */
+  itemId?: string;
   /** Canonical frozen response history for server SoT finalize / selection. */
   canonicalResponses?: unknown[];
   /** Client AssessmentResult hint for mismatch telemetry only — never authoritative. */

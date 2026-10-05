@@ -1,0 +1,21 @@
+{
+  "bankVersion": "v1",
+  "language": "fr",
+  "itemQualityVersion": "item-quality-gate-v1",
+  "itemCount": 28,
+  "countsByLevel": {
+    "A1": 7,
+    "A2": 7,
+    "B1": 7,
+    "B2": 2,
+    "C1": 3,
+    "C2": 2
+  },
+  "countsBySkill": {
+    "grammar": 6,
+    "vocabulary": 9,
+    "reading": 8,
+    "functional": 5
+  },
+  "checksum": "sha256:96fe2972b9aa7973b099239e7586705d4d9f7167c4815caba925ddb33573b790"
+}

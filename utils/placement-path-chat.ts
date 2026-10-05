@@ -24,18 +24,30 @@ function enrichOpeningWithLearnerModel(openingText: string, learnerModel?: Learn
   if (learnerModel.goal?.title?.trim()) {
     const goal = learnerModel.goal.title.trim();
     const by = learnerModel.goal.targetDate ? ` (${learnerModel.goal.targetDate})` : '';
-    extras.push(`Goal: ${goal}${by}.`);
+    // Em dash — not "Title:" — so the teacher message parser won't invent a section card.
+    extras.push(`Твоя цель — ${goal}${by}.`);
   }
-  const skills = learnerModel.placement.skillProfile;
-  if (skills) {
-    const hints = Object.entries(skills)
-      .filter(([, e]) => e.levelEstimate)
-      .slice(0, 3)
-      .map(([s, e]) => `${s}≈${e.levelEstimate}`);
-    if (hints.length) extras.push(`Skill focus from placement: ${hints.join(', ')}.`);
-  }
+  // Skip raw skillProfile dump (was rendering as English "SKILL FOCUS FROM PLACEMENT" chrome).
   if (!extras.length) return openingText;
-  return `${openingText}\n\n${extras.join(' ')}`;
+  return `${openingText.trim()}\n\n${extras.join(' ')}`;
+}
+
+/** Detect path openings that the teacher UI parser shreds into nested cards. */
+export function isBrokenPlacementPathOpening(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (/skill\s+focus\s+from\s+placement/i.test(t)) return true;
+  if (/\([^)]*\s\/\s[^)]*\)/.test(t)) return true;
+  if (/^(Первый шаг|First step|第一步)\s*[:：]/m.test(t)) return true;
+  if (/^(Первый круг|First round|第一轮)\s*[:：]/m.test(t)) return true;
+  // Old copy asked for free-write in chat while Practice buttons exist below.
+  if (/напиши\s+2|write\s+2|用\s*2|写\s*2/i.test(t)) return true;
+  if (/предложени[яй].*вчера|sentences about yesterday|句话写昨天/i.test(t)) return true;
+  return false;
+}
+
+export function isPlacementPathLessonId(id: string | null | undefined): boolean {
+  return typeof id === 'string' && id.startsWith('tl-path-');
 }
 
 /** Stable first teacher chat for the post-placement learning path. */

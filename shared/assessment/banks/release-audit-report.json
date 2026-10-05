@@ -1,0 +1,222 @@
+{
+  "phase": "C-release-audit",
+  "prefixesTotalFound": 0,
+  "prefixesTotalStripped": 0,
+  "retiredTotal": 0,
+  "grandTotalAfter": 1123,
+  "perLang": [
+    {
+      "language": "en",
+      "before": 234,
+      "prefixesFound": 0,
+      "prefixesStripped": 0,
+      "retiredDuplicates": [],
+      "after": 234,
+      "exactDupRate": 0,
+      "nearDupRate": 0.17094017094017094,
+      "nonsense": [],
+      "artifactsAfter": {
+        "technical_case_prefix": 0,
+        "todo_placeholder": 0,
+        "bracket_placeholder": 0,
+        "brace_placeholder": 0,
+        "debug_marker": 0,
+        "metadata_leak": 0
+      },
+      "checksum": "sha256:02ad6c1e592f057cabd626a09c704cdc96643237a9be8ed9e3cf44d367b54d70",
+      "gapsVs400": 166,
+      "byCefr": {
+        "A1": 40,
+        "A2": 44,
+        "B1": 37,
+        "B2": 35,
+        "C1": 57,
+        "C2": 21
+      },
+      "bySkill": {
+        "grammar": 58,
+        "vocabulary": 47,
+        "reading": 69,
+        "functional": 60
+      }
+    },
+    {
+      "language": "fr",
+      "before": 209,
+      "prefixesFound": 0,
+      "prefixesStripped": 0,
+      "retiredDuplicates": [],
+      "after": 209,
+      "exactDupRate": 0,
+      "nearDupRate": 0.18660287081339713,
+      "nonsense": [],
+      "artifactsAfter": {
+        "technical_case_prefix": 0,
+        "todo_placeholder": 0,
+        "bracket_placeholder": 0,
+        "brace_placeholder": 0,
+        "debug_marker": 0,
+        "metadata_leak": 0
+      },
+      "checksum": "sha256:c423e2603184277cdbe2d0fa865afa8cfe198ce334911bf764f12927e73edef2",
+      "gapsVs400": 191,
+      "byCefr": {
+        "A1": 24,
+        "A2": 45,
+        "B1": 26,
+        "B2": 34,
+        "C1": 56,
+        "C2": 24
+      },
+      "bySkill": {
+        "grammar": 59,
+        "vocabulary": 34,
+        "reading": 62,
+        "functional": 54
+      }
+    },
+    {
+      "language": "zh",
+      "before": 248,
+      "prefixesFound": 0,
+      "prefixesStripped": 0,
+      "retiredDuplicates": [],
+      "after": 248,
+      "exactDupRate": 0,
+      "nearDupRate": 0.016129032258064516,
+      "nonsense": [],
+      "artifactsAfter": {
+        "technical_case_prefix": 0,
+        "todo_placeholder": 0,
+        "bracket_placeholder": 0,
+        "brace_placeholder": 0,
+        "debug_marker": 0,
+        "metadata_leak": 0
+      },
+      "checksum": "sha256:463dbc5b6ccfe53f6c4b9b00788ed534b899f10b5187585719f318325c2c5d20",
+      "gapsVs400": 152,
+      "byCefr": {
+        "A1": 20,
+        "A2": 48,
+        "B1": 42,
+        "B2": 39,
+        "C1": 61,
+        "C2": 38
+      },
+      "bySkill": {
+        "grammar": 62,
+        "vocabulary": 50,
+        "reading": 67,
+        "functional": 69
+      }
+    },
+    {
+      "language": "de",
+      "before": 220,
+      "prefixesFound": 0,
+      "prefixesStripped": 0,
+      "retiredDuplicates": [],
+      "after": 220,
+      "exactDupRate": 0,
+      "nearDupRate": 0.23636363636363636,
+      "nonsense": [],
+      "artifactsAfter": {
+        "technical_case_prefix": 0,
+        "todo_placeholder": 0,
+        "bracket_placeholder": 0,
+        "brace_placeholder": 0,
+        "debug_marker": 0,
+        "metadata_leak": 0
+      },
+      "checksum": "sha256:45478435455b39629836275eb1459ec03430980d9c6f108047fb38b74e43ab6f",
+      "gapsVs400": 180,
+      "byCefr": {
+        "A1": 25,
+        "A2": 44,
+        "B1": 31,
+        "B2": 36,
+        "C1": 55,
+        "C2": 29
+      },
+      "bySkill": {
+        "grammar": 62,
+        "vocabulary": 41,
+        "reading": 58,
+        "functional": 59
+      }
+    },
+    {
+      "language": "ru",
+      "before": 212,
+      "prefixesFound": 0,
+      "prefixesStripped": 0,
+      "retiredDuplicates": [],
+      "after": 212,
+      "exactDupRate": 0,
+      "nearDupRate": 0.21226415094339623,
+      "nonsense": [],
+      "artifactsAfter": {
+        "technical_case_prefix": 0,
+        "todo_placeholder": 0,
+        "bracket_placeholder": 0,
+        "brace_placeholder": 0,
+        "debug_marker": 0,
+        "metadata_leak": 0
+      },
+      "checksum": "sha256:a18b854f4e9d354f23dd2cdf2284c3734a20aa47dc77f8c0cd52d5db77e183bf",
+      "gapsVs400": 188,
+      "byCefr": {
+        "A1": 14,
+        "A2": 45,
+        "B1": 42,
+        "B2": 29,
+        "C1": 58,
+        "C2": 24
+      },
+      "bySkill": {
+        "grammar": 50,
+        "vocabulary": 42,
+        "reading": 62,
+        "functional": 58
+      }
+    }
+  ],
+  "freeze": {
+    "releaseLabel": "production-dogfood-v1",
+    "frozenAt": "2026-10-05T11:00:42.727Z",
+    "bankVersion": "v1",
+    "policy": [
+      "Do not silently edit item content",
+      "Substantive content change requires new itemVersion / new item id",
+      "Rejected/retired items retain historical identity for canonical replay",
+      "All items remain approved_provisional — no calibration"
+    ],
+    "languages": {
+      "en": {
+        "itemCount": 234,
+        "checksum": "sha256:02ad6c1e592f057cabd626a09c704cdc96643237a9be8ed9e3cf44d367b54d70",
+        "gapsVs400": 166
+      },
+      "fr": {
+        "itemCount": 209,
+        "checksum": "sha256:c423e2603184277cdbe2d0fa865afa8cfe198ce334911bf764f12927e73edef2",
+        "gapsVs400": 191
+      },
+      "zh": {
+        "itemCount": 248,
+        "checksum": "sha256:463dbc5b6ccfe53f6c4b9b00788ed534b899f10b5187585719f318325c2c5d20",
+        "gapsVs400": 152
+      },
+      "de": {
+        "itemCount": 220,
+        "checksum": "sha256:45478435455b39629836275eb1459ec03430980d9c6f108047fb38b74e43ab6f",
+        "gapsVs400": 180
+      },
+      "ru": {
+        "itemCount": 212,
+        "checksum": "sha256:a18b854f4e9d354f23dd2cdf2284c3734a20aa47dc77f8c0cd52d5db77e183bf",
+        "gapsVs400": 188
+      }
+    }
+  }
+}

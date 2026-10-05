@@ -1,0 +1,721 @@
+{
+  "generatedAt": "2026-10-05T09:59:07.687Z",
+  "targetSlots": 240,
+  "slotsBuilt": 240,
+  "overall": {
+    "generated": 573,
+    "pass": 154,
+    "revise": 67,
+    "reject": 237,
+    "duplicate": 115,
+    "deterministicReject": 118,
+    "semanticReject": 119,
+    "adversarialReject": 119,
+    "rejectionReasons": {
+      "DUPLICATE_ITEM": 115,
+      "gate:REVISE": 67,
+      "sem:CUEING_SUSPECT": 10,
+      "adv:CUEING_SUSPECT": 10,
+      "crit:CUEING_SUSPECT": 20,
+      "det:ANSWER_LEAK": 11,
+      "crit:ANSWER_LEAK": 11,
+      "det:LENGTH_CUE": 107,
+      "crit:LENGTH_CUE": 107,
+      "sem:CEFR_MISMATCH_SUSPECT": 109,
+      "adv:CEFR_MISMATCH_SUSPECT": 109,
+      "crit:CEFR_MISMATCH_SUSPECT": 218
+    }
+  },
+  "perLanguage": {
+    "en": {
+      "generated": 124,
+      "PASS": 27,
+      "REVISE": 29,
+      "REJECT": 45,
+      "duplicate": 23,
+      "deterministicReject": 29,
+      "semanticReject": 16,
+      "adversarialReject": 16,
+      "approvedIds": [
+        "bank.en.grammar.A1.0.a0.c3941e938b5a6925",
+        "bank.en.grammar.A1.1.a1.f86fcf553631faa5",
+        "bank.en.vocabulary.A1.0.a0.150fff7d7d9c194f",
+        "bank.en.vocabulary.A1.1.a1.85b82d2d3507b79a",
+        "bank.en.reading.A1.0.a0.6ffeeb4baa8f15b4",
+        "bank.en.reading.A1.1.a1.b892f8aac91d144b",
+        "bank.en.functional.A1.0.a0.55a3584abb85181d",
+        "bank.en.grammar.A2.0.a0.b06a523305c0b4f9",
+        "bank.en.grammar.A2.1.a1.7c68035cc2cf8437",
+        "bank.en.vocabulary.A2.0.a0.a8d3c32a394dcadf",
+        "bank.en.reading.A2.0.a0.2277f9a7620739a4",
+        "bank.en.functional.A2.0.a0.52905f6c78bd5d26",
+        "bank.en.functional.A2.1.a1.a602a4acc2b44397",
+        "bank.en.grammar.B1.0.a0.5971bb0e762b89f0",
+        "bank.en.grammar.B1.1.a1.44c0694410f02747",
+        "bank.en.vocabulary.B1.0.a0.dd08005185011bda",
+        "bank.en.vocabulary.B1.1.a1.74915c3368f289dd",
+        "bank.en.reading.B1.0.a1.5c186f1e3339d7e9",
+        "bank.en.vocabulary.B2.0.a0.903b0f7273c95cd0",
+        "bank.en.vocabulary.B2.1.a1.df432727c075bf16",
+        "bank.en.reading.B2.0.a1.0b821b92a930627d",
+        "bank.en.grammar.C1.0.a0.0230dfdbacfca90d",
+        "bank.en.vocabulary.C1.0.a0.85bfb829ad115c73",
+        "bank.en.vocabulary.C1.1.a1.f5381e326049398f",
+        "bank.en.grammar.C2.0.a1.0f6a43f01cd26acc",
+        "bank.en.vocabulary.C2.0.a0.3c51f6d68a80d2db",
+        "bank.en.vocabulary.C2.1.a1.fc865f65dedf0492"
+      ]
+    },
+    "fr": {
+      "generated": 122,
+      "PASS": 28,
+      "REVISE": 10,
+      "REJECT": 58,
+      "duplicate": 26,
+      "deterministicReject": 27,
+      "semanticReject": 31,
+      "adversarialReject": 31,
+      "approvedIds": [
+        "bank.fr.grammar.A1.0.a0.0df6fd96794e77fd",
+        "bank.fr.grammar.A1.1.a1.f35f561d6b9e9e5b",
+        "bank.fr.vocabulary.A1.0.a0.6325b342c4f32ec1",
+        "bank.fr.vocabulary.A1.1.a1.641a51bfab6bd2fa",
+        "bank.fr.reading.A1.0.a0.0b3bfea8a55695ce",
+        "bank.fr.reading.A1.1.a1.423ad500c731a025",
+        "bank.fr.functional.A1.0.a0.b47e0d80c6a06f8b",
+        "bank.fr.grammar.A2.0.a0.f6766f433d176190",
+        "bank.fr.grammar.A2.1.a1.955c597fdf5472e0",
+        "bank.fr.vocabulary.A2.0.a0.d071d89934eb9142",
+        "bank.fr.vocabulary.A2.1.a1.1c261c5d8e994fdc",
+        "bank.fr.reading.A2.0.a0.360ddf87b3534019",
+        "bank.fr.functional.A2.0.a0.94e191ef514d4c38",
+        "bank.fr.functional.A2.1.a1.7e18996cf3bd86b2",
+        "bank.fr.grammar.B1.0.a0.ef24998376bf906b",
+        "bank.fr.grammar.B1.1.a1.f9c877c606fe5c72",
+        "bank.fr.vocabulary.B1.0.a0.bfd51f66d807d6ca",
+        "bank.fr.vocabulary.B1.1.a1.8d8115ed65cc8057",
+        "bank.fr.reading.B1.0.a1.598e3c372313c9b6",
+        "bank.fr.functional.B1.0.a0.e910f40b4d17163b",
+        "bank.fr.functional.B1.1.a1.d6e1f60d29041998",
+        "bank.fr.vocabulary.B2.0.a1.2f9f481ad0191689",
+        "bank.fr.reading.B2.0.a1.bd32a664ac5634ed",
+        "bank.fr.vocabulary.C1.0.a0.6de1760516391551",
+        "bank.fr.reading.C1.0.a0.adad5772152c3f94",
+        "bank.fr.reading.C1.1.a1.b9727a53e5889aa3",
+        "bank.fr.vocabulary.C2.0.a1.9b389321f46f7254",
+        "bank.fr.reading.C2.0.a0.fd454a473c18bfbe"
+      ]
+    },
+    "zh": {
+      "generated": 93,
+      "PASS": 39,
+      "REVISE": 9,
+      "REJECT": 24,
+      "duplicate": 21,
+      "deterministicReject": 0,
+      "semanticReject": 24,
+      "adversarialReject": 24,
+      "approvedIds": [
+        "bank.zh.grammar.A1.0.a0.9312e9f9fe7d219b",
+        "bank.zh.grammar.A1.1.a1.1e9537abbcfae907",
+        "bank.zh.vocabulary.A1.0.a0.2ccb5f47b418a1f6",
+        "bank.zh.vocabulary.A1.1.a1.30759c4d61ad5563",
+        "bank.zh.reading.A1.0.a0.cad87c8a6d360da1",
+        "bank.zh.reading.A1.1.a1.a30bb6abeea4f7a8",
+        "bank.zh.functional.A1.0.a0.e69db3e25ec78682",
+        "bank.zh.functional.A1.1.a1.f3d80bce2c9178dd",
+        "bank.zh.grammar.A2.0.a0.2cb9673e4523d222",
+        "bank.zh.grammar.A2.1.a1.f947a1acd9136e2f",
+        "bank.zh.vocabulary.A2.0.a0.38b68450921f15c8",
+        "bank.zh.vocabulary.A2.1.a1.f12af29c51c11f3c",
+        "bank.zh.reading.A2.0.a0.cdb549c1a28c5a61",
+        "bank.zh.reading.A2.1.a1.6aa9b1134182540c",
+        "bank.zh.functional.A2.0.a0.741b3f42fa92e564",
+        "bank.zh.functional.A2.1.a1.58651bb939988146",
+        "bank.zh.grammar.B1.0.a0.cc2a5367ad4373ad",
+        "bank.zh.grammar.B1.1.a1.b5f7f377e60206aa",
+        "bank.zh.vocabulary.B1.0.a0.dfcde16fe63baa88",
+        "bank.zh.vocabulary.B1.1.a1.dcf29e562e0cd5fa",
+        "bank.zh.reading.B1.0.a0.21670b97a36eb50b",
+        "bank.zh.reading.B1.1.a1.c77a2b573b30c4c8",
+        "bank.zh.functional.B1.0.a0.c6fedcca9f37d19a",
+        "bank.zh.functional.B1.1.a1.782ac94e0c6c00d5",
+        "bank.zh.vocabulary.B2.0.a0.57d9c8be5cae0dde",
+        "bank.zh.vocabulary.B2.1.a1.6390102b8c7c5960",
+        "bank.zh.reading.B2.0.a0.d2b0354be12a6887",
+        "bank.zh.reading.B2.1.a1.e52e7087c5278f63",
+        "bank.zh.functional.B2.0.a0.299612a1f4b3b3e4",
+        "bank.zh.vocabulary.C1.0.a0.2588503a0d10058d",
+        "bank.zh.vocabulary.C1.1.a1.6b2ab45fc396c389",
+        "bank.zh.reading.C1.0.a0.fea869521338a01d",
+        "bank.zh.reading.C1.1.a1.0671bf87a49fba85",
+        "bank.zh.functional.C1.0.a0.5ceb646694dde3b5",
+        "bank.zh.vocabulary.C2.0.a0.111f49d860f265d6",
+        "bank.zh.vocabulary.C2.1.a1.e7b9db10497283b6",
+        "bank.zh.reading.C2.0.a0.b01901a49a90aff8",
+        "bank.zh.reading.C2.1.a1.1bbf527419763b5e",
+        "bank.zh.functional.C2.0.a0.8df705eb1ef95878"
+      ]
+    },
+    "de": {
+      "generated": 125,
+      "PASS": 27,
+      "REVISE": 13,
+      "REJECT": 63,
+      "duplicate": 22,
+      "deterministicReject": 39,
+      "semanticReject": 24,
+      "adversarialReject": 24,
+      "approvedIds": [
+        "bank.de.grammar.A1.0.a0.9aa17f082b15cfb4",
+        "bank.de.grammar.A1.1.a1.4dd1f8f3659fc209",
+        "bank.de.vocabulary.A1.0.a0.742c09d4ed9d8c27",
+        "bank.de.vocabulary.A1.1.a1.f1286ec9de94f674",
+        "bank.de.reading.A1.0.a0.a683bce68a07e90b",
+        "bank.de.functional.A1.0.a0.d39268e91f4b1bcb",
+        "bank.de.functional.A1.1.a1.614270675466c0ba",
+        "bank.de.grammar.A2.0.a0.de40926585ee1381",
+        "bank.de.grammar.A2.1.a1.7a03504a9c4ae7c9",
+        "bank.de.vocabulary.A2.0.a0.04af4ef05827fbb7",
+        "bank.de.vocabulary.A2.1.a1.e5aa572219d61d12",
+        "bank.de.reading.A2.0.a0.a25b6a1a41e7861d",
+        "bank.de.reading.A2.1.a1.8ce51ef44134784c",
+        "bank.de.functional.A2.0.a1.d4c462811f17f839",
+        "bank.de.grammar.B1.0.a0.ab97d7e2ccc5eed4",
+        "bank.de.grammar.B1.1.a1.b885b745ed8475a2",
+        "bank.de.vocabulary.B1.0.a1.a9c709d8cf8b434d",
+        "bank.de.functional.B1.0.a0.a31c33b5d1fa327a",
+        "bank.de.functional.B1.1.a1.d6683f5daeaf9d38",
+        "bank.de.vocabulary.B2.0.a0.35747904e1c04619",
+        "bank.de.vocabulary.B2.1.a1.b5a55d778062c3a6",
+        "bank.de.reading.B2.0.a1.65b4c614bc37a62a",
+        "bank.de.vocabulary.C1.0.a0.6181edbc2bc4841d",
+        "bank.de.vocabulary.C1.1.a1.a345619e1449006b",
+        "bank.de.reading.C1.0.a0.82d73f36d34c207a",
+        "bank.de.vocabulary.C2.0.a0.ce4fe53d54135759",
+        "bank.de.vocabulary.C2.1.a1.30bca76a2595fc00"
+      ]
+    },
+    "ru": {
+      "generated": 109,
+      "PASS": 33,
+      "REVISE": 6,
+      "REJECT": 47,
+      "duplicate": 23,
+      "deterministicReject": 23,
+      "semanticReject": 24,
+      "adversarialReject": 24,
+      "approvedIds": [
+        "bank.ru.grammar.A1.0.a0.d8f5f65912458d75",
+        "bank.ru.grammar.A1.1.a1.bf1d9da16d227f4d",
+        "bank.ru.vocabulary.A1.0.a0.367b5298cfdf3646",
+        "bank.ru.vocabulary.A1.1.a1.a9f524817022a034",
+        "bank.ru.reading.A1.0.a0.69f826230c275102",
+        "bank.ru.reading.A1.1.a1.e7ace42090746613",
+        "bank.ru.functional.A1.0.a0.8e1fe006a88cb3ce",
+        "bank.ru.grammar.A2.0.a0.a251f832e3f0620d",
+        "bank.ru.grammar.A2.1.a1.0e117cf35f647463",
+        "bank.ru.vocabulary.A2.0.a0.30d84c33169734d5",
+        "bank.ru.vocabulary.A2.1.a1.f75c90ec417e7f47",
+        "bank.ru.reading.A2.0.a1.42b2a4cec2aaca94",
+        "bank.ru.functional.A2.0.a0.2b5481167fbb890b",
+        "bank.ru.functional.A2.1.a1.d28e3e48af98352e",
+        "bank.ru.grammar.B1.0.a0.05d88312242c783f",
+        "bank.ru.grammar.B1.1.a1.d6f7b59e6b46bf6e",
+        "bank.ru.vocabulary.B1.0.a0.ec2388e37890da30",
+        "bank.ru.vocabulary.B1.1.a1.8bdbdb296cc46766",
+        "bank.ru.reading.B1.0.a0.030b62ebc9ea9dbe",
+        "bank.ru.reading.B1.1.a1.d896f8a3bca49b4a",
+        "bank.ru.functional.B1.0.a0.80fd7c3a2ad084e8",
+        "bank.ru.functional.B1.1.a1.591e4d2fe3127b4c",
+        "bank.ru.vocabulary.B2.0.a0.7f9d1cf8ca8c7ad6",
+        "bank.ru.vocabulary.B2.1.a1.371a25e440896c77",
+        "bank.ru.reading.B2.0.a0.d8799023eb9fd8ba",
+        "bank.ru.reading.B2.1.a1.0431db376bce0542",
+        "bank.ru.functional.B2.0.a0.f62077ba113213dc",
+        "bank.ru.vocabulary.C1.0.a0.696ed9dde799794b",
+        "bank.ru.vocabulary.C1.1.a1.70bde6840da54861",
+        "bank.ru.reading.C1.0.a1.110d09f05346dd01",
+        "bank.ru.vocabulary.C2.0.a0.dc56b82221d92598",
+        "bank.ru.vocabulary.C2.1.a1.1cc95a58cdd15944",
+        "bank.ru.reading.C2.0.a0.bf18b98d043dc2d3"
+      ]
+    }
+  },
+  "coverage": {
+    "byCefr": {
+      "A1": 36,
+      "A2": 35,
+      "B1": 33,
+      "B2": 18,
+      "C1": 17,
+      "C2": 15
+    },
+    "bySkill": {
+      "grammar": 32,
+      "vocabulary": 55,
+      "reading": 39,
+      "functional": 28
+    },
+    "byConstruct": {
+      "en.grammar.be_have_do": 1,
+      "en.grammar.pronouns_possessives": 1,
+      "en.vocab.everyday_basic": 2,
+      "en.reading.signs_short_messages": 2,
+      "en.functional.basic_situations": 2,
+      "en.grammar.present_simple_continuous": 1,
+      "en.grammar.basic_past_can": 1,
+      "en.vocab.practical_collocations": 2,
+      "en.reading.practical_notices": 1,
+      "en.functional.invites_apologies": 1,
+      "en.grammar.present_perfect_intro": 1,
+      "en.grammar.conditionals_relative_passive": 1,
+      "en.vocab.mid_collocations": 2,
+      "en.reading.main_idea_detail": 1,
+      "en.vocab.precision_polysemy": 2,
+      "en.reading.argument_inference": 1,
+      "en.grammar.advanced_modality_focus": 1,
+      "en.vocab.idiomatic_nuance": 2,
+      "en.grammar.fine_structure_c2": 1,
+      "en.vocab.fine_distinctions_c2": 1,
+      "fr.grammar.etre_avoir_articles": 1,
+      "fr.grammar.present_negation_questions": 1,
+      "fr.vocab.quotidien": 3,
+      "fr.reading.panneaux_messages": 2,
+      "fr.functional.situations_base": 2,
+      "fr.grammar.possessifs_prepositions": 1,
+      "fr.grammar.passe_compose_futur": 1,
+      "fr.vocab.collocations_courantes": 4,
+      "fr.reading.notices_pratiques": 1,
+      "fr.functional.invitations_excuses": 2,
+      "fr.grammar.imparfait_cod": 1,
+      "fr.grammar.relatives_conditional": 1,
+      "fr.reading.idee_principale": 1,
+      "fr.functional.conseil_clarification": 1,
+      "fr.reading.inference_registre": 2,
+      "fr.vocab.precision_lexicale": 1,
+      "fr.reading.discours_dense": 1,
+      "fr.vocab.distinctions_fines_c2": 1,
+      "fr.reading.inference_avancee_c2": 1,
+      "zh.grammar.shi_you_measure": 1,
+      "zh.grammar.questions_negation": 1,
+      "zh.vocab.richang": 3,
+      "zh.reading.signs_messages": 3,
+      "zh.functional.basic_exchanges": 3,
+      "zh.grammar.location_possession": 1,
+      "zh.grammar.aspect_le_guo": 1,
+      "zh.vocab.collocations": 4,
+      "zh.reading.practical_notices": 2,
+      "zh.functional.invitations_apologies": 2,
+      "zh.grammar.complements_basic": 1,
+      "zh.grammar.ba_bei_comparatives": 1,
+      "zh.reading.main_idea": 2,
+      "zh.functional.advice_clarification": 2,
+      "zh.vocab.precision": 4,
+      "zh.reading.inference_register": 2,
+      "zh.reading.dense_discourse": 2,
+      "zh.functional.negotiation_register": 1,
+      "zh.vocab.fine_distinctions_c2": 1,
+      "zh.reading.advanced_inference_c2": 1,
+      "zh.functional.pragmatic_nuance_c2": 1,
+      "de.grammar.sein_haben_articles": 1,
+      "de.grammar.present_negation_questions": 1,
+      "de.vocab.alltag": 3,
+      "de.reading.schilder_nachrichten": 2,
+      "de.functional.basisaustausch": 2,
+      "de.grammar.akkusativ_modals": 1,
+      "de.grammar.perfekt_dativ": 1,
+      "de.vocab.collocations": 3,
+      "de.reading.praktische_hinweise": 1,
+      "de.functional.einladungen_entschuldigungen": 2,
+      "de.grammar.adjective_endings_comparatives": 1,
+      "de.grammar.subordinate_weil_dass": 1,
+      "de.functional.rat_klaerung": 1,
+      "de.vocab.precision": 4,
+      "de.reading.inference_register": 1,
+      "de.reading.dichter_diskurs": 1,
+      "de.vocab.fine_distinctions_c2": 1,
+      "ru.grammar.byt_gender_nominative": 1,
+      "ru.grammar.present_negation_questions": 1,
+      "ru.vocab.bytovoj": 3,
+      "ru.reading.signs_messages": 2,
+      "ru.functional.basic_exchanges": 2,
+      "ru.grammar.accusative_possession": 1,
+      "ru.grammar.past_prepositional": 1,
+      "ru.vocab.collocations": 4,
+      "ru.reading.practical_notices": 2,
+      "ru.functional.invitations_apologies": 2,
+      "ru.grammar.genitive_dative": 1,
+      "ru.grammar.aspect_verbs_of_motion": 1,
+      "ru.reading.main_idea": 2,
+      "ru.functional.advice_clarification": 2,
+      "ru.vocab.precision": 4,
+      "ru.reading.inference_register": 1,
+      "ru.reading.dense_discourse": 1,
+      "ru.vocab.fine_distinctions_c2": 1,
+      "ru.reading.advanced_inference_c2": 1
+    },
+    "byItemType": {
+      "grammarForm": 32,
+      "vocabularyChoice": 55,
+      "readingComprehension": 39,
+      "functionalPhrase": 28
+    },
+    "difficultyWithin": {
+      "low": 52,
+      "mid": 53,
+      "high": 49
+    }
+  },
+  "rejectionReasons": {
+    "DUPLICATE_ITEM": 115,
+    "gate:REVISE": 67,
+    "sem:CUEING_SUSPECT": 10,
+    "adv:CUEING_SUSPECT": 10,
+    "crit:CUEING_SUSPECT": 20,
+    "det:ANSWER_LEAK": 11,
+    "crit:ANSWER_LEAK": 11,
+    "det:LENGTH_CUE": 107,
+    "crit:LENGTH_CUE": 107,
+    "sem:CEFR_MISMATCH_SUSPECT": 109,
+    "adv:CEFR_MISMATCH_SUSPECT": 109,
+    "crit:CEFR_MISMATCH_SUSPECT": 218
+  },
+  "samplePassByLanguage": {
+    "en": [
+      {
+        "id": "bank.en.grammar.A1.0.a0.c3941e938b5a6925",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "I ____ from Spain.",
+        "choices": [
+          "am",
+          "is",
+          "are",
+          "be"
+        ],
+        "correctChoice": "am"
+      },
+      {
+        "id": "bank.en.grammar.A1.1.a1.f86fcf553631faa5",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "____ there a park near here?",
+        "choices": [
+          "Is",
+          "Are",
+          "Am",
+          "Be"
+        ],
+        "correctChoice": "Is"
+      },
+      {
+        "id": "bank.en.vocabulary.A1.0.a0.150fff7d7d9c194f",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "I need a ____ of water.",
+        "choices": [
+          "glass",
+          "chair",
+          "shoe",
+          "door"
+        ],
+        "correctChoice": "glass"
+      },
+      {
+        "id": "bank.en.vocabulary.A1.1.a1.85b82d2d3507b79a",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "Please open the ____.",
+        "choices": [
+          "window",
+          "soup",
+          "music",
+          "sleep"
+        ],
+        "correctChoice": "window"
+      },
+      {
+        "id": "bank.en.reading.A1.0.a0.6ffeeb4baa8f15b4",
+        "level": "A1",
+        "skill": "reading",
+        "stem": "Note on a door: \"Back at 3.\" What does it mean?",
+        "choices": [
+          "The person returns at 3",
+          "The shop opens at 3 forever",
+          "Buy three tickets",
+          "Call at room 3"
+        ],
+        "correctChoice": "The person returns at 3"
+      }
+    ],
+    "fr": [
+      {
+        "id": "bank.fr.grammar.A1.0.a0.0df6fd96794e77fd",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "Je ____ étudiant.",
+        "choices": [
+          "suis",
+          "es",
+          "est",
+          "sommes"
+        ],
+        "correctChoice": "suis"
+      },
+      {
+        "id": "bank.fr.grammar.A1.1.a1.f35f561d6b9e9e5b",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "____-tu un livre ?",
+        "choices": [
+          "As",
+          "Est",
+          "Sont",
+          "Avons"
+        ],
+        "correctChoice": "As"
+      },
+      {
+        "id": "bank.fr.vocabulary.A1.0.a0.6325b342c4f32ec1",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "Je bois un ____ d’eau.",
+        "choices": [
+          "verre",
+          "chaise",
+          "soulier",
+          "mur"
+        ],
+        "correctChoice": "verre"
+      },
+      {
+        "id": "bank.fr.vocabulary.A1.1.a1.641a51bfab6bd2fa",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "Ouvre la ____, s’il te plaît.",
+        "choices": [
+          "fenêtre",
+          "soupe",
+          "musique",
+          "nuit"
+        ],
+        "correctChoice": "fenêtre"
+      },
+      {
+        "id": "bank.fr.reading.A1.0.a0.0b3bfea8a55695ce",
+        "level": "A1",
+        "skill": "reading",
+        "stem": "Affiche : « Retour à 15 h ». Que cela veut-il dire ?",
+        "choices": [
+          "La personne revient à 15 h",
+          "Le magasin ouvre toujours à 15 h",
+          "Achetez trois billets",
+          "Appelez la chambre 15"
+        ],
+        "correctChoice": "La personne revient à 15 h"
+      }
+    ],
+    "zh": [
+      {
+        "id": "bank.zh.grammar.A1.0.a0.9312e9f9fe7d219b",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "我 ____ 学生。",
+        "choices": [
+          "是",
+          "有",
+          "在",
+          "很"
+        ],
+        "correctChoice": "是"
+      },
+      {
+        "id": "bank.zh.grammar.A1.1.a1.1e9537abbcfae907",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "桌子上 ____ 一本书。",
+        "choices": [
+          "有",
+          "是",
+          "很",
+          "也"
+        ],
+        "correctChoice": "有"
+      },
+      {
+        "id": "bank.zh.vocabulary.A1.0.a0.2ccb5f47b418a1f6",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "我想喝一点 ____。",
+        "choices": [
+          "水",
+          "椅子",
+          "鞋子",
+          "门"
+        ],
+        "correctChoice": "水"
+      },
+      {
+        "id": "bank.zh.vocabulary.A1.1.a1.30759c4d61ad5563",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "请打开 ____。",
+        "choices": [
+          "窗户",
+          "汤",
+          "音乐门",
+          "睡觉"
+        ],
+        "correctChoice": "窗户"
+      },
+      {
+        "id": "bank.zh.reading.A1.0.a0.cad87c8a6d360da1",
+        "level": "A1",
+        "skill": "reading",
+        "stem": "门上纸条：“三点回来。”是什么意思？",
+        "choices": [
+          "那人三点回来",
+          "商店永远三点开门",
+          "买三张票",
+          "打到3号房"
+        ],
+        "correctChoice": "那人三点回来"
+      }
+    ],
+    "de": [
+      {
+        "id": "bank.de.grammar.A1.0.a0.9aa17f082b15cfb4",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "Ich ____ Student.",
+        "choices": [
+          "bin",
+          "bist",
+          "ist",
+          "seid"
+        ],
+        "correctChoice": "bin"
+      },
+      {
+        "id": "bank.de.grammar.A1.1.a1.4dd1f8f3659fc209",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "____ du ein Buch?",
+        "choices": [
+          "Hast",
+          "Bist",
+          "Seid",
+          "Haben"
+        ],
+        "correctChoice": "Hast"
+      },
+      {
+        "id": "bank.de.vocabulary.A1.0.a0.742c09d4ed9d8c27",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "Ich brauche ein ____ Wasser.",
+        "choices": [
+          "Glas",
+          "Stuhl",
+          "Schuh",
+          "Tür"
+        ],
+        "correctChoice": "Glas"
+      },
+      {
+        "id": "bank.de.vocabulary.A1.1.a1.f1286ec9de94f674",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "Bitte öffne das ____.",
+        "choices": [
+          "Fenster",
+          "Suppe",
+          "Musikstück",
+          "Schlaf"
+        ],
+        "correctChoice": "Fenster"
+      },
+      {
+        "id": "bank.de.reading.A1.0.a0.a683bce68a07e90b",
+        "level": "A1",
+        "skill": "reading",
+        "stem": "Zettel: „Zurück um 15.“ Bedeutung?",
+        "choices": [
+          "Die Person kommt um 15 zurück",
+          "Laden öffnet immer um 15",
+          "Drei Tickets kaufen",
+          "Zimmer 15 anrufen"
+        ],
+        "correctChoice": "Die Person kommt um 15 zurück"
+      }
+    ],
+    "ru": [
+      {
+        "id": "bank.ru.grammar.A1.0.a0.d8f5f65912458d75",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "Это ____ книга.",
+        "choices": [
+          "моя",
+          "мой",
+          "моё",
+          "мои"
+        ],
+        "correctChoice": "моя"
+      },
+      {
+        "id": "bank.ru.grammar.A1.1.a1.bf1d9da16d227f4d",
+        "level": "A1",
+        "skill": "grammar",
+        "stem": "У меня ____ книга.",
+        "choices": [
+          "есть",
+          "есться",
+          "быть",
+          "иметь"
+        ],
+        "correctChoice": "есть"
+      },
+      {
+        "id": "bank.ru.vocabulary.A1.0.a0.367b5298cfdf3646",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "Мне нужен ____ воды.",
+        "choices": [
+          "стакан",
+          "стул",
+          "ботинок",
+          "дверь"
+        ],
+        "correctChoice": "стакан"
+      },
+      {
+        "id": "bank.ru.vocabulary.A1.1.a1.a9f524817022a034",
+        "level": "A1",
+        "skill": "vocabulary",
+        "stem": "Открой, пожалуйста, ____.",
+        "choices": [
+          "окно",
+          "суп",
+          "музыку-дверь",
+          "сон"
+        ],
+        "correctChoice": "окно"
+      },
+      {
+        "id": "bank.ru.reading.A1.0.a0.69f826230c275102",
+        "level": "A1",
+        "skill": "reading",
+        "stem": "Записка: «Вернусь в 15». Что это значит?",
+        "choices": [
+          "Человек вернётся в 15",
+          "Магазин всегда открыт в 15",
+          "Купите три билета",
+          "Звоните в комнату 15"
+        ],
+        "correctChoice": "Человек вернётся в 15"
+      }
+    ]
+  }
+}

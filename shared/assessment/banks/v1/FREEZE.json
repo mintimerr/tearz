@@ -1,0 +1,42 @@
+{
+  "releaseLabel": "production-dogfood-v1",
+  "frozenAt": "2026-10-05T11:01:56.750Z",
+  "bankVersion": "v1",
+  "policy": [
+    "Do not silently edit item content",
+    "Substantive content change requires new itemVersion / new item id",
+    "Rejected/retired items retain historical identity for canonical replay",
+    "All items remain approved_provisional — no calibration"
+  ],
+  "note": "Honest post-prefix inventory after retiring Case-N-masked duplicates. Gaps vs 400 are reported; not backfilled.",
+  "languages": {
+    "en": {
+      "itemCount": 234,
+      "checksum": "sha256:02ad6c1e592f057cabd626a09c704cdc96643237a9be8ed9e3cf44d367b54d70",
+      "gapsVs400": 166
+    },
+    "fr": {
+      "itemCount": 209,
+      "checksum": "sha256:c423e2603184277cdbe2d0fa865afa8cfe198ce334911bf764f12927e73edef2",
+      "gapsVs400": 191
+    },
+    "zh": {
+      "itemCount": 248,
+      "checksum": "sha256:463dbc5b6ccfe53f6c4b9b00788ed534b899f10b5187585719f318325c2c5d20",
+      "gapsVs400": 152
+    },
+    "de": {
+      "itemCount": 220,
+      "checksum": "sha256:45478435455b39629836275eb1459ec03430980d9c6f108047fb38b74e43ab6f",
+      "gapsVs400": 180
+    },
+    "ru": {
+      "itemCount": 212,
+      "checksum": "sha256:a18b854f4e9d354f23dd2cdf2284c3734a20aa47dc77f8c0cd52d5db77e183bf",
+      "gapsVs400": 188
+    }
+  },
+  "prefixesStripped": 1527,
+  "retiredDuplicates": 877,
+  "honestUniqueTotal": 1123
+}

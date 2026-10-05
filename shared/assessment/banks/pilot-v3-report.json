@@ -1,0 +1,624 @@
+{
+  "phase": "B.2-pilot-v3",
+  "generated": 470,
+  "PASS": 168,
+  "REVISE": 48,
+  "REJECT": 141,
+  "approvedAfterSanity": 168,
+  "postPassSanityDropped": [],
+  "byLanguage": {
+    "en": {
+      "generated": 87,
+      "PASS": 38,
+      "REVISE": 12,
+      "REJECT": 12,
+      "duplicate": 25,
+      "approvedAfterSanity": 38,
+      "promptVersions": [
+        "en_item_generation_v2"
+      ]
+    },
+    "fr": {
+      "generated": 93,
+      "PASS": 35,
+      "REVISE": 10,
+      "REJECT": 24,
+      "duplicate": 24,
+      "approvedAfterSanity": 35,
+      "promptVersions": [
+        "fr_item_generation_v2"
+      ]
+    },
+    "zh": {
+      "generated": 99,
+      "PASS": 30,
+      "REVISE": 0,
+      "REJECT": 54,
+      "duplicate": 15,
+      "approvedAfterSanity": 30,
+      "promptVersions": [
+        "zh_item_generation_v2"
+      ]
+    },
+    "de": {
+      "generated": 96,
+      "PASS": 31,
+      "REVISE": 10,
+      "REJECT": 33,
+      "duplicate": 22,
+      "approvedAfterSanity": 31,
+      "promptVersions": [
+        "de_item_generation_v2"
+      ]
+    },
+    "ru": {
+      "generated": 95,
+      "PASS": 34,
+      "REVISE": 16,
+      "REJECT": 18,
+      "duplicate": 27,
+      "approvedAfterSanity": 34,
+      "promptVersions": [
+        "ru_item_generation_v2"
+      ]
+    }
+  },
+  "coverage": {
+    "byCefr": {
+      "A1": 40,
+      "A2": 34,
+      "B1": 31,
+      "B2": 24,
+      "C1": 16,
+      "C2": 23
+    },
+    "bySkill": {
+      "grammar": 42,
+      "vocabulary": 55,
+      "reading": 36,
+      "functional": 35
+    },
+    "byConstruct": {
+      "en.grammar.be_have_do": 1,
+      "en.grammar.pronouns_possessives": 1,
+      "en.vocab.everyday_basic": 3,
+      "en.reading.signs_short_messages": 2,
+      "en.functional.basic_situations": 3,
+      "en.grammar.present_simple_continuous": 1,
+      "en.grammar.basic_past_can": 1,
+      "en.vocab.practical_collocations": 2,
+      "en.reading.practical_notices": 1,
+      "en.functional.invites_apologies": 1,
+      "en.grammar.present_perfect_intro": 1,
+      "en.vocab.mid_collocations": 2,
+      "en.reading.main_idea_detail": 2,
+      "en.functional.advice_clarification": 2,
+      "en.vocab.precision_polysemy": 2,
+      "en.reading.argument_inference": 1,
+      "en.functional.negotiation_register": 1,
+      "en.grammar.advanced_modality_focus": 2,
+      "en.grammar.reported_verb_patterns": 1,
+      "en.vocab.idiomatic_nuance": 2,
+      "en.functional.hedging_pragmatics": 2,
+      "en.grammar.fine_structure_c2": 1,
+      "en.vocab.fine_distinctions_c2": 1,
+      "en.reading.sophisticated_inference_c2": 1,
+      "en.functional.subtle_implication_c2": 1,
+      "fr.grammar.etre_avoir_articles": 1,
+      "fr.grammar.present_negation_questions": 1,
+      "fr.vocab.quotidien": 3,
+      "fr.reading.panneaux_messages": 2,
+      "fr.functional.situations_base": 2,
+      "fr.grammar.possessifs_prepositions": 1,
+      "fr.grammar.passe_compose_futur": 1,
+      "fr.vocab.collocations_courantes": 4,
+      "fr.reading.notices_pratiques": 1,
+      "fr.functional.invitations_excuses": 2,
+      "fr.grammar.imparfait_cod": 1,
+      "fr.reading.idee_principale": 2,
+      "fr.functional.conseil_clarification": 1,
+      "fr.vocab.precision_lexicale": 4,
+      "fr.reading.inference_registre": 1,
+      "fr.grammar.mood_nuance_c1": 2,
+      "fr.grammar.subjonctif_register": 1,
+      "fr.reading.discours_dense": 2,
+      "fr.grammar.fine_mood_c2": 1,
+      "fr.vocab.distinctions_fines_c2": 1,
+      "fr.reading.inference_avancee_c2": 1,
+      "zh.grammar.shi_you_measure": 1,
+      "zh.grammar.questions_negation": 1,
+      "zh.vocab.richang": 3,
+      "zh.reading.signs_messages": 3,
+      "zh.functional.basic_exchanges": 3,
+      "zh.grammar.location_possession": 1,
+      "zh.grammar.aspect_le_guo": 1,
+      "zh.vocab.collocations": 4,
+      "zh.reading.practical_notices": 2,
+      "zh.functional.invitations_apologies": 2,
+      "zh.grammar.complements_basic": 1,
+      "zh.grammar.ba_bei_comparatives": 1,
+      "zh.reading.main_idea": 2,
+      "zh.functional.advice_clarification": 2,
+      "zh.vocab.precision": 1,
+      "zh.reading.inference_register": 1,
+      "zh.functional.negotiation_register": 1,
+      "de.grammar.sein_haben_articles": 1,
+      "de.grammar.present_negation_questions": 1,
+      "de.vocab.alltag": 3,
+      "de.reading.schilder_nachrichten": 2,
+      "de.functional.basisaustausch": 2,
+      "de.grammar.akkusativ_modals": 1,
+      "de.grammar.perfekt_dativ": 1,
+      "de.vocab.collocations": 4,
+      "de.reading.praktische_hinweise": 1,
+      "de.functional.einladungen_entschuldigungen": 2,
+      "de.grammar.adjective_endings_comparatives": 1,
+      "de.reading.hauptidee": 1,
+      "de.functional.rat_klaerung": 1,
+      "de.grammar.konjunktiv_nomenklatur": 1,
+      "de.reading.inference_register": 1,
+      "de.grammar.advanced_syntax_c1": 2,
+      "de.vocab.precision": 3,
+      "de.grammar.stylistic_distinctions_c2": 1,
+      "de.vocab.fine_distinctions_c2": 1,
+      "de.functional.pragmatische_nuance_c2": 1,
+      "ru.grammar.byt_gender_nominative": 1,
+      "ru.grammar.present_negation_questions": 1,
+      "ru.vocab.bytovoj": 3,
+      "ru.reading.signs_messages": 2,
+      "ru.functional.basic_exchanges": 3,
+      "ru.grammar.accusative_possession": 1,
+      "ru.grammar.past_prepositional": 1,
+      "ru.vocab.collocations": 4,
+      "ru.reading.practical_notices": 1,
+      "ru.functional.invitations_apologies": 1,
+      "ru.grammar.genitive_dative": 1,
+      "ru.grammar.aspect_verbs_of_motion": 1,
+      "ru.reading.main_idea": 1,
+      "ru.functional.advice_clarification": 2,
+      "ru.grammar.instrumental_conditionals": 1,
+      "ru.vocab.precision": 4,
+      "ru.reading.inference_register": 1,
+      "ru.grammar.advanced_morphosyntax_c1": 1,
+      "ru.grammar.stylistic_distinctions_c2": 1,
+      "ru.vocab.fine_distinctions_c2": 1,
+      "ru.reading.advanced_inference_c2": 1,
+      "ru.reading.dense_discourse": 1
+    },
+    "byItemType": {
+      "grammarForm": 42,
+      "vocabularyChoice": 55,
+      "readingComprehension": 36,
+      "functionalPhrase": 35
+    },
+    "difficultyWithin": {
+      "low": 55,
+      "mid": 60,
+      "high": 53
+    }
+  },
+  "qualityBreakout": {
+    "nonsenseDistractorRejects": 10,
+    "constructMismatchRejects": 13,
+    "naturalnessRejects": 0,
+    "cefrDepthRejects": 150,
+    "crossLanguageCloneRejects": 0,
+    "duplicateRejects": 113,
+    "crossLanguageNearDuplicateGroups": [],
+    "crossLanguageConceptReuseRate": 0
+  },
+  "rejectedSamples": [
+    {
+      "language": "en",
+      "slotKey": "en|reading|A2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:ANSWER_LEAK",
+        "crit:ANSWER_LEAK"
+      ],
+      "itemId": "bank.en.reading.A2.1.a1.02036d47f97838cc"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|A2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:ANSWER_LEAK",
+        "crit:ANSWER_LEAK"
+      ],
+      "itemId": "bank.en.reading.A2.1.a2.d8cabcb3d3055fbc"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:CONSTRUCT_MISMATCH",
+        "crit:CONSTRUCT_MISMATCH"
+      ],
+      "itemId": "bank.en.grammar.B1.1.a1.d515a49b9ed608fb"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:CONSTRUCT_MISMATCH",
+        "crit:CONSTRUCT_MISMATCH"
+      ],
+      "itemId": "bank.en.grammar.B1.1.a2.efb4fe093ca58de7"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|B1|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.B1.0.a0.8bf34f21e5cc7014"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|B1|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.B1.1.a0.485fb2e622f826af"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B1|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.B1.0.a0.ea7f6d159b8495fa"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|B1|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.B1.1.a0.371802f1e0459948"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B2|0",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.B2.0.a0.d66153c2a608de9f"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B2|0",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.B2.0.a1.c6767466af32121e"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B2|0",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.B2.0.a2.b46e3cb98ed2bbbb"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.B2.1.a0.d7dce29f9ed6cf72"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.B2.1.a1.f735209f1c5880b8"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|grammar|B2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.en.grammar.B2.1.a2.28b441d16ff652a9"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.C1.0.a0.14dd31794f10d9de"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.C1.0.a1.4ed34b1f0ddfe9f6"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.C1.0.a2.b62b274f1818ca0d"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.C1.1.a0.89bf30cda0459828"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.C1.1.a1.72a96f4098807462"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C1|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.reading.C1.1.a2.27b1e264b1fd6d7c"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|C1|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.C1.0.a0.bbb737e07bc574e3"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|functional|C1|1",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.en.functional.C1.1.a0.5db3724cdc82bbad"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:DISTRACTOR_NOT_PARALLEL"
+      ],
+      "itemId": "bank.en.reading.C2.1.a1.58fdebbf065e8629"
+    },
+    {
+      "language": "en",
+      "slotKey": "en|reading|C2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:DISTRACTOR_NOT_PARALLEL"
+      ],
+      "itemId": "bank.en.reading.C2.1.a2.43a428fc27c65304"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|reading|A2|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:ANSWER_LEAK",
+        "crit:ANSWER_LEAK"
+      ],
+      "itemId": "bank.fr.reading.A2.0.a0.375d8959a29ce53f"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|reading|A2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:ANSWER_LEAK",
+        "crit:ANSWER_LEAK"
+      ],
+      "itemId": "bank.fr.reading.A2.1.a0.e8da5d34ea3ee501"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|functional|A2|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:OPTION_TOO_LONG",
+        "crit:OPTION_TOO_LONG"
+      ],
+      "itemId": "bank.fr.functional.A2.0.a0.ec1607b2a01d1bab"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|functional|A2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:OPTION_TOO_LONG",
+        "crit:OPTION_TOO_LONG"
+      ],
+      "itemId": "bank.fr.functional.A2.1.a0.594baee21032a22d"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|grammar|B1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:CONSTRUCT_MISMATCH"
+      ],
+      "itemId": "bank.fr.grammar.B1.1.a1.468184460443aa69"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|grammar|B1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "crit:CONSTRUCT_MISMATCH"
+      ],
+      "itemId": "bank.fr.grammar.B1.1.a2.5b7da0472a3afe60"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|reading|B1|0",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.fr.reading.B1.0.a0.e606079b01d52d9e"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|reading|B1|1",
+      "gate": "REJECT",
+      "reasons": [
+        "det:LENGTH_CUE",
+        "crit:LENGTH_CUE"
+      ],
+      "itemId": "bank.fr.reading.B1.1.a0.9666a38f2caa5e2c"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|grammar|B2|0",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.fr.grammar.B2.0.a0.1c824dae273923d1"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|grammar|B2|0",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.fr.grammar.B2.0.a1.5cd9c9683ff3024d"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|grammar|B2|0",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.fr.grammar.B2.0.a2.b67a84992ab6cda8"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|grammar|B2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.fr.grammar.B2.1.a0.7a358fcf5861d3c0"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|grammar|B2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.fr.grammar.B2.1.a1.6648e9000bf4bbfd"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|grammar|B2|1",
+      "gate": "REJECT",
+      "reasons": [
+        "sem:CEFR_MISMATCH_SUSPECT",
+        "adv:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT",
+        "crit:CEFR_MISMATCH_SUSPECT"
+      ],
+      "itemId": "bank.fr.grammar.B2.1.a2.56c71127b7a77e52"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|functional|B2|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.fr.functional.B2.0.a0.8caebbbda1dfe405"
+    },
+    {
+      "language": "fr",
+      "slotKey": "fr|functional|B2|0",
+      "gate": "REVISE",
+      "reasons": [
+        "gate:REVISE"
+      ],
+      "itemId": "bank.fr.functional.B2.0.a1.f47d3fb1e232f6f5"
+    }
+  ],
+  "c1c2PassCount": 39,
+  "pilotV2Compare": {
+    "v3ApprovedAfterSanity": 168
+  },
+  "gapsOk": true,
+  "note": "Quality > coverage. predictedDifficulty/Discrimination are priors only."
+}

@@ -665,6 +665,8 @@ const ru = {
     harderNext: 'Следующий — чуть сложнее',
     easierNext: 'Следующий — чуть легче',
     checking: 'Проверяем…',
+    taskLabel: 'Задание',
+    optionsLabel: 'Варианты ответа',
     pathKicker: 'Дальше с Tearz',
     pathTitle: 'Путь до {{level}}',
     pathMasteryTitle: 'Путь мастерства · {{level}}',
@@ -680,9 +682,9 @@ const ru = {
     pathStart: 'Начать путь',
     pathLater: 'Позже в приложении',
     pathOpening:
-      'Привет! Tearz-тест показал уровень {{current}}. Я сам веду тебя по лестнице до {{next}} — темы и задания выбираю я, короткими шагами.\n\nПервый шаг: точные формулировки и связки уровня {{next}}. Напиши 2–3 предложения о вчерашнем дне и вставь хотя бы одну сложную связку (хотя / несмотря на / в то время как). Я поправлю и сразу дам следующий шаг.',
+      'Привет! Tearz-тест показал уровень {{current}}. Я сам веду тебя до {{next}} — короткими шагами, темы и задания выбираю я.\n\nПервый фокус: формулировки и связки уровня {{next}}. Запусти тренировку кнопками ниже в блоке «Практика» — задания дам там. В чат пиши, если есть вопрос.',
     pathOpeningMastery:
-      'Привет! У тебя уже {{current}}. Я сам веду практику на этом уровне — без меню «с чего начать».\n\nПервый круг: одна и та же мысль в трёх регистрах — нейтрально, мягко и официально. Напиши одну фразу тремя вариантами; разберём и пойдём дальше.',
+      'Привет! У тебя уже {{current}}. Я сам веду практику на этом уровне — без меню «с чего начать».\n\nПервый круг: одна мысль в трёх регистрах. Запусти тренировку в блоке «Практика» ниже — разберём ответы и пойдём дальше.',
   },
 };
 
@@ -1348,6 +1350,8 @@ const en: TranslationMessages = {
     harderNext: 'Next — a bit harder',
     easierNext: 'Next — a bit easier',
     checking: 'Checking…',
+    taskLabel: 'Task',
+    optionsLabel: 'Answer choices',
     pathKicker: 'Next with Tearz',
     pathTitle: 'Path to {{level}}',
     pathMasteryTitle: 'Mastery path · {{level}}',
@@ -1363,9 +1367,9 @@ const en: TranslationMessages = {
     pathStart: 'Start the path',
     pathLater: 'Later in the app',
     pathOpening:
-      'Hi! The Tearz test placed you at {{current}}. I will lead you up to {{next}} myself — I pick the topics and tasks, in short steps.\n\nFirst step: precise wording and connectors for {{next}}. Write 2–3 sentences about yesterday and include at least one advanced linker (although / despite / while). I will correct you and give the next step right away.',
+      'Hi! The Tearz test placed you at {{current}}. I will lead you to {{next}} in short steps — I pick the topics and tasks.\n\nFirst focus: precise wording and connectors for {{next}}. Start with the Practice buttons below — I will give the exercises there. Use the chat if you have a question.',
     pathOpeningMastery:
-      'Hi! You are already at {{current}}. I will lead practice at this level myself — no “what do you want?” menu.\n\nFirst round: the same idea in three registers — neutral, soft, and formal. Write one sentence three ways; we will review and move on.',
+      'Hi! You are already at {{current}}. I will lead practice at this level myself — no “what do you want?” menu.\n\nFirst round: one idea in three registers. Start Practice below — we will review and move on.',
   },
 };
 
@@ -2024,6 +2028,8 @@ const zh: TranslationMessages = {
     harderNext: '下一题 — 稍难',
     easierNext: '下一题 — 稍易',
     checking: '核对中…',
+    taskLabel: '题目',
+    optionsLabel: '选项',
     pathKicker: '与 Tearz 继续',
     pathTitle: '通往 {{level}} 之路',
     pathMasteryTitle: '精通之路 · {{level}}',
@@ -2039,9 +2045,9 @@ const zh: TranslationMessages = {
     pathStart: '开始这条路',
     pathLater: '稍后再说',
     pathOpening:
-      '你好！Tearz 测试显示你的水平是 {{current}}。我会亲自带你一步步升到 {{next}}——主题和练习由我来定。\n\n第一步：{{next}} 所需的精确表达与连接词。请用 2–3 句话写昨天的事，并至少用一个较难的连接成分（虽然 / 尽管 / 与此同时）。我先批改，再给你下一步。',
+      '你好！Tearz 测试显示你的水平是 {{current}}。我会亲自带你一步步升到 {{next}}——主题和练习由我来定。\n\n第一步重点：{{next}} 的精确表达与连接成分。请点下方「练习」按钮开始训练——题目在那里。有问题再在对话框里问我。',
     pathOpeningMastery:
-      '你好！你已经在 {{current}}。这个水平的练习由我来带——不会问「你想先练什么」。\n\n第一轮：同一意思写三种语体——中性、委婉、正式。请写同一句话的三个版本，我们点评后继续。',
+      '你好！你已经在 {{current}}。这个水平的练习由我来带——不会问「你想先练什么」。\n\n第一轮：同一意思的三种语体。点下方「练习」开始，我们点评后继续。',
   },
 };
 

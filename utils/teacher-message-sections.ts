@@ -52,6 +52,9 @@ export function parseTeacherBlockLines(
   for (const raw of rawLines) {
     const line = cleanTeacherInline(raw);
     if (!line) continue;
+    // Legacy placement enrich — drop the English meta dump line.
+    if (/^skill\s+focus\s+from\s+placement\b/i.test(line)) continue;
+    if (/^goal:\s+/i.test(line)) continue;
 
     const bulletMatch = line.match(BULLET_RE);
     const unbulleted = bulletMatch ? line.replace(BULLET_RE, '').trim() : line;
@@ -64,13 +67,19 @@ export function parseTeacherBlockLines(
       }
     }
 
-    // Модель разделяет несколько фраз через « / » — показываем каждую отдельной строкой.
+    // Модель иногда пишет примеры через « / » — отдельные карточки только если
+    // вся строка и есть чистый список фраз, а не предложение со скобками.
     if (unbulleted.includes(' / ')) {
       const parts = unbulleted
         .split(' / ')
         .map((p) => p.trim())
         .filter(Boolean);
-      if (parts.length > 1) {
+      const looksLikePurePhraseList =
+        parts.length > 1 &&
+        !/[()]/.test(unbulleted) &&
+        !/[.!?。！？]/.test(unbulleted) &&
+        parts.every((p) => p.length > 0 && p.length <= 48);
+      if (looksLikePurePhraseList) {
         for (const p of parts) out.push({ kind: 'phrase', text: p });
         continue;
       }
@@ -119,6 +128,9 @@ function isValidSectionTitle(title: string): boolean {
   if (t.length < 2 || t.length > 48) return false;
   if (t.split(/\s+/).length > 6) return false;
   if (/[.!?]$/.test(t)) return false;
+  // Meta dumps from placement enrich — never promote to a section chrome card.
+  if (/^skill\s+focus\b/i.test(t)) return false;
+  if (/^goal\b/i.test(t)) return false;
   return true;
 }
 

@@ -81,10 +81,17 @@ import { useCompanionChats } from '@/contexts/companion-chats-context';
 import { useEngagement } from '@/contexts/engagement-context';
 import { useLexicon } from '@/contexts/lexicon-context';
 import { useTranslation } from '@/contexts/locale-context';
+import { usePlacement } from '@/contexts/placement-context';
 import { useTeacherJourney } from '@/contexts/teacher-journey-context';
 import { useUserProfile } from '@/contexts/user-profile-context';
 import { useKeyboardInset } from '@/hooks/use-keyboard-inset';
 import { useLearnerModel } from '@/hooks/use-learner-model';
+import { nextPlacementTarget } from '@/utils/placement-next-level';
+import {
+  buildPlacementPathChat,
+  isBrokenPlacementPathOpening,
+  isPlacementPathLessonId,
+} from '@/utils/placement-path-chat';
 import {
   postTeacherChatReply,
   postTeacherExerciseCheck,
@@ -353,6 +360,7 @@ export function TeacherBoardChat({
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { learnerModel, learnerContext } = useLearnerModel();
+  const { record: placementRecord } = usePlacement();
   const [fontsLoaded] = useFonts({ Kalam_400Regular });
   const { registerUserStudyText, recordStudySwipe } = useUserProfile();
   const { addChat, saveCompanionThread } = useCompanionChats();
@@ -593,9 +601,45 @@ export function TeacherBoardChat({
         initialMessages.find((m) => m.from === 'me' && typeof m.text === 'string')?.text?.trim() ||
         t('teacher.lessonDefault');
       if (titleSrc) registerUserStudyText(titleSrc);
-      setMessages(initialMessages);
+
+      let thread = initialMessages;
+      const first = initialMessages[0];
+      if (
+        isPlacementPathLessonId(lessonId) &&
+        placementRecord &&
+        first?.from === 'them' &&
+        isBrokenPlacementPathOpening(first.text ?? '')
+      ) {
+        const target = nextPlacementTarget(placementRecord);
+        const openingText = target.isMastery
+          ? t('placement.pathOpeningMastery', { current: target.currentLabel })
+          : t('placement.pathOpening', {
+              current: target.currentLabel,
+              next: target.nextLabel,
+            });
+        const chatTitle =
+          lessonTopic?.trim() ||
+          (target.isMastery
+            ? t('placement.pathMasteryTitle', { level: target.currentLabel })
+            : t('placement.pathChatTitle', { level: target.nextLabel }));
+        const fresh = buildPlacementPathChat({
+          language: placementRecord.language,
+          nextLabel: target.nextLabel,
+          chatTitle,
+          openingText,
+          teacherName: 'Преподаватель',
+          learnerModel,
+        });
+        thread = [
+          { ...fresh.opening[0], id: first.id || fresh.opening[0].id },
+          ...initialMessages.slice(1),
+        ];
+        if (lessonId) saveCompanionThread(lessonId, thread);
+      }
+
+      setMessages(thread);
       if (!lessonId) {
-        ensureLesson(initialMessages, titleSrc);
+        ensureLesson(thread, titleSrc);
       } else {
         lessonTopicRef.current = titleSrc;
       }
@@ -629,10 +673,13 @@ export function TeacherBoardChat({
   }, [
     ensureLesson,
     initialMessages,
+    learnerModel,
     lessonId,
     lessonTopic,
+    placementRecord,
     registerUserStudyText,
     requestReply,
+    saveCompanionThread,
     seedQuestion,
     t,
   ]);

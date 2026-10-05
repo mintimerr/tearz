@@ -1,0 +1,4034 @@
+[
+  {
+    "language": "en",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "en.grammar.be_have_do",
+    "stem": "She ____ from Canada.",
+    "prompt": "Choose the correct form.",
+    "choices": [
+      "is",
+      "are",
+      "am",
+      "be"
+    ],
+    "correctAnswer": "is",
+    "explanation": "She takes is.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.grammar.A1.0.a0.278cc09acb4ea34b"
+  },
+  {
+    "language": "en",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "en.grammar.pronouns_possessives",
+    "stem": "There ____ two apples on the table.",
+    "prompt": "Choose the correct form.",
+    "choices": [
+      "are",
+      "is",
+      "am",
+      "be"
+    ],
+    "correctAnswer": "are",
+    "explanation": "Plural noun → are.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.grammar.A1.1.a1.00b104987b78ee50"
+  },
+  {
+    "language": "en",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "en.vocab.everyday_basic",
+    "stem": "I usually have ____ at 8.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "breakfast",
+      "briefcase",
+      "bridge",
+      "brush"
+    ],
+    "correctAnswer": "breakfast",
+    "explanation": "Meal in the morning.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.A1.0.a0.de92b2f38f032a33"
+  },
+  {
+    "language": "en",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "en.vocab.everyday_basic",
+    "stem": "You need a ____ to enter the cinema.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "ticket",
+      "ticketed",
+      "tick",
+      "tight"
+    ],
+    "correctAnswer": "ticket",
+    "explanation": "Entry ticket.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.A1.1.a1.7d14562b856c1075"
+  },
+  {
+    "language": "en",
+    "level": "A1",
+    "skill": "reading",
+    "construct": "en.reading.signs_short_messages",
+    "stem": "Sign: \"Closed for lunch 13:00–14:00.\" When can you shop?",
+    "prompt": "Choose the best answer.",
+    "choices": [
+      "Before 13:00 or after 14:00",
+      "Only at 13:00",
+      "All afternoon without a break",
+      "Never today"
+    ],
+    "correctAnswer": "Before 13:00 or after 14:00",
+    "explanation": "Closed only during that lunch hour.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.reading.A1.0.a0.697663e9e3784a14"
+  },
+  {
+    "language": "en",
+    "level": "A1",
+    "skill": "reading",
+    "construct": "en.reading.signs_short_messages",
+    "stem": "Board: \"Bus 12 → Station.\" Where does bus 12 go?",
+    "prompt": "Choose the best answer.",
+    "choices": [
+      "To the station",
+      "To bus 12 only",
+      "Around the city forever",
+      "Nowhere"
+    ],
+    "correctAnswer": "To the station",
+    "explanation": "Arrow indicates destination.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.reading.A1.1.a1.428fcc2e073ec66f"
+  },
+  {
+    "language": "en",
+    "level": "A1",
+    "skill": "functional",
+    "construct": "en.functional.basic_situations",
+    "stem": "In a shop you want the price. What do you say?",
+    "prompt": "Choose the best response.",
+    "choices": [
+      "How much is this?",
+      "How many is this?",
+      "What time is this?",
+      "Where from is this?"
+    ],
+    "correctAnswer": "How much is this?",
+    "explanation": "How much for price.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.functional.A1.0.a0.a58e4576dde280d4"
+  },
+  {
+    "language": "en",
+    "level": "A1",
+    "skill": "functional",
+    "construct": "en.functional.basic_situations",
+    "stem": "Someone holds the door. What do you say?",
+    "prompt": "Choose the best response.",
+    "choices": [
+      "Thank you.",
+      "Please you.",
+      "Sorry you.",
+      "Hello door."
+    ],
+    "correctAnswer": "Thank you.",
+    "explanation": "Thanks.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.functional.A1.1.a1.cede3a08b3aec67b"
+  },
+  {
+    "language": "en",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "en.grammar.present_simple_continuous",
+    "stem": "We ____ the museum last weekend.",
+    "prompt": "Choose the correct form.",
+    "choices": [
+      "visited",
+      "visit",
+      "visiting",
+      "visits"
+    ],
+    "correctAnswer": "visited",
+    "explanation": "Last weekend → past simple.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.grammar.A2.0.a0.e136b178d7f0d219"
+  },
+  {
+    "language": "en",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "en.grammar.basic_past_can",
+    "stem": "This train is ____ than the bus.",
+    "prompt": "Choose the correct form.",
+    "choices": [
+      "faster",
+      "fast",
+      "fastest",
+      "more fast"
+    ],
+    "correctAnswer": "faster",
+    "explanation": "Comparative of fast.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.grammar.A2.1.a1.b0a2d7ca6ac92d64"
+  },
+  {
+    "language": "en",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "en.vocab.practical_collocations",
+    "stem": "I have a dentist ____ at 4.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "appointment",
+      "apartment",
+      "argument",
+      "appendix"
+    ],
+    "correctAnswer": "appointment",
+    "explanation": "Scheduled visit.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.A2.0.a0.aa07d29e61a5f582"
+  },
+  {
+    "language": "en",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "en.vocab.everyday_basic",
+    "stem": "They had to ____ the outdoor concert.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "cancel",
+      "candle",
+      "canal",
+      "capture"
+    ],
+    "correctAnswer": "cancel",
+    "explanation": "Call off an event.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.A2.1.a1.0580a982f772a321"
+  },
+  {
+    "language": "en",
+    "level": "A2",
+    "skill": "reading",
+    "construct": "en.reading.practical_notices",
+    "stem": "Card: \"Wi‑Fi: Guest / password on receipt.\" Where is the password?",
+    "prompt": "Choose the best answer.",
+    "choices": [
+      "On the receipt",
+      "On the guest",
+      "Only on the router",
+      "Not available"
+    ],
+    "correctAnswer": "On the receipt",
+    "explanation": "Password on receipt.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.reading.A2.0.a0.5a8ebe508a7aceed"
+  },
+  {
+    "language": "en",
+    "level": "A2",
+    "skill": "functional",
+    "construct": "en.functional.invites_apologies",
+    "stem": "Suggest meeting at 6. What do you say?",
+    "prompt": "Choose the best response.",
+    "choices": [
+      "Shall we meet at 6?",
+      "We meet must 6.",
+      "Meeting is at must.",
+      "6 we shall meeting?"
+    ],
+    "correctAnswer": "Shall we meet at 6?",
+    "explanation": "Shall we… suggestion.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REVISE",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.functional.A2.0.a1.56a0e42ec7307f28"
+  },
+  {
+    "language": "en",
+    "level": "B1",
+    "skill": "grammar",
+    "construct": "en.grammar.present_perfect_intro",
+    "stem": "They ____ in this flat since 2019.",
+    "prompt": "Choose the correct form.",
+    "choices": [
+      "have lived",
+      "live",
+      "are living",
+      "lived"
+    ],
+    "correctAnswer": "have lived",
+    "explanation": "Since + present perfect.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.grammar.B1.0.a0.04291c08334036ea"
+  },
+  {
+    "language": "en",
+    "level": "B1",
+    "skill": "grammar",
+    "construct": "en.grammar.conditionals_relative_passive",
+    "stem": "If you heat ice, it ____.",
+    "prompt": "Choose the correct form.",
+    "choices": [
+      "melts",
+      "melt",
+      "would melt",
+      "melted"
+    ],
+    "correctAnswer": "melts",
+    "explanation": "Zero/first conditional fact.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REJECT",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.grammar.B1.1.a1.657ffdaaf2675c00"
+  },
+  {
+    "language": "en",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "en.vocab.mid_collocations",
+    "stem": "The ____ for applications is Monday.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "deadline",
+      "headline",
+      "outline",
+      "sideline"
+    ],
+    "correctAnswer": "deadline",
+    "explanation": "Last date to apply.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.B1.0.a0.414a9d2b7fc94661"
+  },
+  {
+    "language": "en",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "en.vocab.practical_collocations",
+    "stem": "We need to ____ a decision today.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "make",
+      "do",
+      "take",
+      "put"
+    ],
+    "correctAnswer": "make",
+    "explanation": "Make a decision.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.B1.1.a1.c4778e062d5d6aee"
+  },
+  {
+    "language": "en",
+    "level": "B1",
+    "skill": "reading",
+    "construct": "en.reading.main_idea_detail",
+    "stem": "Chat: \"Can you cover my Thursday shift if I take your Monday?\" What is offered?",
+    "prompt": "Choose the best answer.",
+    "choices": [
+      "A swap of shifts",
+      "An extra day off for both",
+      "A resignation",
+      "A pay cut"
+    ],
+    "correctAnswer": "A swap of shifts",
+    "explanation": "Shift swap proposal.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REVISE",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.reading.B1.0.a1.42a68ec6c1d6a382"
+  },
+  {
+    "language": "en",
+    "level": "B1",
+    "skill": "functional",
+    "construct": "en.functional.advice_clarification",
+    "stem": "You need the due date confirmed. What do you say?",
+    "prompt": "Choose the best response.",
+    "choices": [
+      "Just to confirm — is Friday still the deadline?",
+      "Confirm me the Friday deadline yes?",
+      "Friday deadline you say again must?",
+      "Is deadline Friday still being?"
+    ],
+    "correctAnswer": "Just to confirm — is Friday still the deadline?",
+    "explanation": "Polite confirmation check.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REJECT",
+      "det=false",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.functional.B1.0.a1.c2ea149d47e8cc8b"
+  },
+  {
+    "language": "en",
+    "level": "B2",
+    "skill": "grammar",
+    "construct": "en.grammar.reported_verb_patterns",
+    "stem": "She said that she ____ the keys.",
+    "prompt": "Choose the correct form.",
+    "choices": [
+      "had lost",
+      "has lost",
+      "loses",
+      "is losing"
+    ],
+    "correctAnswer": "had lost",
+    "explanation": "Backshift in reported speech.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REJECT",
+      "det=true",
+      "sem=reject",
+      "adv=reject",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.grammar.B2.0.a1.59a6078838ea67e2"
+  },
+  {
+    "language": "en",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "en.vocab.precision_polysemy",
+    "stem": "The company plans to ____ salaries next year.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "raise",
+      "rise",
+      "arise",
+      "arouse"
+    ],
+    "correctAnswer": "raise",
+    "explanation": "Raise is transitive.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.B2.0.a0.cf51bb7b1ae18436"
+  },
+  {
+    "language": "en",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "en.vocab.mid_collocations",
+    "stem": "There was ____ traffic on the ring road.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "heavy",
+      "strong",
+      "hard",
+      "thick"
+    ],
+    "correctAnswer": "heavy",
+    "explanation": "Heavy traffic collocation.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 0.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.B2.1.a1.d3b7002f5da54085"
+  },
+  {
+    "language": "en",
+    "level": "B2",
+    "skill": "reading",
+    "construct": "en.reading.argument_inference",
+    "stem": "Brief: \"Growth is likely, though supply risks remain material.\" What stance does the writer take?",
+    "prompt": "Choose the best answer.",
+    "choices": [
+      "Optimistic but hedged",
+      "Certain collapse",
+      "No opinion",
+      "Pure celebration"
+    ],
+    "correctAnswer": "Optimistic but hedged",
+    "explanation": "Likely + though = hedged optimism.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.reading.B2.0.a0.f2500f58665c8307"
+  },
+  {
+    "language": "en",
+    "level": "B2",
+    "skill": "reading",
+    "construct": "en.reading.main_idea_detail",
+    "stem": "Email: \"We admire the concept; timing is the obstacle.\" What is implied?",
+    "prompt": "Choose the best answer.",
+    "choices": [
+      "A soft no for now",
+      "Immediate approval",
+      "A request for payment",
+      "Praise without reservation"
+    ],
+    "correctAnswer": "A soft no for now",
+    "explanation": "Timing obstacle = deferral/refusal.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 0.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.reading.B2.1.a1.7e4dcf311a17639c"
+  },
+  {
+    "language": "en",
+    "level": "C1",
+    "skill": "grammar",
+    "construct": "en.grammar.advanced_modality_focus",
+    "stem": "If she had taken the earlier train, she ____ here now.",
+    "prompt": "Choose the correct form.",
+    "choices": [
+      "would be",
+      "would have been",
+      "will be",
+      "is"
+    ],
+    "correctAnswer": "would be",
+    "explanation": "Mixed conditional: past condition, present result.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 1.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REJECT",
+      "det=true",
+      "sem=reject",
+      "adv=reject",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.grammar.C1.0.a1.f07bb9a42ef91d8f"
+  },
+  {
+    "language": "en",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "en.vocab.idiomatic_nuance",
+    "stem": "The memo aims to ____ concerns without promising refunds.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "mitigate",
+      "militate",
+      "migrate",
+      "meditate"
+    ],
+    "correctAnswer": "mitigate",
+    "explanation": "Mitigate concerns = reduce them.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 1.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.C1.0.a0.ded8dd2751171684"
+  },
+  {
+    "language": "en",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "en.vocab.precision_polysemy",
+    "stem": "His tone was politely ____ of the proposal.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "dismissive",
+      "dismissed",
+      "dismissal",
+      "dismaying"
+    ],
+    "correctAnswer": "dismissive",
+    "explanation": "Dismissive of = rejecting stance.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 1.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.C1.1.a1.d806bb7244c81172"
+  },
+  {
+    "language": "en",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "en.vocab.fine_distinctions_c2",
+    "stem": "The statement was deliberately ____: both readings remain available.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "equivocal",
+      "equivalent",
+      "equitable",
+      "eloquent"
+    ],
+    "correctAnswer": "equivocal",
+    "explanation": "Equivocal = intentionally two-sided.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 2.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.C2.0.a0.0e78bb398011af09"
+  },
+  {
+    "language": "en",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "en.vocab.idiomatic_nuance",
+    "stem": "New figures ____ doubt on the earlier forecast.",
+    "prompt": "Choose the best word.",
+    "choices": [
+      "cast",
+      "throw",
+      "put",
+      "make"
+    ],
+    "correctAnswer": "cast",
+    "explanation": "Cast doubt on.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 2.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=en_item_generation_v2"
+    ],
+    "id": "bank.en.vocabulary.C2.1.a1.4dbf176269fbbe62"
+  },
+  {
+    "language": "fr",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "fr.grammar.etre_avoir_articles",
+    "stem": "Nous ____ français.",
+    "prompt": "Choisissez la forme correcte.",
+    "choices": [
+      "sommes",
+      "êtes",
+      "est",
+      "suis"
+    ],
+    "correctAnswer": "sommes",
+    "explanation": "Nous + sommes.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.grammar.A1.0.a0.95ad2d73fb0221b4"
+  },
+  {
+    "language": "fr",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "fr.grammar.present_negation_questions",
+    "stem": "J’ai ____ ami à Lyon.",
+    "prompt": "Choisissez la forme correcte.",
+    "choices": [
+      "un",
+      "une",
+      "le",
+      "des"
+    ],
+    "correctAnswer": "un",
+    "explanation": "Ami masculin → un.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.grammar.A1.1.a1.c3d53f96e9de558f"
+  },
+  {
+    "language": "fr",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.quotidien",
+    "stem": "J’achète du pain à la ____.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "boulangerie",
+      "boucherie",
+      "librairie",
+      "pharmacie"
+    ],
+    "correctAnswer": "boulangerie",
+    "explanation": "Pain → boulangerie.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.A1.0.a0.995b6129a4708e58"
+  },
+  {
+    "language": "fr",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.quotidien",
+    "stem": "Le train part de la ____.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "gare",
+      "guerre",
+      "garde",
+      "glace"
+    ],
+    "correctAnswer": "gare",
+    "explanation": "Train → gare.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.A1.1.a1.aa779b28ab5e1c50"
+  },
+  {
+    "language": "fr",
+    "level": "A1",
+    "skill": "reading",
+    "construct": "fr.reading.panneaux_messages",
+    "stem": "Affiche : « Musée ouvert 10 h–18 h ». Quand peut-on entrer ?",
+    "prompt": "Choisissez la meilleure réponse.",
+    "choices": [
+      "Entre 10 h et 18 h",
+      "Seulement à 10 h",
+      "Après 18 h seulement",
+      "Jamais le matin"
+    ],
+    "correctAnswer": "Entre 10 h et 18 h",
+    "explanation": "Plage horaire.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.reading.A1.0.a0.d5dafc4f9fdc1809"
+  },
+  {
+    "language": "fr",
+    "level": "A1",
+    "skill": "reading",
+    "construct": "fr.reading.panneaux_messages",
+    "stem": "Panneau : « Sortie → ». Que indique-t-il ?",
+    "prompt": "Choisissez la meilleure réponse.",
+    "choices": [
+      "La direction de la sortie",
+      "L’entrée principale",
+      "Un magasin",
+      "Un horaire"
+    ],
+    "correctAnswer": "La direction de la sortie",
+    "explanation": "Sortie = exit.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.reading.A1.1.a1.241e86d6604057ad"
+  },
+  {
+    "language": "fr",
+    "level": "A1",
+    "skill": "functional",
+    "construct": "fr.functional.situations_base",
+    "stem": "Vous voulez le prix. Que dites-vous ?",
+    "prompt": "Choisissez la meilleure réponse.",
+    "choices": [
+      "C’est combien ?",
+      "C’est comment ?",
+      "C’est quand ?",
+      "C’est qui ?"
+    ],
+    "correctAnswer": "C’est combien ?",
+    "explanation": "Demande de prix.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.functional.A1.0.a0.20da928aff647713"
+  },
+  {
+    "language": "fr",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "fr.grammar.possessifs_prepositions",
+    "stem": "Hier soir, elle ____ un film.",
+    "prompt": "Choisissez la forme correcte.",
+    "choices": [
+      "a regardé",
+      "regarde",
+      "regardait",
+      "regardera"
+    ],
+    "correctAnswer": "a regardé",
+    "explanation": "Hier → passé composé.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.grammar.A2.0.a0.d19ca3293d80de77"
+  },
+  {
+    "language": "fr",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "fr.grammar.passe_compose_futur",
+    "stem": "____ la porte, s’il te plaît.",
+    "prompt": "Choisissez la forme correcte.",
+    "choices": [
+      "Ferme",
+      "Fermes",
+      "Fermer",
+      "Fermé"
+    ],
+    "correctAnswer": "Ferme",
+    "explanation": "Impératif tu: ferme.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.grammar.A2.1.a1.eb58f93cd854d315"
+  },
+  {
+    "language": "fr",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.quotidien",
+    "stem": "Le vol a du ____ ; embarquement plus tard.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "retard",
+      "retour",
+      "regard",
+      "repos"
+    ],
+    "correctAnswer": "retard",
+    "explanation": "Retard = delay.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.A2.0.a0.a19d0c3d816bff2b"
+  },
+  {
+    "language": "fr",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.collocations_courantes",
+    "stem": "Gardez votre ____ pour le remboursement.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "reçu",
+      "reçuë",
+      "recours",
+      "recette"
+    ],
+    "correctAnswer": "reçu",
+    "explanation": "Reçu = receipt.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.A2.1.a1.e75cf26f332117a4"
+  },
+  {
+    "language": "fr",
+    "level": "A2",
+    "skill": "reading",
+    "construct": "fr.reading.notices_pratiques",
+    "stem": "Note : « Bagages dans le casier prévu ». Où mettre les sacs ?",
+    "prompt": "Choisissez la meilleure réponse.",
+    "choices": [
+      "Dans le casier indiqué",
+      "Sous tous les sièges",
+      "Dehors uniquement",
+      "Nulle part"
+    ],
+    "correctAnswer": "Dans le casier indiqué",
+    "explanation": "Casier prévu.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.reading.A2.0.a0.1fb2bec31c6a1792"
+  },
+  {
+    "language": "fr",
+    "level": "A2",
+    "skill": "reading",
+    "construct": "fr.reading.panneaux_messages",
+    "stem": "Message : « Guichet 3 pour les remboursements ». Où aller ?",
+    "prompt": "Choisissez la meilleure réponse.",
+    "choices": [
+      "Au guichet 3",
+      "Au guichet 1 seulement",
+      "À la sortie",
+      "Au restaurant"
+    ],
+    "correctAnswer": "Au guichet 3",
+    "explanation": "Guichet 3.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.reading.A2.1.a1.b8679f508cf867c4"
+  },
+  {
+    "language": "fr",
+    "level": "A2",
+    "skill": "functional",
+    "construct": "fr.functional.invitations_excuses",
+    "stem": "Proposez 18 h. Que dites-vous ?",
+    "prompt": "Choisissez la meilleure réponse.",
+    "choices": [
+      "On se retrouve à 18 h ?",
+      "On doit 18 h rencontrer.",
+      "18 h est rencontrer.",
+      "Retrouvons 18 doit."
+    ],
+    "correctAnswer": "On se retrouve à 18 h ?",
+    "explanation": "Proposition.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REJECT",
+      "det=false",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.functional.A2.0.a1.b6e4af5cb1876080"
+  },
+  {
+    "language": "fr",
+    "level": "B1",
+    "skill": "grammar",
+    "construct": "fr.grammar.imparfait_cod",
+    "stem": "Quand j’étais enfant, je ____ souvent à la campagne.",
+    "prompt": "Choisissez la forme correcte.",
+    "choices": [
+      "allais",
+      "suis allé",
+      "irai",
+      "vais"
+    ],
+    "correctAnswer": "allais",
+    "explanation": "Habitude passée → imparfait.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.grammar.B1.0.a0.6e632ea93cd12f9b"
+  },
+  {
+    "language": "fr",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.collocations_courantes",
+    "stem": "L’____ du paiement est vendredi.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "échéance",
+      "échappée",
+      "échelle",
+      "échange"
+    ],
+    "correctAnswer": "échéance",
+    "explanation": "Échéance = due date.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.B1.0.a0.c048dd45b04b34cc"
+  },
+  {
+    "language": "fr",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.collocations_courantes",
+    "stem": "Je voudrais ____ rendez-vous.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "prendre",
+      "faire",
+      "mettre",
+      "poser"
+    ],
+    "correctAnswer": "prendre",
+    "explanation": "Prendre rendez-vous.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.B1.1.a1.dc252aa3ac2be997"
+  },
+  {
+    "language": "fr",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.collocations_courantes",
+    "stem": "La campagne vise à ____ le public aux risques.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "sensibiliser",
+      "sensibiliserait",
+      "sensible",
+      "sensoriel"
+    ],
+    "correctAnswer": "sensibiliser",
+    "explanation": "Sensibiliser = raise awareness.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.B2.0.a0.218eaaf8d52179c1"
+  },
+  {
+    "language": "fr",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.precision_lexicale",
+    "stem": "Cela risque de ____ atteinte à la confiance.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "porter",
+      "prendre",
+      "mettre",
+      "faire"
+    ],
+    "correctAnswer": "porter",
+    "explanation": "Porter atteinte à.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 0.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.B2.1.a1.c20d3907cbce3c94"
+  },
+  {
+    "language": "fr",
+    "level": "B2",
+    "skill": "reading",
+    "construct": "fr.reading.inference_registre",
+    "stem": "Note : « Une amélioration est probable, sous réserve des stocks ». Quelle attitude ?",
+    "prompt": "Choisissez la meilleure réponse.",
+    "choices": [
+      "Optimisme prudent",
+      "Certitude absolue",
+      "Panique",
+      "Indifférence totale"
+    ],
+    "correctAnswer": "Optimisme prudent",
+    "explanation": "Probable + sous réserve.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.reading.B2.0.a0.000115698415b631"
+  },
+  {
+    "language": "fr",
+    "level": "B2",
+    "skill": "reading",
+    "construct": "fr.reading.idee_principale",
+    "stem": "Mail : « L’idée est intéressante ; le calendrier ne s’y prête pas ». Implication ?",
+    "prompt": "Choisissez la meilleure réponse.",
+    "choices": [
+      "Un refus temporaire poli",
+      "Une acceptation immédiate",
+      "Une demande de paiement",
+      "Une critique personnelle"
+    ],
+    "correctAnswer": "Un refus temporaire poli",
+    "explanation": "Calendrier = obstacle.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 0.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.reading.B2.1.a1.88bd8e5c8195f3ab"
+  },
+  {
+    "language": "fr",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.precision_lexicale",
+    "stem": "Son commentaire restait ____, sans rejet frontal.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "circonspect",
+      "circulaire",
+      "circonstancié seulement",
+      "circonscrit"
+    ],
+    "correctAnswer": "circonspect",
+    "explanation": "Circonspect = cautious stance.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 1.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.C1.0.a0.9ae9a8dfeb615255"
+  },
+  {
+    "language": "fr",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.precision_lexicale",
+    "stem": "Le ton cherche à ____ le désaccord.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "atténuer",
+      "atteindre",
+      "attendre",
+      "attester"
+    ],
+    "correctAnswer": "atténuer",
+    "explanation": "Atténuer = soften.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 1.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.C1.1.a1.8082be81eab4fbfd"
+  },
+  {
+    "language": "fr",
+    "level": "C2",
+    "skill": "grammar",
+    "construct": "fr.grammar.fine_mood_c2",
+    "stem": "Il a affirmé qu’il ____ le dossier la veille.",
+    "prompt": "Choisissez la forme correcte.",
+    "choices": [
+      "avait relu",
+      "a relu",
+      "relira",
+      "relit"
+    ],
+    "correctAnswer": "avait relu",
+    "explanation": "Discours rapporté → antériorité.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 2.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REJECT",
+      "det=true",
+      "sem=reject",
+      "adv=reject",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.grammar.C2.0.a1.7064f8685f9e290a"
+  },
+  {
+    "language": "fr",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.distinctions_fines_c2",
+    "stem": "La formule est ____ : deux lectures restent ouvertes.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "équivoque",
+      "équivalente",
+      "équitable",
+      "éloquente"
+    ],
+    "correctAnswer": "équivoque",
+    "explanation": "Équivoque = two-sided.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 2.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.C2.0.a0.cd6c5b523f230ade"
+  },
+  {
+    "language": "fr",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "fr.vocab.precision_lexicale",
+    "stem": "Ces chiffres ____ le doute sur la prévision.",
+    "prompt": "Choisissez le mot.",
+    "choices": [
+      "jettent",
+      "posent",
+      "mettent",
+      "font"
+    ],
+    "correctAnswer": "jettent",
+    "explanation": "Jeter le doute sur.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 2.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.vocabulary.C2.1.a1.e3481ccee4486058"
+  },
+  {
+    "language": "fr",
+    "level": "C2",
+    "skill": "functional",
+    "construct": "fr.functional.implication_c2",
+    "stem": "Vous voulez soutenir le but sans tout valider. Que dites-vous ?",
+    "prompt": "Choisissez la meilleure réponse.",
+    "choices": [
+      "Je partage l’objectif, sous réserve d’indicateurs plus clairs.",
+      "J’approuve chaque détail sans condition.",
+      "Je refuse le but mais loue les indicateurs.",
+      "Partager égale validation juridique totale."
+    ],
+    "correctAnswer": "Je partage l’objectif, sous réserve d’indicateurs plus clairs.",
+    "explanation": "Alignement partiel.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 2.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REJECT",
+      "det=false",
+      "sem=pass",
+      "adv=pass",
+      "prompt=fr_item_generation_v2"
+    ],
+    "id": "bank.fr.functional.C2.0.a1.bb6a30f9c980b40f"
+  },
+  {
+    "language": "zh",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "zh.grammar.shi_you_measure",
+    "stem": "他 ____ 老师。",
+    "prompt": "选择正确的词。",
+    "choices": [
+      "是",
+      "在",
+      "有",
+      "很"
+    ],
+    "correctAnswer": "是",
+    "explanation": "身份用“是”。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.grammar.A1.0.a0.c02543683398133a"
+  },
+  {
+    "language": "zh",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "zh.grammar.questions_negation",
+    "stem": "我买了 ____ 书。",
+    "prompt": "选择正确的词。",
+    "choices": [
+      "一本",
+      "一个",
+      "一张",
+      "一条"
+    ],
+    "correctAnswer": "一本",
+    "explanation": "书用量词“本”。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.grammar.A1.1.a1.af4296893eb70e6e"
+  },
+  {
+    "language": "zh",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.richang",
+    "stem": "去机场可以坐 ____。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "地铁",
+      "地图",
+      "地板",
+      "地点"
+    ],
+    "correctAnswer": "地铁",
+    "explanation": "地铁。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.A1.0.a0.455af4d48bbdc068"
+  },
+  {
+    "language": "zh",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.richang",
+    "stem": "下雨了，带上 ____。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "雨伞",
+      "雨衣只",
+      "雨水",
+      "雨点门"
+    ],
+    "correctAnswer": "雨伞",
+    "explanation": "雨伞。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.A1.1.a1.778ee6c961b35d14"
+  },
+  {
+    "language": "zh",
+    "level": "A1",
+    "skill": "reading",
+    "construct": "zh.reading.signs_messages",
+    "stem": "牌子：“营业时间 9:00–21:00”。什么时候可以去？",
+    "prompt": "选择最佳答案。",
+    "choices": [
+      "九点到二十一点之间",
+      "只在九点",
+      "九点以后任意时间",
+      "永远关门"
+    ],
+    "correctAnswer": "九点到二十一点之间",
+    "explanation": "营业时间范围内。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.reading.A1.0.a0.092284d64ede2f4b"
+  },
+  {
+    "language": "zh",
+    "level": "A1",
+    "skill": "reading",
+    "construct": "zh.reading.signs_messages",
+    "stem": "箭头：“出口 →”。表示什么？",
+    "prompt": "选择最佳答案。",
+    "choices": [
+      "出口方向",
+      "入口",
+      "洗手间价格",
+      "班车时刻"
+    ],
+    "correctAnswer": "出口方向",
+    "explanation": "出口。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.reading.A1.1.a1.52aef1fea72b377e"
+  },
+  {
+    "language": "zh",
+    "level": "A1",
+    "skill": "functional",
+    "construct": "zh.functional.basic_exchanges",
+    "stem": "想问价格，怎么说？",
+    "prompt": "选择最佳回应。",
+    "choices": [
+      "这个多少钱？",
+      "这个多长时间？",
+      "这个谁？",
+      "这个哪儿？"
+    ],
+    "correctAnswer": "这个多少钱？",
+    "explanation": "问价。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.functional.A1.0.a0.c609996fdccfc01c"
+  },
+  {
+    "language": "zh",
+    "level": "A1",
+    "skill": "functional",
+    "construct": "zh.functional.basic_exchanges",
+    "stem": "别人帮你开门，怎么说？",
+    "prompt": "选择最佳回应。",
+    "choices": [
+      "谢谢。",
+      "对不起门。",
+      "你好门。",
+      "请门。"
+    ],
+    "correctAnswer": "谢谢。",
+    "explanation": "感谢。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.functional.A1.1.a1.e081d953a6a9fede"
+  },
+  {
+    "language": "zh",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "zh.grammar.location_possession",
+    "stem": "电影已经开始 ____。",
+    "prompt": "选择正确的词。",
+    "choices": [
+      "了",
+      "过",
+      "着",
+      "的"
+    ],
+    "correctAnswer": "了",
+    "explanation": "变化/完成常用“了”。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.grammar.A2.0.a0.1e75fdae7977cb1c"
+  },
+  {
+    "language": "zh",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "zh.grammar.aspect_le_guo",
+    "stem": "我昨天 ____ 去公园。",
+    "prompt": "选择正确的词。",
+    "choices": [
+      "没",
+      "不",
+      "别",
+      "未着"
+    ],
+    "correctAnswer": "没",
+    "explanation": "过去否定常用“没”。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.grammar.A2.1.a1.f4529975d3464cd4"
+  },
+  {
+    "language": "zh",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.richang",
+    "stem": "我下午两点有 ____。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "预约",
+      "预言",
+      "预报门",
+      "预制"
+    ],
+    "correctAnswer": "预约",
+    "explanation": "预约=appointment。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.A2.0.a0.3e8a3b2aa489a0c8"
+  },
+  {
+    "language": "zh",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.collocations",
+    "stem": "可以凭小票办理 ____。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "退款",
+      "退步",
+      "退出只",
+      "退却"
+    ],
+    "correctAnswer": "退款",
+    "explanation": "退款。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.A2.1.a1.0018f091cf8e522b"
+  },
+  {
+    "language": "zh",
+    "level": "A2",
+    "skill": "reading",
+    "construct": "zh.reading.practical_notices",
+    "stem": "提示：“行李请放指定柜子”。行李放哪？",
+    "prompt": "选择最佳答案。",
+    "choices": [
+      "指定柜子",
+      "任意座位下",
+      "门外",
+      "不能放"
+    ],
+    "correctAnswer": "指定柜子",
+    "explanation": "指定柜子。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.reading.A2.0.a0.285144e027ae5a15"
+  },
+  {
+    "language": "zh",
+    "level": "A2",
+    "skill": "reading",
+    "construct": "zh.reading.signs_messages",
+    "stem": "通知：“退票请到3号窗口”。去哪？",
+    "prompt": "选择最佳答案。",
+    "choices": [
+      "3号窗口",
+      "1号窗口",
+      "出口",
+      "餐厅"
+    ],
+    "correctAnswer": "3号窗口",
+    "explanation": "3号窗口。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.reading.A2.1.a1.018b0ad11749ca13"
+  },
+  {
+    "language": "zh",
+    "level": "A2",
+    "skill": "functional",
+    "construct": "zh.functional.invitations_apologies",
+    "stem": "没听清地址，怎么说？",
+    "prompt": "选择最佳回应。",
+    "choices": [
+      "请再说一遍，好吗？",
+      "请永远别说。",
+      "地址你必须再说错。",
+      "你再说一遍应。"
+    ],
+    "correctAnswer": "请再说一遍，好吗？",
+    "explanation": "请求重复。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.functional.A2.0.a0.1b78d31c2ead62a1"
+  },
+  {
+    "language": "zh",
+    "level": "A2",
+    "skill": "functional",
+    "construct": "zh.functional.basic_exchanges",
+    "stem": "提议六点见，怎么说？",
+    "prompt": "选择最佳回应。",
+    "choices": [
+      "我们六点见，好吗？",
+      "我们必须六点见面永远。",
+      "见面是六点必须。",
+      "六点我们见面应否。"
+    ],
+    "correctAnswer": "我们六点见，好吗？",
+    "explanation": "提议。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.functional.A2.1.a1.58d6d633607dedb9"
+  },
+  {
+    "language": "zh",
+    "level": "B1",
+    "skill": "grammar",
+    "construct": "zh.grammar.complements_basic",
+    "stem": "你 ____ 中国菜吗？",
+    "prompt": "选择正确的词。",
+    "choices": [
+      "吃过",
+      "吃了正在",
+      "正吃过",
+      "吃着了"
+    ],
+    "correctAnswer": "吃过",
+    "explanation": "经历体“过”。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.grammar.B1.0.a0.b3fe17648b3ee29f"
+  },
+  {
+    "language": "zh",
+    "level": "B1",
+    "skill": "grammar",
+    "construct": "zh.grammar.ba_bei_comparatives",
+    "stem": "请把灯 ____。",
+    "prompt": "选择正确的词。",
+    "choices": [
+      "打开",
+      "打开被",
+      "被打开把",
+      "打打开"
+    ],
+    "correctAnswer": "打开",
+    "explanation": "把+宾语+结果。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.grammar.B1.1.a1.3776a6ad1f2e54da"
+  },
+  {
+    "language": "zh",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.collocations",
+    "stem": "报名 ____ 是下周一。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "截止",
+      "结束只",
+      "结局",
+      "结账门"
+    ],
+    "correctAnswer": "截止",
+    "explanation": "截止。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.B1.0.a0.f65e7f05ee316399"
+  },
+  {
+    "language": "zh",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.collocations",
+    "stem": "我们得尽快 ____ 决定。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "做出",
+      "做出吃",
+      "做开",
+      "做对门"
+    ],
+    "correctAnswer": "做出",
+    "explanation": "做出决定。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.B1.1.a1.b76ee2c3adcd6b9e"
+  },
+  {
+    "language": "zh",
+    "level": "B1",
+    "skill": "reading",
+    "construct": "zh.reading.main_idea",
+    "stem": "短信：“今日课取消，改到周四”。意思是？",
+    "prompt": "选择最佳答案。",
+    "choices": [
+      "今天不上，改到周四",
+      "提前上课",
+      "没有变化",
+      "永久取消且无新日期"
+    ],
+    "correctAnswer": "今天不上，改到周四",
+    "explanation": "取消+改期。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.reading.B1.0.a0.8f7074cab8731228"
+  },
+  {
+    "language": "zh",
+    "level": "B1",
+    "skill": "reading",
+    "construct": "zh.reading.practical_notices",
+    "stem": "帖子：“成都→重庆还有一个空位，早上9点出发”。在说什么？",
+    "prompt": "选择最佳答案。",
+    "choices": [
+      "拼车去重庆",
+      "成都酒店",
+      "招聘",
+      "机票"
+    ],
+    "correctAnswer": "拼车去重庆",
+    "explanation": "拼车。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.reading.B1.1.a1.7256f74585ad49fe"
+  },
+  {
+    "language": "zh",
+    "level": "B1",
+    "skill": "functional",
+    "construct": "zh.functional.advice_clarification",
+    "stem": "晚上有约，同事邀请你，怎么说？",
+    "prompt": "选择最佳回应。",
+    "choices": [
+      "很想去，可我已经有安排了。",
+      "我忙所以邀请不行。",
+      "今晚永远不行。",
+      "别邀请我。"
+    ],
+    "correctAnswer": "很想去，可我已经有安排了。",
+    "explanation": "婉拒。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.functional.B1.0.a0.f0c8343d29d1e993"
+  },
+  {
+    "language": "zh",
+    "level": "B1",
+    "skill": "functional",
+    "construct": "zh.functional.invitations_apologies",
+    "stem": "想确认截止日期，怎么说？",
+    "prompt": "选择最佳回应。",
+    "choices": [
+      "确认一下：周五仍是截止日期吗？",
+      "确认我周五截止对吗你？",
+      "周五截止你再说？",
+      "截止还是周五正在？"
+    ],
+    "correctAnswer": "确认一下：周五仍是截止日期吗？",
+    "explanation": "确认。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.functional.B1.1.a1.1c6614b4aca6e3eb"
+  },
+  {
+    "language": "zh",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.collocations",
+    "stem": "公司计划明年 ____ 工资。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "提高",
+      "起床",
+      "提起只",
+      "提前门"
+    ],
+    "correctAnswer": "提高",
+    "explanation": "提高工资。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.B2.0.a0.2fc2d6ee2e7da50d"
+  },
+  {
+    "language": "zh",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.precision",
+    "stem": "环路上 ____ 很大。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "车流量",
+      "车辆只坐",
+      "车库门",
+      "车票"
+    ],
+    "correctAnswer": "车流量",
+    "explanation": "车流量。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 0.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.B2.1.a1.01f66b23163e6af7"
+  },
+  {
+    "language": "zh",
+    "level": "B2",
+    "skill": "reading",
+    "construct": "zh.reading.inference_register",
+    "stem": "简报：“增长较有可能，但供应风险仍在。”态度？",
+    "prompt": "选择最佳答案。",
+    "choices": [
+      "谨慎乐观",
+      "必然崩盘",
+      "毫无看法",
+      "完全庆祝"
+    ],
+    "correctAnswer": "谨慎乐观",
+    "explanation": "较有可能+但。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.reading.B2.0.a0.9459a0cf9f3d9ac9"
+  },
+  {
+    "language": "zh",
+    "level": "B2",
+    "skill": "reading",
+    "construct": "zh.reading.main_idea",
+    "stem": "邮件：“想法不错；目前档期不合适。”含义？",
+    "prompt": "选择最佳答案。",
+    "choices": [
+      "眼下婉拒",
+      "立刻批准",
+      "要求付款",
+      "人身攻击"
+    ],
+    "correctAnswer": "眼下婉拒",
+    "explanation": "档期不合适。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 0.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.reading.B2.1.a1.0bf89771bb76cd22"
+  },
+  {
+    "language": "zh",
+    "level": "B2",
+    "skill": "functional",
+    "construct": "zh.functional.advice_clarification",
+    "stem": "报告想多要两天，怎么说？",
+    "prompt": "选择最佳回应。",
+    "choices": [
+      "能不能把截止日期延长两天？",
+      "现在就延长截止两天。",
+      "我要更多期限强制。",
+      "截止必须更晚你。"
+    ],
+    "correctAnswer": "能不能把截止日期延长两天？",
+    "explanation": "协商延期。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REVISE",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.functional.B2.0.a1.27d87c6a3d362024"
+  },
+  {
+    "language": "zh",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.precision",
+    "stem": "这份说明意在 ____ 大家的顾虑，但并未承诺退款。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "缓解",
+      "解散",
+      "解放只",
+      "解释门"
+    ],
+    "correctAnswer": "缓解",
+    "explanation": "缓解顾虑。",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 1.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.C1.0.a0.53ca572b4e3ccb8a"
+  },
+  {
+    "language": "zh",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.precision",
+    "stem": "他的口气对方案略显 ____。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "不以为然",
+      "不吃饭",
+      "不打开",
+      "不跑步"
+    ],
+    "correctAnswer": "不以为然",
+    "explanation": "不以为然=dismissive。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 1.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.C1.1.a1.81dceb9bfa64c795"
+  },
+  {
+    "language": "zh",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.fine_distinctions_c2",
+    "stem": "这段表述刻意 ____，两种理解都说得通。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "留有余地",
+      "留下椅子",
+      "留着吃饭",
+      "留门打开"
+    ],
+    "correctAnswer": "留有余地",
+    "explanation": "留有余地≈equivocal。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 2.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.C2.0.a0.6372282263bdf7dd"
+  },
+  {
+    "language": "zh",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "zh.vocab.precision",
+    "stem": "新数据让人对原先预测 ____。",
+    "prompt": "选择最合适的词。",
+    "choices": [
+      "产生怀疑",
+      "产生椅子",
+      "产生吃饭",
+      "产生开门"
+    ],
+    "correctAnswer": "产生怀疑",
+    "explanation": "产生怀疑。",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 2.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.vocabulary.C2.1.a1.1da3e6657ba21cea"
+  },
+  {
+    "language": "zh",
+    "level": "C2",
+    "skill": "functional",
+    "construct": "zh.functional.pragmatic_nuance_c2",
+    "stem": "想婉拒却不明说“不”，怎么说？",
+    "prompt": "选择最佳回应。",
+    "choices": [
+      "这个方向有意思，也许更适合下一阶段。",
+      "不行，别再问。",
+      "想法一文不值。",
+      "下一阶段等于现在全盘同意。"
+    ],
+    "correctAnswer": "这个方向有意思，也许更适合下一阶段。",
+    "explanation": "间接推迟。",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 2.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=zh_item_generation_v2"
+    ],
+    "id": "bank.zh.functional.C2.0.a0.abb20b4c1e79b0ac"
+  },
+  {
+    "language": "de",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "de.grammar.sein_haben_articles",
+    "stem": "Wir ____ Studenten.",
+    "prompt": "Wählen Sie die richtige Form.",
+    "choices": [
+      "sind",
+      "bist",
+      "ist",
+      "seid"
+    ],
+    "correctAnswer": "sind",
+    "explanation": "Wir + sind.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.grammar.A1.0.a0.fb91aa6ad4e60493"
+  },
+  {
+    "language": "de",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "de.grammar.present_negation_questions",
+    "stem": "Ich sehe ____ Mann.",
+    "prompt": "Wählen Sie die richtige Form.",
+    "choices": [
+      "den",
+      "der",
+      "dem",
+      "des"
+    ],
+    "correctAnswer": "den",
+    "explanation": "Akkusativ maskulin: den.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.grammar.A1.1.a1.6646c2392478e42c"
+  },
+  {
+    "language": "de",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "de.vocab.alltag",
+    "stem": "Brot kaufe ich in der ____.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "Bäckerei",
+      "Bücherei",
+      "Bäckereiheit",
+      "Bank"
+    ],
+    "correctAnswer": "Bäckerei",
+    "explanation": "Brot → Bäckerei.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.A1.0.a0.901932d95de10a4a"
+  },
+  {
+    "language": "de",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "de.vocab.alltag",
+    "stem": "Der Zug fährt vom ____ ab.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "Bahnhof",
+      "Bahnsteig nur",
+      "Bahncard",
+      "Bahn"
+    ],
+    "correctAnswer": "Bahnhof",
+    "explanation": "Bahnhof.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.A1.1.a1.8e050eb2ed1bd0d3"
+  },
+  {
+    "language": "de",
+    "level": "A1",
+    "skill": "functional",
+    "construct": "de.functional.basisaustausch",
+    "stem": "Sie wollen den Preis wissen. Was sagen Sie?",
+    "prompt": "Beste Antwort wählen.",
+    "choices": [
+      "Was kostet das?",
+      "Wie lange kostet das?",
+      "Wer kostet das?",
+      "Wohin kostet das?"
+    ],
+    "correctAnswer": "Was kostet das?",
+    "explanation": "Preisfrage.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.functional.A1.0.a0.b3079a3732aa83e7"
+  },
+  {
+    "language": "de",
+    "level": "A1",
+    "skill": "functional",
+    "construct": "de.functional.basisaustausch",
+    "stem": "Jemand hält die Tür. Was sagen Sie?",
+    "prompt": "Beste Antwort wählen.",
+    "choices": [
+      "Danke.",
+      "Entschuldigung Tür.",
+      "Hallo Tür.",
+      "Bitte Tür danke nicht."
+    ],
+    "correctAnswer": "Danke.",
+    "explanation": "Dank.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.functional.A1.1.a1.70511bba0458c6cc"
+  },
+  {
+    "language": "de",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "de.grammar.akkusativ_modals",
+    "stem": "Gestern habe ich einen Film ____.",
+    "prompt": "Wählen Sie die richtige Form.",
+    "choices": [
+      "gesehen",
+      "sehen",
+      "sah",
+      "seht"
+    ],
+    "correctAnswer": "gesehen",
+    "explanation": "Perfekt Partizip gesehen.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.grammar.A2.0.a0.ff315fe45f83d48f"
+  },
+  {
+    "language": "de",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "de.grammar.perfekt_dativ",
+    "stem": "____ du mir helfen?",
+    "prompt": "Wählen Sie die richtige Form.",
+    "choices": [
+      "Kannst",
+      "Kann",
+      "Können",
+      "Könnte seid"
+    ],
+    "correctAnswer": "Kannst",
+    "explanation": "du kannst.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.grammar.A2.1.a1.68a3076de9be1795"
+  },
+  {
+    "language": "de",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "de.vocab.alltag",
+    "stem": "Der Flug hat ____; Boarding später.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "Verspätung",
+      "Versprechen",
+      "Verständnis",
+      "Versuch"
+    ],
+    "correctAnswer": "Verspätung",
+    "explanation": "Verspätung.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.A2.0.a0.99a28b88a1b12e1b"
+  },
+  {
+    "language": "de",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "de.vocab.collocations",
+    "stem": "Bewahren Sie die ____ für die Rückgabe.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "Quittung",
+      "Quote",
+      "Quelle",
+      "Quere"
+    ],
+    "correctAnswer": "Quittung",
+    "explanation": "Quittung.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.A2.1.a1.3d69ee839928af84"
+  },
+  {
+    "language": "de",
+    "level": "A2",
+    "skill": "reading",
+    "construct": "de.reading.praktische_hinweise",
+    "stem": "Info: „Rückerstattung an Schalter 3.“ Wohin?",
+    "prompt": "Beste Antwort wählen.",
+    "choices": [
+      "Zu Schalter 3",
+      "Nur Schalter 1",
+      "Zum Ausgang",
+      "Zum Café"
+    ],
+    "correctAnswer": "Zu Schalter 3",
+    "explanation": "Schalter 3.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REVISE",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.reading.A2.0.a1.cb7f7f0eade38290"
+  },
+  {
+    "language": "de",
+    "level": "A2",
+    "skill": "functional",
+    "construct": "de.functional.einladungen_entschuldigungen",
+    "stem": "Sie haben die Adresse nicht gehört. Was sagen Sie?",
+    "prompt": "Beste Antwort wählen.",
+    "choices": [
+      "Könnten Sie das bitte wiederholen?",
+      "Wiederholen Sie nie.",
+      "Adresse du sagen nochmal falsch.",
+      "Sie wiederholen muss."
+    ],
+    "correctAnswer": "Könnten Sie das bitte wiederholen?",
+    "explanation": "Bitte um Wiederholung.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.functional.A2.0.a0.bfe29116dbb33643"
+  },
+  {
+    "language": "de",
+    "level": "A2",
+    "skill": "functional",
+    "construct": "de.functional.basisaustausch",
+    "stem": "Schlagen Sie 18 Uhr vor. Was sagen Sie?",
+    "prompt": "Beste Antwort wählen.",
+    "choices": [
+      "Treffen wir uns um 18 Uhr?",
+      "Wir müssen 18 treffen ewig.",
+      "Treffen ist 18 muss.",
+      "18 wir treffen sollen?"
+    ],
+    "correctAnswer": "Treffen wir uns um 18 Uhr?",
+    "explanation": "Vorschlag.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.functional.A2.1.a1.4e50a01a4a33489f"
+  },
+  {
+    "language": "de",
+    "level": "B1",
+    "skill": "grammar",
+    "construct": "de.grammar.adjective_endings_comparatives",
+    "stem": "Ich bleibe zu Hause, weil ich krank ____.",
+    "prompt": "Wählen Sie die richtige Form.",
+    "choices": [
+      "bin",
+      "bist",
+      "ist sein",
+      "sein"
+    ],
+    "correctAnswer": "bin",
+    "explanation": "Verb ans Ende: bin.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.grammar.B1.0.a0.7a6214b0e6006d41"
+  },
+  {
+    "language": "de",
+    "level": "B1",
+    "skill": "grammar",
+    "construct": "de.grammar.subordinate_weil_dass",
+    "stem": "Das ist der Bericht, ____ ich gestern gelesen habe.",
+    "prompt": "Wählen Sie die richtige Form.",
+    "choices": [
+      "den",
+      "der",
+      "dem",
+      "dessen"
+    ],
+    "correctAnswer": "den",
+    "explanation": "Akkusativ Relativpronomen.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.grammar.B1.1.a1.807052a7d47e0e64"
+  },
+  {
+    "language": "de",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "de.vocab.collocations",
+    "stem": "Die ____ für die Anmeldung ist Montag.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "Frist",
+      "Freiheit",
+      "Freude",
+      "Frage"
+    ],
+    "correctAnswer": "Frist",
+    "explanation": "Frist.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.B1.0.a0.35ff83aafe81c614"
+  },
+  {
+    "language": "de",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "de.vocab.collocations",
+    "stem": "Ich möchte einen ____ vereinbaren.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "Termin",
+      "Text",
+      "Tisch",
+      "Titel"
+    ],
+    "correctAnswer": "Termin",
+    "explanation": "Termin vereinbaren.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.B1.1.a1.72a3dfd9876eeb60"
+  },
+  {
+    "language": "de",
+    "level": "B1",
+    "skill": "functional",
+    "construct": "de.functional.rat_klaerung",
+    "stem": "Einladung heute Abend; Sie sind verhindert. Was sagen Sie?",
+    "prompt": "Beste Antwort wählen.",
+    "choices": [
+      "Gerne, aber ich habe schon etwas vor.",
+      "Ich bin busy also Einladung nein.",
+      "Heute Abend unmöglich immer.",
+      "Lad mich nicht ein."
+    ],
+    "correctAnswer": "Gerne, aber ich habe schon etwas vor.",
+    "explanation": "Höfliche Absage.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.functional.B1.0.a0.cc444ba04247e31f"
+  },
+  {
+    "language": "de",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "de.vocab.collocations",
+    "stem": "Das Unternehmen will die Gehälter ____.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "erhöhen",
+      "erheben nur",
+      "erhöht sein",
+      "erholen"
+    ],
+    "correctAnswer": "erhöhen",
+    "explanation": "Erhöhen = raise.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.B2.0.a0.05a2cee7e94398a0"
+  },
+  {
+    "language": "de",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "de.vocab.precision",
+    "stem": "Auf dem Ring herrschte ____ Verkehr.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "starker",
+      "starkerlich",
+      "stärkster nur",
+      "starkend"
+    ],
+    "correctAnswer": "starker",
+    "explanation": "Starker Verkehr.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 0.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.B2.1.a1.d54e19192e682edf"
+  },
+  {
+    "language": "de",
+    "level": "B2",
+    "skill": "reading",
+    "construct": "de.reading.inference_register",
+    "stem": "Kurzinfo: „Wachstum ist wahrscheinlich, Lieferrisiken bleiben aber relevant.“ Haltung?",
+    "prompt": "Beste Antwort wählen.",
+    "choices": [
+      "Vorsichtiger Optimismus",
+      "Sichere Katastrophe",
+      "Keine Meinung",
+      "Reiner Jubel"
+    ],
+    "correctAnswer": "Vorsichtiger Optimismus",
+    "explanation": "Wahrscheinlich + aber.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.reading.B2.0.a0.15dc8ab8271094f6"
+  },
+  {
+    "language": "de",
+    "level": "B2",
+    "skill": "reading",
+    "construct": "de.reading.hauptidee",
+    "stem": "Mail: „Das Konzept überzeugt; der Zeitplan passt nicht.“ Implikation?",
+    "prompt": "Beste Antwort wählen.",
+    "choices": [
+      "Höfliche Absage vorerst",
+      "Sofortige Zusage",
+      "Zahlungsaufforderung",
+      "Persönlicher Angriff"
+    ],
+    "correctAnswer": "Höfliche Absage vorerst",
+    "explanation": "Zeitplan passt nicht.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 0.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.reading.B2.1.a1.97da50e388970ee9"
+  },
+  {
+    "language": "de",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "de.vocab.precision",
+    "stem": "Das Schreiben soll Bedenken ____, ohne Erstattung zuzusagen.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "abmildern",
+      "abmelden",
+      "abmessen",
+      "abbilden"
+    ],
+    "correctAnswer": "abmildern",
+    "explanation": "Abmildern.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 1.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.C1.0.a0.3ca0b87d9d5346de"
+  },
+  {
+    "language": "de",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "de.vocab.precision",
+    "stem": "Sein Ton wirkte höflich, aber ____ gegenüber dem Vorschlag.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "abwehrend",
+      "abwechselnd",
+      "abwesend",
+      "abhängig"
+    ],
+    "correctAnswer": "abwehrend",
+    "explanation": "Abwehrend = dismissive.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 1.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.C1.1.a1.9da01760a6a025c5"
+  },
+  {
+    "language": "de",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "de.vocab.fine_distinctions_c2",
+    "stem": "Die Aussage war absichtlich ____; beide Lesarten bleiben möglich.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "zweideutig",
+      "zweifelhaft nur",
+      "zweifelnd",
+      "zweierlei"
+    ],
+    "correctAnswer": "zweideutig",
+    "explanation": "Zweideutig.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 2.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.C2.0.a0.37d6a2c3d5692195"
+  },
+  {
+    "language": "de",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "de.vocab.precision",
+    "stem": "Neue Zahlen stellen die Prognose ____.",
+    "prompt": "Wählen Sie das beste Wort.",
+    "choices": [
+      "in Frage",
+      "in Form",
+      "in Sicht",
+      "in Kraft"
+    ],
+    "correctAnswer": "in Frage",
+    "explanation": "In Frage stellen.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 2.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=de_item_generation_v2"
+    ],
+    "id": "bank.de.vocabulary.C2.1.a1.83bdbf9f7a13949c"
+  },
+  {
+    "language": "ru",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "ru.grammar.byt_gender_nominative",
+    "stem": "Это ____ стол.",
+    "prompt": "Выберите верную форму.",
+    "choices": [
+      "мой",
+      "моя",
+      "моё",
+      "мои"
+    ],
+    "correctAnswer": "мой",
+    "explanation": "Стол — м.р.: мой.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.grammar.A1.0.a0.aa254b614bae37a1"
+  },
+  {
+    "language": "ru",
+    "level": "A1",
+    "skill": "grammar",
+    "construct": "ru.grammar.present_negation_questions",
+    "stem": "Книга лежит ____ столе.",
+    "prompt": "Выберите верную форму.",
+    "choices": [
+      "на",
+      "в",
+      "к",
+      "у"
+    ],
+    "correctAnswer": "на",
+    "explanation": "На столе.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.grammar.A1.1.a1.2095f56d2282e3cf"
+  },
+  {
+    "language": "ru",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.bytovoj",
+    "stem": "Лекарства покупают в ____.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "аптеке",
+      "магазине игрушек",
+      "библиотеке",
+      "кинотеатре"
+    ],
+    "correctAnswer": "аптеке",
+    "explanation": "Аптека.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.A1.0.a0.be86f2a44ce7f104"
+  },
+  {
+    "language": "ru",
+    "level": "A1",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.bytovoj",
+    "stem": "Поезд отправляется с ____.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "вокзала",
+      "больницы",
+      "парка",
+      "кафе"
+    ],
+    "correctAnswer": "вокзала",
+    "explanation": "С вокзала.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.A1.1.a1.a84ba2beeb151779"
+  },
+  {
+    "language": "ru",
+    "level": "A1",
+    "skill": "functional",
+    "construct": "ru.functional.basic_exchanges",
+    "stem": "Хотите узнать цену. Что сказать?",
+    "prompt": "Выберите лучший ответ.",
+    "choices": [
+      "Сколько это стоит?",
+      "Сколько это длится?",
+      "Кто это стоит?",
+      "Куда это стоит?"
+    ],
+    "correctAnswer": "Сколько это стоит?",
+    "explanation": "Вопрос о цене.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -2.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.functional.A1.0.a0.b3904941fb61d152"
+  },
+  {
+    "language": "ru",
+    "level": "A1",
+    "skill": "functional",
+    "construct": "ru.functional.basic_exchanges",
+    "stem": "Вам придержали дверь. Что сказать?",
+    "prompt": "Выберите лучший ответ.",
+    "choices": [
+      "Спасибо.",
+      "Извините дверь.",
+      "Здравствуй дверь.",
+      "Пожалуйста спасибо нет."
+    ],
+    "correctAnswer": "Спасибо.",
+    "explanation": "Благодарность.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -2.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.functional.A1.1.a1.cf60f65d923503fe"
+  },
+  {
+    "language": "ru",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "ru.grammar.accusative_possession",
+    "stem": "Вчера она ____ домой рано.",
+    "prompt": "Выберите верную форму.",
+    "choices": [
+      "пришла",
+      "пришёл",
+      "пришло",
+      "пришли"
+    ],
+    "correctAnswer": "пришла",
+    "explanation": "Она → пришла.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.grammar.A2.0.a0.6634e1662a7868cd"
+  },
+  {
+    "language": "ru",
+    "level": "A2",
+    "skill": "grammar",
+    "construct": "ru.grammar.past_prepositional",
+    "stem": "Я читаю ____.",
+    "prompt": "Выберите верную форму.",
+    "choices": [
+      "книгу",
+      "книга",
+      "книге",
+      "книгой"
+    ],
+    "correctAnswer": "книгу",
+    "explanation": "В.п. книгу.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.grammar.A2.1.a1.7f4a3feabfa39798"
+  },
+  {
+    "language": "ru",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.bytovoj",
+    "stem": "У рейса ____; посадка позже.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "задержка",
+      "задача",
+      "загадка",
+      "забота"
+    ],
+    "correctAnswer": "задержка",
+    "explanation": "Задержка.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.A2.0.a0.435fde42ba50aa05"
+  },
+  {
+    "language": "ru",
+    "level": "A2",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.collocations",
+    "stem": "Сохраните ____ для возврата.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "чек",
+      "чек-лист",
+      "человек",
+      "чертёж"
+    ],
+    "correctAnswer": "чек",
+    "explanation": "Чек.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.A2.1.a1.5b6d1722a8181ae4"
+  },
+  {
+    "language": "ru",
+    "level": "A2",
+    "skill": "reading",
+    "construct": "ru.reading.practical_notices",
+    "stem": "Сообщение: «Возврат билетов — окно 3». Куда идти?",
+    "prompt": "Выберите лучший ответ.",
+    "choices": [
+      "К окну 3",
+      "Только к окну 1",
+      "К выходу",
+      "В кафе"
+    ],
+    "correctAnswer": "К окну 3",
+    "explanation": "Окно 3.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REJECT",
+      "det=false",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.reading.A2.0.a1.2287ef38f057036a"
+  },
+  {
+    "language": "ru",
+    "level": "A2",
+    "skill": "functional",
+    "construct": "ru.functional.invitations_apologies",
+    "stem": "Не расслышали адрес. Что сказать?",
+    "prompt": "Выберите лучший ответ.",
+    "choices": [
+      "Повторите, пожалуйста.",
+      "Никогда не повторяйте.",
+      "Адрес скажи ещё раз неправильно.",
+      "Вы повторить должны."
+    ],
+    "correctAnswer": "Повторите, пожалуйста.",
+    "explanation": "Просьба повторить.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": -1.455,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.functional.A2.0.a0.f23afbf16faab5a0"
+  },
+  {
+    "language": "ru",
+    "level": "A2",
+    "skill": "functional",
+    "construct": "ru.functional.basic_exchanges",
+    "stem": "Предложите встретиться в 18:00. Что сказать?",
+    "prompt": "Выберите лучший ответ.",
+    "choices": [
+      "Давайте встретимся в 18:00?",
+      "Мы должны 18 встречаться вечно.",
+      "Встреча есть 18 должно.",
+      "18 мы встретимся следует?"
+    ],
+    "correctAnswer": "Давайте встретимся в 18:00?",
+    "explanation": "Предложение.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -1.23,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.functional.A2.1.a1.508122f33715c2a9"
+  },
+  {
+    "language": "ru",
+    "level": "B1",
+    "skill": "grammar",
+    "construct": "ru.grammar.genitive_dative",
+    "stem": "Я уже ____ письмо.",
+    "prompt": "Выберите верную форму.",
+    "choices": [
+      "написал",
+      "писал долго",
+      "пишу вчера",
+      "напишу вчера"
+    ],
+    "correctAnswer": "написал",
+    "explanation": "СВ: результат.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.grammar.B1.0.a0.a9b946280d5de6ef"
+  },
+  {
+    "language": "ru",
+    "level": "B1",
+    "skill": "grammar",
+    "construct": "ru.grammar.aspect_verbs_of_motion",
+    "stem": "Вчера мы ____ в музей на автобусе.",
+    "prompt": "Выберите верную форму.",
+    "choices": [
+      "поехали",
+      "ходили",
+      "ездили сейчас",
+      "идём вчера"
+    ],
+    "correctAnswer": "поехали",
+    "explanation": "Однократное перемещение → поехали.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.grammar.B1.1.a1.0ecc0744d9e67c3b"
+  },
+  {
+    "language": "ru",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.collocations",
+    "stem": "____ подачи заявок — понедельник.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "Срок",
+      "Срочность только",
+      "Ссора",
+      "Способ"
+    ],
+    "correctAnswer": "Срок",
+    "explanation": "Срок.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.B1.0.a0.bcac448dd08259e8"
+  },
+  {
+    "language": "ru",
+    "level": "B1",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.collocations",
+    "stem": "Я хочу ____ на приём.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "записаться",
+      "записать",
+      "переписать",
+      "описать"
+    ],
+    "correctAnswer": "записаться",
+    "explanation": "Записаться на приём.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": -0.725,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.B1.1.a1.addafa8fad1857a8"
+  },
+  {
+    "language": "ru",
+    "level": "B1",
+    "skill": "functional",
+    "construct": "ru.functional.advice_clarification",
+    "stem": "Вас зовут вечером, вы заняты. Что сказать?",
+    "prompt": "Выберите лучший ответ.",
+    "choices": [
+      "С удовольствием, но у меня уже планы.",
+      "Я занят значит приглашение нет.",
+      "Вечером невозможно всегда.",
+      "Не приглашайте меня."
+    ],
+    "correctAnswer": "С удовольствием, но у меня уже планы.",
+    "explanation": "Вежливый отказ.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": -0.22999999999999993,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.functional.B1.0.a0.a0fb9a963b0b9327"
+  },
+  {
+    "language": "ru",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.collocations",
+    "stem": "Компания планирует ____ зарплаты.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "повысить",
+      "повыситься самой",
+      "поднять стул",
+      "подняться"
+    ],
+    "correctAnswer": "повысить",
+    "explanation": "Повысить зарплаты.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.B2.0.a0.fec828af4ab58f4b"
+  },
+  {
+    "language": "ru",
+    "level": "B2",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.precision",
+    "stem": "На кольцевой был ____ трафик.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "плотный",
+      "крепкий",
+      "толстый",
+      "жёсткий"
+    ],
+    "correctAnswer": "плотный",
+    "explanation": "Плотный трафик.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 0.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.B2.1.a1.1f0cea2f3c72a67e"
+  },
+  {
+    "language": "ru",
+    "level": "B2",
+    "skill": "reading",
+    "construct": "ru.reading.inference_register",
+    "stem": "Сводка: «Рост вероятен, однако риски поставок сохраняются». Какова позиция?",
+    "prompt": "Выберите лучший ответ.",
+    "choices": [
+      "Осторожный оптимизм",
+      "Гарантированный крах",
+      "Нет мнения",
+      "Чистое торжество"
+    ],
+    "correctAnswer": "Осторожный оптимизм",
+    "explanation": "Вероятен + однако.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.reading.B2.0.a0.aa721b8270cb0402"
+  },
+  {
+    "language": "ru",
+    "level": "B2",
+    "skill": "functional",
+    "construct": "ru.functional.advice_clarification",
+    "stem": "Нужны ещё два дня на отчёт. Что сказать?",
+    "prompt": "Выберите лучший ответ.",
+    "choices": [
+      "Можно ли продлить срок на два дня?",
+      "Продли срок на два дня сейчас.",
+      "Хочу больше времени принудительно.",
+      "Срок позже ты должен."
+    ],
+    "correctAnswer": "Можно ли продлить срок на два дня?",
+    "explanation": "Вежливая просьба.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 0.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=REVISE",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.functional.B2.0.a1.35bda28fc480c34c"
+  },
+  {
+    "language": "ru",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.precision",
+    "stem": "Письмо должно ____ опасения, не обещая возврат денег.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "смягчить",
+      "смягчиться само",
+      "смять",
+      "смерить"
+    ],
+    "correctAnswer": "смягчить",
+    "explanation": "Смягчить опасения.",
+    "difficultyWithinLevel": 0.55,
+    "predictedDifficulty": 1.545,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.C1.0.a0.1c139402acdb5e8a"
+  },
+  {
+    "language": "ru",
+    "level": "C1",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.precision",
+    "stem": "Его тон к предложению был вежливым, но ____.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "скептическим",
+      "скелетным",
+      "складским",
+      "случайным лишь"
+    ],
+    "correctAnswer": "скептическим",
+    "explanation": "Скептический тон.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 1.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.C1.1.a1.d2c8af1ec2d0ef0d"
+  },
+  {
+    "language": "ru",
+    "level": "C2",
+    "skill": "grammar",
+    "construct": "ru.grammar.stylistic_distinctions_c2",
+    "stem": "Он то и дело ____ к одной и той же оговорке.",
+    "prompt": "Выберите верную форму.",
+    "choices": [
+      "возвращался",
+      "вернулся разово",
+      "вернётся вчера",
+      "возвращается был"
+    ],
+    "correctAnswer": "возвращался",
+    "explanation": "Повтор в прошлом → НСВ.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 2.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.grammar.C2.0.a0.4d93ddd460e69e3b"
+  },
+  {
+    "language": "ru",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.fine_distinctions_c2",
+    "stem": "Формулировка намеренно ____: возможны два прочтения.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "двусмысленна",
+      "двустороння только",
+      "двулична едой",
+      "двукратна"
+    ],
+    "correctAnswer": "двусмысленна",
+    "explanation": "Двусмысленна.",
+    "difficultyWithinLevel": 0.8,
+    "predictedDifficulty": 2.77,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.C2.0.a0.f17166c83ef44eac"
+  },
+  {
+    "language": "ru",
+    "level": "C2",
+    "skill": "vocabulary",
+    "construct": "ru.vocab.precision",
+    "stem": "Новые цифры ____ под сомнение прежний прогноз.",
+    "prompt": "Выберите лучшее слово.",
+    "choices": [
+      "ставят",
+      "кладут",
+      "делают",
+      "дают"
+    ],
+    "correctAnswer": "ставят",
+    "explanation": "Ставить под сомнение.",
+    "difficultyWithinLevel": 0.25,
+    "predictedDifficulty": 2.275,
+    "predictedDiscrimination": 1.2,
+    "note": "predicted* are engineering priors until empirical calibration",
+    "qualityChecks": [
+      "gate=PASS",
+      "det=true",
+      "sem=pass",
+      "adv=pass",
+      "prompt=ru_item_generation_v2"
+    ],
+    "id": "bank.ru.vocabulary.C2.1.a1.b6839edbff895959"
+  }
+]

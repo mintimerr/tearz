@@ -32,12 +32,15 @@ import {
   PlacementOrchestrationService,
   contentFromLegacyBankQuestion,
   createMemoryAnalyticsSink,
-  deserializeSnapshot,
+  recoverPlacementSession,
   type PlacementContentItem,
   type PlacementSessionSnapshot,
 } from '@tearz/assessment/placement';
+import { loadBundledContentBank } from '@tearz/assessment/banks';
+import { getPlacementProductionFlags } from '@/utils/placement-production-flags';
 
-const SESSION_KEY_PREFIX = '@tearz/placement-session.v2:';
+/** Bump when content bank source changes so old local-bank sessions cannot resume. */
+const SESSION_KEY_PREFIX = '@tearz/placement-session.v3:';
 const serviceCache = new Map<string, PlacementOrchestrationService>();
 
 function base64EncodeUtf8(str: string): string {
@@ -76,6 +79,23 @@ export function buildClientContentBank(
   lang: CompanionChatApiLanguage,
   opts?: { sessionSalt?: number; userEntropy?: number },
 ): PlacementContentItem[] {
+  const flags = getPlacementProductionFlags();
+  if (flags.contentBankSource === 'v1') {
+    const bundled = loadBundledContentBank(lang, flags.bankVersion);
+    if (bundled.length > 0) {
+      // Light session salt shuffle of order only — IRT selection still picks by difficulty.
+      const salt = (opts?.sessionSalt ?? 42) ^ (opts?.userEntropy ?? 0);
+      return bundled
+        .map((item, i) => ({ item, k: (Math.sin(salt * 0.001 + i * 12.9898) * 43758.5453) % 1 }))
+        .sort((a, b) => a.k - b.k)
+        .map((x) => x.item);
+    }
+    // Fail closed to empty only if pack missing — caller/mint handles; prefer not to silently use tiny legacy.
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      console.warn('[placement] v1 bank empty for', lang, '— falling back to legacy local');
+    }
+  }
+
   const local = PLACEMENT_LOCAL_BANK[lang] ?? PLACEMENT_LOCAL_BANK.english;
   const bank: PlacementContentItem[] = [];
   const seen = new Set<string>();
@@ -271,7 +291,32 @@ export async function loadPlacementSessionSnapshot(
   try {
     const raw = await AsyncStorage.getItem(`${SESSION_KEY_PREFIX}${language}`);
     if (!raw) return null;
-    return deserializeSnapshot(raw);
+    // Known ids from the same bank we would resume with (legacy local for phase-1).
+    const bank = buildClientContentBank(language as CompanionChatApiLanguage);
+    const knownItemIds = new Set(bank.map((c) => c.item.id));
+    // Minted ids from the saved session itself are also acceptable for resume.
+    try {
+      const peek = JSON.parse(raw) as {
+        presentedItemIds?: string[];
+        pendingItemId?: string | null;
+      };
+      for (const id of peek.presentedItemIds ?? []) knownItemIds.add(id);
+      if (peek.pendingItemId) knownItemIds.add(peek.pendingItemId);
+    } catch {
+      /* recoverPlacementSession handles invalid JSON */
+    }
+    const recovered = recoverPlacementSession(raw, {
+      language,
+      knownItemIds,
+      maxQuestions: 15,
+    });
+    if (!recovered.ok) {
+      if (recovered.clearSession) {
+        await clearPlacementSessionSnapshot(language);
+      }
+      return null;
+    }
+    return recovered.snapshot;
   } catch {
     return null;
   }
@@ -300,58 +345,69 @@ function createService(
   body: PlacementStepRequestBody,
   snap?: PlacementSessionSnapshot | null,
 ): PlacementOrchestrationService {
-  const contentBank = buildClientContentBank(lang, {
+  let contentBank = buildClientContentBank(lang, {
     sessionSalt: body.sessionSalt,
     userEntropy: body.userEntropy,
   });
+  // Prefer unused bank items across retakes — filter by lifetime/session avoid-list
+  // instead of reminting (which freezes JS when the avoid-list is large).
+  const avoidIds = new Set(body.seenQuestionIds ?? []);
+  if (avoidIds.size > 0) {
+    const fresh = contentBank.filter((c) => !avoidIds.has(c.item.id));
+    // Keep enough headroom for a full 15-item run; only fall back if bank exhausted.
+    if (fresh.length >= 20) contentBank = fresh;
+  }
   const analytics = typeof __DEV__ !== 'undefined' && __DEV__ ? createMemoryAnalyticsSink() : undefined;
+  const flags = getPlacementProductionFlags();
 
   const opts = {
     language: lang,
     contentBank,
     analytics: analytics?.sink,
     encodeAnswerKey,
-    mintFallback: (hint: {
-      targetLevel: string;
-      questionNumber: number;
-    }) => {
-      const d100 =
-        hint.targetLevel === 'A1'
-          ? 10
-          : hint.targetLevel === 'A2'
-            ? 25
-            : hint.targetLevel === 'B1'
-              ? 42
-              : hint.targetLevel === 'B2'
-                ? 58
-                : hint.targetLevel === 'C1'
-                  ? 75
-                  : 90;
-      const bankD = clamp(Math.round((d100 / 100) * 24 + 1), 1, 25);
-      const picked = pickAdaptiveQuestion({
-        lang,
-        questionIndex: hint.questionNumber,
-        history: [],
-        targetDifficulty: bankD,
-        allowWeak: true,
-        seenIds: [],
-        seenPrompts: [],
-        seenContentKeys: [],
-        sessionSalt: (body.sessionSalt ?? 1) + hint.questionNumber * 9973,
-        userEntropy: body.userEntropy ?? 0,
-      });
-      const sanitized = sanitizeLocal(picked, lang);
-      if (!sanitized) return null;
-      return contentFromLegacyBankQuestion(
-        {
-          ...sanitized,
-          id: `mint-${hint.questionNumber}-${sanitized.id}`,
-          language: lang,
-          difficulty: bankToScale100(sanitized.difficulty),
-        },
-        { difficultyAlready100: true, qualityGate: 'PASS' },
-      );
-    },
+    mintFallback: flags.allowProceduralMint
+      ? (hint: {
+          targetLevel: string;
+          questionNumber: number;
+        }) => {
+          const d100 =
+            hint.targetLevel === 'A1'
+              ? 10
+              : hint.targetLevel === 'A2'
+                ? 25
+                : hint.targetLevel === 'B1'
+                  ? 42
+                  : hint.targetLevel === 'B2'
+                    ? 58
+                    : hint.targetLevel === 'C1'
+                      ? 75
+                      : 90;
+          const bankD = clamp(Math.round((d100 / 100) * 24 + 1), 1, 25);
+          const picked = pickAdaptiveQuestion({
+            lang,
+            questionIndex: hint.questionNumber,
+            history: [],
+            targetDifficulty: bankD,
+            allowWeak: true,
+            seenIds: [],
+            seenPrompts: [],
+            seenContentKeys: [],
+            sessionSalt: (body.sessionSalt ?? 1) + hint.questionNumber * 9973,
+            userEntropy: body.userEntropy ?? 0,
+          });
+          const sanitized = sanitizeLocal(picked, lang);
+          if (!sanitized) return null;
+          return contentFromLegacyBankQuestion(
+            {
+              ...sanitized,
+              id: `mint-${hint.questionNumber}-${sanitized.id}`,
+              language: lang,
+              difficulty: bankToScale100(sanitized.difficulty),
+            },
+            { difficultyAlready100: true, qualityGate: 'PASS' },
+          );
+        }
+      : undefined,
     shadowLegacyFinalize:
       typeof __DEV__ !== 'undefined' && __DEV__
         ? ({ answers }: { answers: Array<{ correct: boolean; difficulty100: number }> }) =>
@@ -397,11 +453,12 @@ export function runAssessmentPlacementStep(body: PlacementStepRequestBody): Plac
     const step = svc.answer({
       answer: body.answer,
       timedOut: body.timedOut === true,
+      itemId: body.itemId ?? body.lastQuestion?.id,
     });
     void persistSnapshot(lang, step.snapshot);
     if (step.done) {
       clearCachedService(lang);
-      void clearPlacementSessionSnapshot(lang);
+      // Keep completed snapshot until next start so PlacementRecord can be saved safely.
       if (typeof __DEV__ !== 'undefined' && __DEV__ && step.shadow) {
         console.log('[placement shadow]', step.shadow);
       }
@@ -438,11 +495,12 @@ export async function runAssessmentPlacementStepAsync(
   const step = svc.answer({
     answer: body.answer,
     timedOut: body.timedOut === true,
+    itemId: body.itemId ?? body.lastQuestion?.id,
   });
   await persistSnapshot(lang, step.snapshot);
   if (step.done) {
     clearCachedService(lang);
-    await clearPlacementSessionSnapshot(lang);
+    // Keep completed snapshot until next start — recovery rejects non-active on resume.
     if (typeof __DEV__ !== 'undefined' && __DEV__ && step.shadow) {
       console.log('[placement shadow]', step.shadow);
     }

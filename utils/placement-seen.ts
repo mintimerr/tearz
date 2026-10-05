@@ -122,7 +122,8 @@ export function isTrivialParaphraseChoice(stem: string, choice: string): boolean
 }
 
 export function stemsTooSimilar(a: string, b: string): boolean {
-  if (placementTemplateKey(a) && placementTemplateKey(a) === placementTemplateKey(b)) return true;
+  const ka = placementTemplateKey(a);
+  if (ka && ka === placementTemplateKey(b)) return true;
   const ta = placementSignificantTokens(a);
   const tb = placementSignificantTokens(b);
   if (ta.length >= 4 && tb.length >= 4 && jaccard(ta, tb) >= 0.78) return true;
@@ -169,6 +170,9 @@ export function buildSeenQuestionKeys(
   return { ids, prompts, contents, templates };
 }
 
+/** Soft similarity scan is O(n × slotTokens); cap so remint never freezes the JS thread. */
+const STEMS_SIMILARITY_SCAN_CAP = 48;
+
 export function isQuestionAlreadySeen(
   q: { id: string; prompt: string; choices: string[] },
   seen: ReturnType<typeof buildSeenQuestionKeys>,
@@ -182,6 +186,10 @@ export function isQuestionAlreadySeen(
   }
   const template = placementTemplateKey(q.prompt);
   if (template && seen.templates.has(template)) return true;
+
+  // Exact / template checks above are enough for large lifetime avoid-lists.
+  // Full stemsTooSimilar over thousands of prompts blocked the placement UI.
+  if (seen.prompts.size > STEMS_SIMILARITY_SCAN_CAP) return false;
 
   for (const prev of seen.prompts) {
     if (stemsTooSimilar(q.prompt, prev)) return true;

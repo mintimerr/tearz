@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "totalItems": 1123,
+  "expectedItems": 1123,
+  "perLang": {
+    "en": 234,
+    "fr": 209,
+    "zh": 248,
+    "de": 220,
+    "ru": 212
+  },
+  "issueCount": 0,
+  "issues": [],
+  "generatedAt": "2026-10-05T11:26:11.969Z"
+}

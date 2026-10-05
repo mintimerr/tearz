@@ -143,6 +143,8 @@ export class PlacementOrchestrationService {
   private shadowLegacyFinalize?: PlacementServiceOptions['shadowLegacyFinalize'];
   private encodeAnswerKey: (id: string, correctChoice: string) => string;
   private lastCorrect: boolean | null = null;
+  private answering = false;
+  private completedStep: PlacementStepDone | null = null;
 
   constructor(opts: PlacementServiceOptions) {
     this.language = opts.language;
@@ -199,7 +201,11 @@ export class PlacementOrchestrationService {
   }
 
   private emit(event: PlacementAnalyticsEvent) {
-    this.analytics?.(event);
+    try {
+      this.analytics?.(event);
+    } catch {
+      /* telemetry must never break placement */
+    }
   }
 
   private candidates(): OrchestratorCandidate[] {
@@ -217,11 +223,7 @@ export class PlacementOrchestrationService {
 
   /** Start or resume: ensure a pending item is presented. */
   presentNext(): PlacementStepResult {
-    if (this.orch.presentedItems.length >= this.orchestratorConfig.totalPresentedItems) {
-      return this.finalize(null);
-    }
-
-    // If already pending unanswered, re-present it (restore).
+    // Restore unanswered pending BEFORE length/finalize check (Q15-safe).
     const last = this.orch.presentedItems[this.orch.presentedItems.length - 1];
     if (last && last.responseCorrect === null) {
       const content = this.contentById.get(last.item.id);
@@ -229,6 +231,10 @@ export class PlacementOrchestrationService {
         return this.failGracefully('pending item missing from content bank');
       }
       return this.continueBody(content, null);
+    }
+
+    if (this.orch.presentedItems.length >= this.orchestratorConfig.totalPresentedItems) {
+      return this.finalize(null);
     }
 
     let selection = chooseNext(
@@ -343,11 +349,58 @@ export class PlacementOrchestrationService {
     responseTimeMs?: number;
     /** If provided, skip choice compare (already scored). */
     correct?: boolean;
+    /**
+     * Bind answer to a specific presented item.
+     * Stale / mismatched itemId returns the cached continue/done step — never scores the next item.
+     */
+    itemId?: string;
   }): PlacementStepResult {
+    if (this.completedStep) {
+      return this.completedStep;
+    }
+    if (this.answering) {
+      // Re-entrant double-tap while scoring — return current pending re-present (or fail closed).
+      const pending = this.orch.presentedItems[this.orch.presentedItems.length - 1];
+      if (pending && pending.responseCorrect === null) {
+        const c = this.contentById.get(pending.item.id);
+        if (c) return this.continueBody(c, this.lastCorrect);
+      }
+      return this.failGracefully('answer in progress');
+    }
+
     const last = this.orch.presentedItems[this.orch.presentedItems.length - 1];
     if (!last || last.responseCorrect !== null) {
-      return this.failGracefully('no pending item to answer');
+      // Already answered / no pending — idempotent: re-present next or finalize
+      if (this.orch.presentedItems.length >= this.orchestratorConfig.totalPresentedItems) {
+        return this.finalize(this.lastCorrect);
+      }
+      return this.presentNext();
     }
+
+    if (input.itemId && input.itemId !== last.item.id) {
+      // Stale tap from a previous question — do not score the newly presented item.
+      const content = this.contentById.get(last.item.id);
+      if (content) return this.continueBody(content, this.lastCorrect);
+      return this.failGracefully('stale itemId and pending missing');
+    }
+
+    this.answering = true;
+    try {
+      return this.answerPending(input, last);
+    } finally {
+      this.answering = false;
+    }
+  }
+
+  private answerPending(
+    input: {
+      answer?: string;
+      timedOut?: boolean;
+      responseTimeMs?: number;
+      correct?: boolean;
+    },
+    last: (typeof this.orch.presentedItems)[number],
+  ): PlacementStepResult {
     const content = this.contentById.get(last.item.id);
     if (!content) {
       return this.failGracefully('pending content missing');
@@ -501,7 +554,7 @@ export class PlacementOrchestrationService {
         timestamp: Date.now(),
       });
 
-      return {
+      const done: PlacementStepDone = {
         done: true,
         ability: result.legacyAbility100,
         correct: lastCorrect,
@@ -511,6 +564,8 @@ export class PlacementOrchestrationService {
         snapshot: this.getSnapshot(),
         shadow,
       };
+      this.completedStep = done;
+      return done;
     } catch {
       return this.failGracefully('finalize failed');
     }

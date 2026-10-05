@@ -17,7 +17,7 @@ import { usePlacement } from '@/contexts/placement-context';
 import { useTeacherJourney } from '@/contexts/teacher-journey-context';
 import { useLearnerModel } from '@/hooks/use-learner-model';
 import { nextPlacementTarget } from '@/utils/placement-next-level';
-import { buildPlacementPathChat } from '@/utils/placement-path-chat';
+import { buildPlacementPathChat, isBrokenPlacementPathOpening } from '@/utils/placement-path-chat';
 
 export function PlacementLearningPathScreen() {
   const insets = useSafeAreaInsets();
@@ -79,18 +79,35 @@ export function PlacementLearningPathScreen() {
     void addRecentLesson(pathBundle.lesson);
     void markLessonCreated();
     const existingThread = getCompanionThread(pathBundle.id);
+    const first = existingThread?.[0];
     const staleAskMenu =
       existingThread?.length === 1 &&
-      existingThread[0]?.from === 'them' &&
+      first?.from === 'them' &&
       /с чего хочешь|what should we start|想先从|что хочешь прокачать|what should we train/i.test(
-        existingThread[0]?.text ?? '',
+        first?.text ?? '',
       );
+    const stalePathChrome =
+      !!first &&
+      first.from === 'them' &&
+      isBrokenPlacementPathOpening(first.text ?? '');
     if (!existingThread?.length || staleAskMenu) {
       saveCompanionThread(pathBundle.id, pathBundle.opening);
       return {
         id: pathBundle.id,
         title: pathBundle.title,
         thread: pathBundle.opening,
+      };
+    }
+    if (stalePathChrome) {
+      const repaired = [
+        { ...pathBundle.opening[0], id: first.id || pathBundle.opening[0].id },
+        ...existingThread.slice(1),
+      ];
+      saveCompanionThread(pathBundle.id, repaired);
+      return {
+        id: pathBundle.id,
+        title: pathBundle.title,
+        thread: repaired,
       };
     }
     return {

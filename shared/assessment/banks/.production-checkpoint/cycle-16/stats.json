@@ -1,0 +1,1256 @@
+{
+  "en": {
+    "slots": 30,
+    "generated": 157,
+    "pass": 12,
+    "revise": 0,
+    "reject": 1,
+    "duplicate": 144,
+    "added": 0,
+    "inventoryAfter": {
+      "language": "en",
+      "totalApproved": 310,
+      "totalRequired": 400,
+      "totalRemaining": 90,
+      "byCefr": {
+        "A1": {
+          "required": 50,
+          "approved": 44,
+          "remaining": 6
+        },
+        "A2": {
+          "required": 70,
+          "approved": 57,
+          "remaining": 13
+        },
+        "B1": {
+          "required": 80,
+          "approved": 37,
+          "remaining": 43
+        },
+        "B2": {
+          "required": 80,
+          "approved": 52,
+          "remaining": 28
+        },
+        "C1": {
+          "required": 70,
+          "approved": 70,
+          "remaining": 0
+        },
+        "C2": {
+          "required": 50,
+          "approved": 50,
+          "remaining": 0
+        }
+      },
+      "bySkill": {
+        "grammar": {
+          "required": 90,
+          "approved": 60,
+          "remaining": 30
+        },
+        "vocabulary": {
+          "required": 103,
+          "approved": 57,
+          "remaining": 46
+        },
+        "reading": {
+          "required": 108,
+          "approved": 108,
+          "remaining": 0
+        },
+        "functional": {
+          "required": 99,
+          "approved": 85,
+          "remaining": 14
+        }
+      },
+      "cells": [
+        {
+          "level": "A1",
+          "skill": "grammar",
+          "required": 15,
+          "approved": 15,
+          "remaining": 0
+        },
+        {
+          "level": "A1",
+          "skill": "vocabulary",
+          "required": 15,
+          "approved": 9,
+          "remaining": 6
+        },
+        {
+          "level": "A1",
+          "skill": "reading",
+          "required": 10,
+          "approved": 10,
+          "remaining": 0
+        },
+        {
+          "level": "A1",
+          "skill": "functional",
+          "required": 10,
+          "approved": 10,
+          "remaining": 0
+        },
+        {
+          "level": "A2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 17,
+          "remaining": 1
+        },
+        {
+          "level": "A2",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 6,
+          "remaining": 12
+        },
+        {
+          "level": "A2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "A2",
+          "skill": "functional",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "B1",
+          "skill": "grammar",
+          "required": 20,
+          "approved": 4,
+          "remaining": 16
+        },
+        {
+          "level": "B1",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 7,
+          "remaining": 13
+        },
+        {
+          "level": "B1",
+          "skill": "reading",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "B1",
+          "skill": "functional",
+          "required": 20,
+          "approved": 6,
+          "remaining": 14
+        },
+        {
+          "level": "B2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 5,
+          "remaining": 13
+        },
+        {
+          "level": "B2",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 5,
+          "remaining": 15
+        },
+        {
+          "level": "B2",
+          "skill": "reading",
+          "required": 22,
+          "approved": 22,
+          "remaining": 0
+        },
+        {
+          "level": "B2",
+          "skill": "functional",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "grammar",
+          "required": 12,
+          "approved": 12,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "reading",
+          "required": 22,
+          "approved": 22,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "functional",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "grammar",
+          "required": 7,
+          "approved": 7,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "vocabulary",
+          "required": 12,
+          "approved": 12,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "functional",
+          "required": 14,
+          "approved": 14,
+          "remaining": 0
+        }
+      ],
+      "difficulty": {
+        "low": 102,
+        "mid": 100,
+        "high": 108
+      }
+    },
+    "rejectionReasons": {
+      "DUPLICATE_ITEM": 144,
+      "sem:CUEING_SUSPECT": 1,
+      "adv:CUEING_SUSPECT": 1,
+      "crit:CUEING_SUSPECT": 2
+    }
+  },
+  "fr": {
+    "slots": 50,
+    "generated": 294,
+    "pass": 16,
+    "revise": 23,
+    "reject": 70,
+    "duplicate": 185,
+    "added": 3,
+    "inventoryAfter": {
+      "language": "fr",
+      "totalApproved": 271,
+      "totalRequired": 400,
+      "totalRemaining": 129,
+      "byCefr": {
+        "A1": {
+          "required": 50,
+          "approved": 27,
+          "remaining": 23
+        },
+        "A2": {
+          "required": 70,
+          "approved": 60,
+          "remaining": 10
+        },
+        "B1": {
+          "required": 80,
+          "approved": 44,
+          "remaining": 36
+        },
+        "B2": {
+          "required": 80,
+          "approved": 46,
+          "remaining": 34
+        },
+        "C1": {
+          "required": 70,
+          "approved": 63,
+          "remaining": 7
+        },
+        "C2": {
+          "required": 50,
+          "approved": 31,
+          "remaining": 19
+        }
+      },
+      "bySkill": {
+        "grammar": {
+          "required": 90,
+          "approved": 51,
+          "remaining": 39
+        },
+        "vocabulary": {
+          "required": 103,
+          "approved": 39,
+          "remaining": 64
+        },
+        "reading": {
+          "required": 108,
+          "approved": 94,
+          "remaining": 14
+        },
+        "functional": {
+          "required": 99,
+          "approved": 87,
+          "remaining": 12
+        }
+      },
+      "cells": [
+        {
+          "level": "A1",
+          "skill": "grammar",
+          "required": 15,
+          "approved": 15,
+          "remaining": 0
+        },
+        {
+          "level": "A1",
+          "skill": "vocabulary",
+          "required": 15,
+          "approved": 2,
+          "remaining": 13
+        },
+        {
+          "level": "A1",
+          "skill": "reading",
+          "required": 10,
+          "approved": 5,
+          "remaining": 5
+        },
+        {
+          "level": "A1",
+          "skill": "functional",
+          "required": 10,
+          "approved": 5,
+          "remaining": 5
+        },
+        {
+          "level": "A2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "A2",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 8,
+          "remaining": 10
+        },
+        {
+          "level": "A2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "A2",
+          "skill": "functional",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "B1",
+          "skill": "grammar",
+          "required": 20,
+          "approved": 6,
+          "remaining": 14
+        },
+        {
+          "level": "B1",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 4,
+          "remaining": 16
+        },
+        {
+          "level": "B1",
+          "skill": "reading",
+          "required": 20,
+          "approved": 14,
+          "remaining": 6
+        },
+        {
+          "level": "B1",
+          "skill": "functional",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "B2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 2,
+          "remaining": 16
+        },
+        {
+          "level": "B2",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 2,
+          "remaining": 18
+        },
+        {
+          "level": "B2",
+          "skill": "reading",
+          "required": 22,
+          "approved": 22,
+          "remaining": 0
+        },
+        {
+          "level": "B2",
+          "skill": "functional",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "grammar",
+          "required": 12,
+          "approved": 8,
+          "remaining": 4
+        },
+        {
+          "level": "C1",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "reading",
+          "required": 22,
+          "approved": 19,
+          "remaining": 3
+        },
+        {
+          "level": "C1",
+          "skill": "functional",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "grammar",
+          "required": 7,
+          "approved": 2,
+          "remaining": 5
+        },
+        {
+          "level": "C2",
+          "skill": "vocabulary",
+          "required": 12,
+          "approved": 5,
+          "remaining": 7
+        },
+        {
+          "level": "C2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "functional",
+          "required": 14,
+          "approved": 7,
+          "remaining": 7
+        }
+      ],
+      "difficulty": {
+        "low": 90,
+        "mid": 91,
+        "high": 90
+      }
+    },
+    "rejectionReasons": {
+      "gate:REVISE": 23,
+      "DUPLICATE_ITEM": 185,
+      "sem:CEFR_MISMATCH_SUSPECT": 70,
+      "adv:CEFR_MISMATCH_SUSPECT": 70,
+      "crit:CEFR_MISMATCH_SUSPECT": 140
+    }
+  },
+  "zh": {
+    "slots": 34,
+    "generated": 186,
+    "pass": 13,
+    "revise": 0,
+    "reject": 100,
+    "duplicate": 73,
+    "added": 0,
+    "inventoryAfter": {
+      "language": "zh",
+      "totalApproved": 320,
+      "totalRequired": 400,
+      "totalRemaining": 80,
+      "byCefr": {
+        "A1": {
+          "required": 50,
+          "approved": 32,
+          "remaining": 18
+        },
+        "A2": {
+          "required": 70,
+          "approved": 61,
+          "remaining": 9
+        },
+        "B1": {
+          "required": 80,
+          "approved": 53,
+          "remaining": 27
+        },
+        "B2": {
+          "required": 80,
+          "approved": 54,
+          "remaining": 26
+        },
+        "C1": {
+          "required": 70,
+          "approved": 70,
+          "remaining": 0
+        },
+        "C2": {
+          "required": 50,
+          "approved": 50,
+          "remaining": 0
+        }
+      },
+      "bySkill": {
+        "grammar": {
+          "required": 90,
+          "approved": 56,
+          "remaining": 34
+        },
+        "vocabulary": {
+          "required": 103,
+          "approved": 57,
+          "remaining": 46
+        },
+        "reading": {
+          "required": 108,
+          "approved": 108,
+          "remaining": 0
+        },
+        "functional": {
+          "required": 99,
+          "approved": 99,
+          "remaining": 0
+        }
+      },
+      "cells": [
+        {
+          "level": "A1",
+          "skill": "grammar",
+          "required": 15,
+          "approved": 10,
+          "remaining": 5
+        },
+        {
+          "level": "A1",
+          "skill": "vocabulary",
+          "required": 15,
+          "approved": 2,
+          "remaining": 13
+        },
+        {
+          "level": "A1",
+          "skill": "reading",
+          "required": 10,
+          "approved": 10,
+          "remaining": 0
+        },
+        {
+          "level": "A1",
+          "skill": "functional",
+          "required": 10,
+          "approved": 10,
+          "remaining": 0
+        },
+        {
+          "level": "A2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "A2",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 9,
+          "remaining": 9
+        },
+        {
+          "level": "A2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "A2",
+          "skill": "functional",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "B1",
+          "skill": "grammar",
+          "required": 20,
+          "approved": 7,
+          "remaining": 13
+        },
+        {
+          "level": "B1",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 6,
+          "remaining": 14
+        },
+        {
+          "level": "B1",
+          "skill": "reading",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "B1",
+          "skill": "functional",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "B2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 2,
+          "remaining": 16
+        },
+        {
+          "level": "B2",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 10,
+          "remaining": 10
+        },
+        {
+          "level": "B2",
+          "skill": "reading",
+          "required": 22,
+          "approved": 22,
+          "remaining": 0
+        },
+        {
+          "level": "B2",
+          "skill": "functional",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "grammar",
+          "required": 12,
+          "approved": 12,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "reading",
+          "required": 22,
+          "approved": 22,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "functional",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "grammar",
+          "required": 7,
+          "approved": 7,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "vocabulary",
+          "required": 12,
+          "approved": 12,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "functional",
+          "required": 14,
+          "approved": 14,
+          "remaining": 0
+        }
+      ],
+      "difficulty": {
+        "low": 112,
+        "mid": 102,
+        "high": 106
+      }
+    },
+    "rejectionReasons": {
+      "sem:CEFR_MISMATCH_SUSPECT": 100,
+      "adv:CEFR_MISMATCH_SUSPECT": 100,
+      "crit:CEFR_MISMATCH_SUSPECT": 200,
+      "DUPLICATE_ITEM": 73
+    }
+  },
+  "de": {
+    "slots": 37,
+    "generated": 174,
+    "pass": 18,
+    "revise": 0,
+    "reject": 40,
+    "duplicate": 116,
+    "added": 0,
+    "inventoryAfter": {
+      "language": "de",
+      "totalApproved": 322,
+      "totalRequired": 400,
+      "totalRemaining": 78,
+      "byCefr": {
+        "A1": {
+          "required": 50,
+          "approved": 36,
+          "remaining": 14
+        },
+        "A2": {
+          "required": 70,
+          "approved": 59,
+          "remaining": 11
+        },
+        "B1": {
+          "required": 80,
+          "approved": 55,
+          "remaining": 25
+        },
+        "B2": {
+          "required": 80,
+          "approved": 52,
+          "remaining": 28
+        },
+        "C1": {
+          "required": 70,
+          "approved": 70,
+          "remaining": 0
+        },
+        "C2": {
+          "required": 50,
+          "approved": 50,
+          "remaining": 0
+        }
+      },
+      "bySkill": {
+        "grammar": {
+          "required": 90,
+          "approved": 63,
+          "remaining": 27
+        },
+        "vocabulary": {
+          "required": 103,
+          "approved": 52,
+          "remaining": 51
+        },
+        "reading": {
+          "required": 108,
+          "approved": 108,
+          "remaining": 0
+        },
+        "functional": {
+          "required": 99,
+          "approved": 99,
+          "remaining": 0
+        }
+      },
+      "cells": [
+        {
+          "level": "A1",
+          "skill": "grammar",
+          "required": 15,
+          "approved": 14,
+          "remaining": 1
+        },
+        {
+          "level": "A1",
+          "skill": "vocabulary",
+          "required": 15,
+          "approved": 2,
+          "remaining": 13
+        },
+        {
+          "level": "A1",
+          "skill": "reading",
+          "required": 10,
+          "approved": 10,
+          "remaining": 0
+        },
+        {
+          "level": "A1",
+          "skill": "functional",
+          "required": 10,
+          "approved": 10,
+          "remaining": 0
+        },
+        {
+          "level": "A2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 16,
+          "remaining": 2
+        },
+        {
+          "level": "A2",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 9,
+          "remaining": 9
+        },
+        {
+          "level": "A2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "A2",
+          "skill": "functional",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "B1",
+          "skill": "grammar",
+          "required": 20,
+          "approved": 11,
+          "remaining": 9
+        },
+        {
+          "level": "B1",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 4,
+          "remaining": 16
+        },
+        {
+          "level": "B1",
+          "skill": "reading",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "B1",
+          "skill": "functional",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "B2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 3,
+          "remaining": 15
+        },
+        {
+          "level": "B2",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 7,
+          "remaining": 13
+        },
+        {
+          "level": "B2",
+          "skill": "reading",
+          "required": 22,
+          "approved": 22,
+          "remaining": 0
+        },
+        {
+          "level": "B2",
+          "skill": "functional",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "grammar",
+          "required": 12,
+          "approved": 12,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "reading",
+          "required": 22,
+          "approved": 22,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "functional",
+          "required": 18,
+          "approved": 18,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "grammar",
+          "required": 7,
+          "approved": 7,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "vocabulary",
+          "required": 12,
+          "approved": 12,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "functional",
+          "required": 14,
+          "approved": 14,
+          "remaining": 0
+        }
+      ],
+      "difficulty": {
+        "low": 106,
+        "mid": 106,
+        "high": 110
+      }
+    },
+    "rejectionReasons": {
+      "sem:CEFR_MISMATCH_SUSPECT": 40,
+      "adv:CEFR_MISMATCH_SUSPECT": 40,
+      "crit:CEFR_MISMATCH_SUSPECT": 80,
+      "DUPLICATE_ITEM": 116
+    }
+  },
+  "ru": {
+    "slots": 50,
+    "generated": 288,
+    "pass": 19,
+    "revise": 0,
+    "reject": 137,
+    "duplicate": 132,
+    "added": 0,
+    "inventoryAfter": {
+      "language": "ru",
+      "totalApproved": 262,
+      "totalRequired": 400,
+      "totalRemaining": 138,
+      "byCefr": {
+        "A1": {
+          "required": 50,
+          "approved": 11,
+          "remaining": 39
+        },
+        "A2": {
+          "required": 70,
+          "approved": 59,
+          "remaining": 11
+        },
+        "B1": {
+          "required": 80,
+          "approved": 57,
+          "remaining": 23
+        },
+        "B2": {
+          "required": 80,
+          "approved": 45,
+          "remaining": 35
+        },
+        "C1": {
+          "required": 70,
+          "approved": 56,
+          "remaining": 14
+        },
+        "C2": {
+          "required": 50,
+          "approved": 34,
+          "remaining": 16
+        }
+      },
+      "bySkill": {
+        "grammar": {
+          "required": 90,
+          "approved": 41,
+          "remaining": 49
+        },
+        "vocabulary": {
+          "required": 103,
+          "approved": 44,
+          "remaining": 59
+        },
+        "reading": {
+          "required": 108,
+          "approved": 99,
+          "remaining": 9
+        },
+        "functional": {
+          "required": 99,
+          "approved": 78,
+          "remaining": 21
+        }
+      },
+      "cells": [
+        {
+          "level": "A1",
+          "skill": "grammar",
+          "required": 15,
+          "approved": 5,
+          "remaining": 10
+        },
+        {
+          "level": "A1",
+          "skill": "vocabulary",
+          "required": 15,
+          "approved": 2,
+          "remaining": 13
+        },
+        {
+          "level": "A1",
+          "skill": "reading",
+          "required": 10,
+          "approved": 2,
+          "remaining": 8
+        },
+        {
+          "level": "A1",
+          "skill": "functional",
+          "required": 10,
+          "approved": 2,
+          "remaining": 8
+        },
+        {
+          "level": "A2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 17,
+          "remaining": 1
+        },
+        {
+          "level": "A2",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 9,
+          "remaining": 9
+        },
+        {
+          "level": "A2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 16,
+          "remaining": 1
+        },
+        {
+          "level": "A2",
+          "skill": "functional",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "B1",
+          "skill": "grammar",
+          "required": 20,
+          "approved": 14,
+          "remaining": 6
+        },
+        {
+          "level": "B1",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 12,
+          "remaining": 8
+        },
+        {
+          "level": "B1",
+          "skill": "reading",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "B1",
+          "skill": "functional",
+          "required": 20,
+          "approved": 11,
+          "remaining": 9
+        },
+        {
+          "level": "B2",
+          "skill": "grammar",
+          "required": 18,
+          "approved": 1,
+          "remaining": 17
+        },
+        {
+          "level": "B2",
+          "skill": "vocabulary",
+          "required": 20,
+          "approved": 2,
+          "remaining": 18
+        },
+        {
+          "level": "B2",
+          "skill": "reading",
+          "required": 22,
+          "approved": 22,
+          "remaining": 0
+        },
+        {
+          "level": "B2",
+          "skill": "functional",
+          "required": 20,
+          "approved": 20,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "grammar",
+          "required": 12,
+          "approved": 3,
+          "remaining": 9
+        },
+        {
+          "level": "C1",
+          "skill": "vocabulary",
+          "required": 18,
+          "approved": 17,
+          "remaining": 1
+        },
+        {
+          "level": "C1",
+          "skill": "reading",
+          "required": 22,
+          "approved": 22,
+          "remaining": 0
+        },
+        {
+          "level": "C1",
+          "skill": "functional",
+          "required": 18,
+          "approved": 14,
+          "remaining": 4
+        },
+        {
+          "level": "C2",
+          "skill": "grammar",
+          "required": 7,
+          "approved": 1,
+          "remaining": 6
+        },
+        {
+          "level": "C2",
+          "skill": "vocabulary",
+          "required": 12,
+          "approved": 2,
+          "remaining": 10
+        },
+        {
+          "level": "C2",
+          "skill": "reading",
+          "required": 17,
+          "approved": 17,
+          "remaining": 0
+        },
+        {
+          "level": "C2",
+          "skill": "functional",
+          "required": 14,
+          "approved": 14,
+          "remaining": 0
+        }
+      ],
+      "difficulty": {
+        "low": 88,
+        "mid": 88,
+        "high": 86
+      }
+    },
+    "rejectionReasons": {
+      "DUPLICATE_ITEM": 132,
+      "sem:CEFR_MISMATCH_SUSPECT": 136,
+      "adv:CEFR_MISMATCH_SUSPECT": 136,
+      "crit:CEFR_MISMATCH_SUSPECT": 272,
+      "det:ANSWER_LEAK": 1,
+      "adv:ANSWER_LEAK": 1,
+      "crit:ANSWER_LEAK": 2
+    }
+  }
+}

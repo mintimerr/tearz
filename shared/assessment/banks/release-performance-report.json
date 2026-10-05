@@ -1,0 +1,197 @@
+{
+  "phase": "C-release-performance",
+  "runsPerLanguage": 24,
+  "perLang": [
+    {
+      "language": "en",
+      "itemCount": 234,
+      "checksum": "sha256:02ad6c1e592f057cabd626a09c704cdc96643237a9be8ed9e3cf44d367b54d70",
+      "remainingPrefixes": 0,
+      "bundleBytes": 271895,
+      "runs": 24,
+      "completed": 24,
+      "exhausted": 0,
+      "mintCalls": 0,
+      "duplicatePresentations": 0,
+      "latency": {
+        "answerEvaluationMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0.006
+        },
+        "assessmentUpdateMs": {
+          "n": 360,
+          "p50": 0.977,
+          "p95": 1.401,
+          "max": 2.889
+        },
+        "selectionMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0.001
+        },
+        "transitionTotalMs": {
+          "n": 360,
+          "p50": 0.977,
+          "p95": 1.402,
+          "max": 2.895
+        }
+      }
+    },
+    {
+      "language": "fr",
+      "itemCount": 209,
+      "checksum": "sha256:c423e2603184277cdbe2d0fa865afa8cfe198ce334911bf764f12927e73edef2",
+      "remainingPrefixes": 0,
+      "bundleBytes": 250775,
+      "runs": 24,
+      "completed": 24,
+      "exhausted": 0,
+      "mintCalls": 0,
+      "duplicatePresentations": 0,
+      "latency": {
+        "answerEvaluationMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0.001
+        },
+        "assessmentUpdateMs": {
+          "n": 360,
+          "p50": 0.927,
+          "p95": 1.05,
+          "max": 1.253
+        },
+        "selectionMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0.001
+        },
+        "transitionTotalMs": {
+          "n": 360,
+          "p50": 0.928,
+          "p95": 1.051,
+          "max": 1.253
+        }
+      }
+    },
+    {
+      "language": "zh",
+      "itemCount": 248,
+      "checksum": "sha256:463dbc5b6ccfe53f6c4b9b00788ed534b899f10b5187585719f318325c2c5d20",
+      "remainingPrefixes": 0,
+      "bundleBytes": 285685,
+      "runs": 24,
+      "completed": 24,
+      "exhausted": 0,
+      "mintCalls": 0,
+      "duplicatePresentations": 0,
+      "latency": {
+        "answerEvaluationMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0.001
+        },
+        "assessmentUpdateMs": {
+          "n": 360,
+          "p50": 0.948,
+          "p95": 1.069,
+          "max": 2.469
+        },
+        "selectionMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "transitionTotalMs": {
+          "n": 360,
+          "p50": 0.949,
+          "p95": 1.069,
+          "max": 2.47
+        }
+      }
+    },
+    {
+      "language": "de",
+      "itemCount": 220,
+      "checksum": "sha256:45478435455b39629836275eb1459ec03430980d9c6f108047fb38b74e43ab6f",
+      "remainingPrefixes": 0,
+      "bundleBytes": 259694,
+      "runs": 24,
+      "completed": 24,
+      "exhausted": 0,
+      "mintCalls": 0,
+      "duplicatePresentations": 0,
+      "latency": {
+        "answerEvaluationMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0.015
+        },
+        "assessmentUpdateMs": {
+          "n": 360,
+          "p50": 0.919,
+          "p95": 1.07,
+          "max": 1.889
+        },
+        "selectionMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "transitionTotalMs": {
+          "n": 360,
+          "p50": 0.92,
+          "p95": 1.07,
+          "max": 1.89
+        }
+      }
+    },
+    {
+      "language": "ru",
+      "itemCount": 212,
+      "checksum": "sha256:a18b854f4e9d354f23dd2cdf2284c3734a20aa47dc77f8c0cd52d5db77e183bf",
+      "remainingPrefixes": 0,
+      "bundleBytes": 290666,
+      "runs": 24,
+      "completed": 24,
+      "exhausted": 0,
+      "mintCalls": 0,
+      "duplicatePresentations": 0,
+      "latency": {
+        "answerEvaluationMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0.001
+        },
+        "assessmentUpdateMs": {
+          "n": 360,
+          "p50": 0.91,
+          "p95": 1.004,
+          "max": 1.294
+        },
+        "selectionMs": {
+          "n": 360,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        },
+        "transitionTotalMs": {
+          "n": 360,
+          "p50": 0.91,
+          "p95": 1.004,
+          "max": 1.294
+        }
+      }
+    }
+  ],
+  "blockers": []
+}

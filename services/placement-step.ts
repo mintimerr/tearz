@@ -6,11 +6,15 @@ import {
   runLocalPlacementStep,
 } from '@/utils/placement-local-engine';
 import { difficultyToScale100 } from '@/utils/placement-adaptive';
+import {
+  getPlacementProductionFlags,
+  isBankFirstProduction,
+} from '@/utils/placement-production-flags';
 import { normalizePlacementPrompt, questionContentKey } from '@/utils/placement-seen';
 
 /**
- * Prefer AI, but never strand the UI on a dead Render/TLS hang.
- * Give cold Render enough time to mint — local bank is emergency only.
+ * Bank-first (production): local orchestrator only — no Render wait on each answer.
+ * remote_ai_debug: legacy prefer-AI path with hard budgets (dev/rollback only).
  */
 const START_BUDGET_MS = 28_000;
 const STEP_BUDGET_MS = 35_000;
@@ -30,11 +34,23 @@ function bodyKey(body: PlacementStepRequestBody): string {
   return JSON.stringify(body);
 }
 
+function useLocalBankOnly(): boolean {
+  const f = getPlacementProductionFlags();
+  return isBankFirstProduction() && !f.allowRuntimeLlmGeneration;
+}
+
 export function warmPlacementApi(): void {
+  if (useLocalBankOnly()) return;
   void warmCompanionApi(3, { pingTimeoutMs: 8_000 });
 }
 
 export function prefetchPlacementStep(body: PlacementStepRequestBody): void {
+  if (useLocalBankOnly()) {
+    // Local answer/present is already sync. Prefetching would call
+    // runLocalPlacementStep and advance the live orchestrator while the UI
+    // still shows the current question — desync + stuck taps on Next.
+    return;
+  }
   const key = bodyKey(body);
   if (prefetchSlot?.key === key) return;
   prefetchSlot = {
@@ -111,9 +127,13 @@ async function fetchRemoteStep(
 }
 
 function ensureFreshLocal(body: PlacementStepRequestBody): PlacementStepSuccessBody {
+  // Bank-first: keep session salt stable so the orchestrator resumes correctly.
+  if (useLocalBankOnly()) {
+    return runLocalPlacementStep(body);
+  }
+
   let working = {
     ...body,
-    // Force a brand-new local stream so emergency fallback never clones a prior test.
     sessionSalt: (body.sessionSalt ?? Date.now()) ^ (Date.now() & 0xffffff) ^ 0xa5a5a5a5,
     userEntropy: (body.userEntropy ?? 1) ^ Date.now() ^ Math.floor(Math.random() * 0xffffffff),
   };
@@ -140,11 +160,6 @@ function ensureFreshLocal(body: PlacementStepRequestBody): PlacementStepSuccessB
   return res;
 }
 
-/**
- * The API used to keep only 12 answers of a 15-question test, so the
- * counter stayed on question 14 forever. A healthy answer step returns
- * historyLength + 2 (the next 1-based item). Anything lower did not advance.
- */
 function remoteQuestionTooHard(
   body: PlacementStepRequestBody,
   res: PlacementStepSuccessBody,
@@ -155,11 +170,6 @@ function remoteQuestionTooHard(
   return difficultyToScale100(res.question.difficulty) > local.question.difficulty + 12;
 }
 
-/**
- * The API used to keep only 12 answers of a 15-question test, so the
- * counter stayed on question 14 forever. A healthy answer step returns
- * historyLength + 2 (the next 1-based item). Anything lower did not advance.
- */
 function remoteDidNotAdvance(
   body: PlacementStepRequestBody,
   res: PlacementStepSuccessBody,
@@ -169,7 +179,6 @@ function remoteDidNotAdvance(
   return res.questionIndex < sent + 2;
 }
 
-/** Prefer AI; if duplicate or the counter did not move, finish from the full local history. */
 async function preferFreshAi(
   body: PlacementStepRequestBody,
   res: PlacementStepSuccessBody,
@@ -191,22 +200,32 @@ async function preferFreshAi(
   return ensureFreshLocal(retryBody);
 }
 
-/** Старт — короткий шанс на AI, иначе локальный тест без зависания. */
+/** Старт: bank-first → локально сразу; debug AI → короткий шанс на remote. */
 export async function runPlacementStart(
   body: PlacementStepRequestBody,
 ): Promise<PlacementStepSuccessBody> {
+  if (useLocalBankOnly()) {
+    return runLocalPlacementStep(body);
+  }
   const remote = await fetchRemoteStep(body, START_BUDGET_MS);
   if (remote) return preferFreshAi(body, remote, START_BUDGET_MS);
   return ensureFreshLocal(body);
 }
 
-/**
- * Ответ / следующий шаг: prefetch AI или короткий wait API.
- * Локальные шаблоны — аварийный fallback без сети (и всегда с новым salt).
- */
+/** Ответ / следующий шаг: bank-first → локально сразу (с optional local prefetch). */
 export async function runPlacementStep(
   body: PlacementStepRequestBody,
 ): Promise<PlacementStepSuccessBody> {
+  if (useLocalBankOnly()) {
+    const key = bodyKey(body);
+    if (prefetchSlot?.key === key) {
+      const prefetched = await prefetchSlot.promise;
+      prefetchSlot = null;
+      if (prefetched) return prefetched;
+    }
+    return runLocalPlacementStep(body);
+  }
+
   const key = bodyKey(body);
   if (prefetchSlot?.key === key) {
     const prefetched = await Promise.race([

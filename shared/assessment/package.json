@@ -15,6 +15,11 @@
       "types": "./src/placement/index.ts",
       "import": "./src/placement/index.ts",
       "default": "./dist/placement/index.js"
+    },
+    "./banks": {
+      "types": "./src/banks/index.ts",
+      "import": "./src/banks/index.ts",
+      "default": "./dist/banks/index.js"
     }
   },
   "scripts": {

@@ -38,6 +38,7 @@ import {
   notePlacementItemPresented,
   resetCanonicalPlacementSession,
 } from '@/utils/placement-canonical-client';
+import { isBankFirstProduction } from '@/utils/placement-production-flags';
 import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 import type {
   PlacementHistoryItem,
@@ -53,7 +54,11 @@ import {
   rememberLifetimeQuestion,
   rememberLifetimeQuestions,
 } from '@/utils/placement-lifetime-seen';
-import { questionContentKey, normalizePlacementPrompt, stripPlacementPromptDecorations } from '@/utils/placement-seen';
+import { questionContentKey, normalizePlacementPrompt } from '@/utils/placement-seen';
+import {
+  splitClozeRuns,
+  splitPlacementPromptForDisplay,
+} from '@/utils/placement-prompt-display';
 
 const LANGUAGES: { id: CompanionChatApiLanguage; labelKey: string; emoji: string }[] = [
   { id: 'french', labelKey: 'lang.french', emoji: '🇫🇷' },
@@ -106,6 +111,7 @@ export function PlacementOnboardingScreen() {
   const [language, setLanguage] = useState<CompanionChatApiLanguage>('english');
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const checkingRef = useRef(false);
   const [preparing, setPreparing] = useState(false);
   const [question, setQuestion] = useState<PlacementQuestion | null>(null);
   const [answerKey, setAnswerKey] = useState<string | null>(null);
@@ -202,6 +208,14 @@ export function PlacementOnboardingScreen() {
   }, [phase, questionIndex, totalQuestions]);
   const progressAnim = useProgressAnim(progress);
   const levelPop = useRef(new Animated.Value(0)).current;
+  const promptParts = useMemo(
+    () => (question ? splitPlacementPromptForDisplay(question.prompt) : null),
+    [question],
+  );
+  const askRuns = useMemo(
+    () => (promptParts ? splitClozeRuns(promptParts.ask) : []),
+    [promptParts],
+  );
 
   useEffect(() => {
     if (phase !== 'result') {
@@ -295,14 +309,18 @@ export function PlacementOnboardingScreen() {
       }
 
       // Engine must never return a within-session duplicate; remint without re-scoring.
+      // Bank-first/v1: never remint — mintUnique over lifetime-seen freezes the JS thread
+      // (O(n²) stemsTooSimilar) and desyncs UI from the live orchestrator.
       let nextRes = res;
       if (
+        !isBankFirstProduction() &&
         !nextRes.done &&
-        (seenIdsRef.current.includes(nextRes.question.id) ||
-          seenPromptsRef.current.some(
-            (p) =>
-              normalizePlacementPrompt(p) === normalizePlacementPrompt(nextRes.question.prompt),
-          ) ||
+        (historyRef.current.some(
+          (h) =>
+            h.questionId === nextRes.question.id ||
+            normalizePlacementPrompt(h.prompt) ===
+              normalizePlacementPrompt(nextRes.question.prompt),
+        ) ||
           (prevQuestion &&
             (prevQuestion.id === nextRes.question.id ||
               normalizePlacementPrompt(prevQuestion.prompt) ===
@@ -315,9 +333,13 @@ export function PlacementOnboardingScreen() {
           ability: abilityRef.current,
           history: historyRef.current,
           questionIndex: historyRef.current.length,
-          seenQuestionIds: [...seenIdsRef.current, nextRes.question.id],
-          seenPrompts: [...seenPromptsRef.current, nextRes.question.prompt],
-          seenContentKeys: [...seenContentKeysRef.current, questionContentKey(nextRes.question)],
+          seenQuestionIds: historyRef.current
+            .map((h) => h.questionId)
+            .filter(Boolean) as string[],
+          seenPrompts: historyRef.current.map((h) => h.prompt),
+          seenContentKeys: historyRef.current
+            .filter((h) => h.choices?.length)
+            .map((h) => questionContentKey({ prompt: h.prompt, choices: h.choices! })),
           sessionSalt: sessionSaltRef.current + 17_011 + Date.now(),
           userEntropy: userEntropyRef.current ^ 0x9e3779b9,
           lastQuestion: prevQuestion
@@ -363,10 +385,11 @@ export function PlacementOnboardingScreen() {
 
   const submitAnswer = useCallback(
     async (forcedAnswer?: string | null, timedOut = false) => {
-      if (!question || !answerKey || checking) return;
+      if (!question || !answerKey || checkingRef.current) return;
       const answer = forcedAnswer ?? selected;
       if (!answer && !timedOut) return;
 
+      checkingRef.current = true;
       setChecking(true);
       setError(null);
       void Haptics.impactAsync(
@@ -409,6 +432,7 @@ export function PlacementOnboardingScreen() {
           history: liveHistory,
           answer: answer ?? '',
           answerKey,
+          itemId: question.id,
           questionIndex: liveHistory.length,
           timedOut,
           seenQuestionIds: liveSeenIds,
@@ -432,19 +456,20 @@ export function PlacementOnboardingScreen() {
         }
 
         // Extra client-side guarantee: never accept a within-session duplicate.
-        if (!res.done) {
+        // Bank-first: skip remint — see applyStepResult comment (JS freeze + orchestrator desync).
+        if (!isBankFirstProduction() && !res.done) {
           const current = res;
+          const sessionIds = new Set(
+            liveHistory.map((h) => h.questionId).filter(Boolean) as string[],
+          );
+          sessionIds.add(prevQuestion.id);
+          const sessionPromptNorms = new Set(
+            liveHistory.map((h) => normalizePlacementPrompt(h.prompt)),
+          );
+          sessionPromptNorms.add(normalizePlacementPrompt(prevQuestion.prompt));
           const isSessionDup =
-            current.question.id === prevQuestion.id ||
-            normalizePlacementPrompt(current.question.prompt) ===
-              normalizePlacementPrompt(prevQuestion.prompt) ||
-            liveSeenIds.includes(current.question.id) ||
-            liveSeenPrompts.some(
-              (p) =>
-                normalizePlacementPrompt(p) ===
-                normalizePlacementPrompt(current.question.prompt),
-            ) ||
-            liveSeenKeys.includes(questionContentKey(current.question));
+            sessionIds.has(current.question.id) ||
+            sessionPromptNorms.has(normalizePlacementPrompt(current.question.prompt));
           if (isSessionDup) {
             const reminted = mintNextLocalPlacementQuestion({
               action: 'answer',
@@ -453,9 +478,15 @@ export function PlacementOnboardingScreen() {
               ability: abilityRef.current,
               history: liveHistory,
               questionIndex: liveHistory.length,
-              seenQuestionIds: [...liveSeenIds, current.question.id],
-              seenPrompts: [...liveSeenPrompts, current.question.prompt],
-              seenContentKeys: [...liveSeenKeys, questionContentKey(current.question)],
+              seenQuestionIds: [...sessionIds, current.question.id],
+              seenPrompts: [...liveHistory.map((h) => h.prompt), prevQuestion.prompt, current.question.prompt],
+              seenContentKeys: [
+                ...liveHistory
+                  .filter((h) => h.choices?.length)
+                  .map((h) => questionContentKey({ prompt: h.prompt, choices: h.choices! })),
+                questionContentKey(prevQuestion),
+                questionContentKey(current.question),
+              ],
               sessionSalt: sessionSaltRef.current + 7777 + Date.now(),
               userEntropy: userEntropyRef.current ^ 0x85ebca6b,
               lastQuestion: {
@@ -478,10 +509,11 @@ export function PlacementOnboardingScreen() {
         // Local engine must not fail; if it somehow does, stay on current question silently.
         setError(null);
       } finally {
+        checkingRef.current = false;
         setChecking(false);
       }
     },
-    [answerKey, applyStepResult, checking, language, question, selected, uiLanguage],
+    [answerKey, applyStepResult, language, question, selected, uiLanguage],
   );
 
   const submitRef = useRef(submitAnswer);
@@ -497,6 +529,7 @@ export function PlacementOnboardingScreen() {
       history: historyRef.current,
       answer: selected,
       answerKey,
+      itemId: question.id,
       questionIndex: historyRef.current.length,
       seenQuestionIds: [...seenIdsRef.current, question.id],
       seenPrompts: [...seenPromptsRef.current, question.prompt],
@@ -686,18 +719,39 @@ export function PlacementOnboardingScreen() {
             {pt('timer', { seconds: secondsLeft })}
           </Text>
 
-          <ScrollView contentContainerStyle={styles.testScroll} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.testScrollView}
+            contentContainerStyle={styles.testScroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled">
             <FadeInView key={`${question.id}-${questionEpoch}`} duration={480} offsetY={16}>
               <Text style={styles.instruction}>{question.instruction}</Text>
-              <View style={styles.promptCard}>
-                <Text style={styles.prompt}>
-                  {stripPlacementPromptDecorations(question.prompt)}
+
+              <View style={styles.taskCard}>
+                <Text style={styles.taskEyebrow}>{pt('taskLabel')}</Text>
+                {promptParts?.passage ? (
+                  <View style={styles.passageBlock}>
+                    <Text style={styles.passageText}>{promptParts.passage}</Text>
+                  </View>
+                ) : null}
+                <Text style={styles.askText}>
+                  {askRuns.map((run, i) =>
+                    run.type === 'blank' ? (
+                      <Text key={`b-${i}`} style={styles.blankChip}>
+                        {' ______ '}
+                      </Text>
+                    ) : (
+                      <Text key={`t-${i}`}>{run.value}</Text>
+                    ),
+                  )}
                 </Text>
               </View>
 
               <View style={styles.choices}>
+                <Text style={styles.optionsLabel}>{pt('optionsLabel')}</Text>
                 {question.choices.map((choice, idx) => {
                   const active = selected === choice;
+                  const letter = String.fromCharCode(65 + idx);
                   return (
                     <FadeInView key={choice} delay={idx * 55} duration={400} offsetY={10}>
                       <Pressable
@@ -711,6 +765,15 @@ export function PlacementOnboardingScreen() {
                           active && styles.choiceActive,
                           pressed && styles.pressed,
                         ]}>
+                        <View style={[styles.choiceLetter, active && styles.choiceLetterActive]}>
+                          <Text
+                            style={[
+                              styles.choiceLetterText,
+                              active && styles.choiceLetterTextActive,
+                            ]}>
+                            {letter}
+                          </Text>
+                        </View>
                         <Text style={[styles.choiceText, active && styles.choiceTextActive]}>
                           {choice}
                         </Text>
@@ -914,9 +977,13 @@ const styles = StyleSheet.create({
     color: 'rgba(26,26,26,0.55)',
     textAlign: 'center',
   },
+  testScrollView: {
+    flex: 1,
+  },
   testScroll: {
     paddingBottom: 16,
     gap: 12,
+    flexGrow: 1,
   },
   instruction: {
     fontSize: 13,
@@ -924,39 +991,105 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     color: 'rgba(26,26,26,0.55)',
+    marginBottom: 4,
   },
-  promptCard: {
+  taskCard: {
     padding: 16,
-    borderRadius: 14,
-    backgroundColor: GAME_THEME.color.paper,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
     borderWidth: 3,
     borderColor: GAME_THEME.color.ink,
-    borderLeftWidth: 6,
+    borderLeftWidth: 8,
     borderLeftColor: GAME_THEME.color.sky,
+    gap: 10,
   },
-  prompt: {
-    fontSize: 22,
+  taskEyebrow: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: GAME_THEME.color.sky,
+  },
+  passageBlock: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 2,
+    borderColor: 'rgba(26,26,26,0.12)',
+  },
+  passageText: {
+    fontSize: 17,
+    lineHeight: 26,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.78)',
+  },
+  askText: {
+    fontSize: 21,
     lineHeight: 30,
     fontWeight: '800',
     color: GAME_THEME.color.ink,
   },
+  blankChip: {
+    fontWeight: '900',
+    color: GAME_THEME.color.sky,
+    textDecorationLine: 'underline',
+    textDecorationColor: GAME_THEME.color.sky,
+  },
   choices: {
     gap: 10,
+    marginTop: 6,
+  },
+  optionsLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    color: 'rgba(26,26,26,0.45)',
+    marginBottom: 2,
   },
   choice: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: GAME_THEME.color.paperWarm,
+    backgroundColor: '#FFFFFF',
     borderWidth: 2,
     borderColor: GAME_THEME.color.ink,
+    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.goldLip,
   },
   choiceActive: {
     backgroundColor: GAME_THEME.color.sky,
-    borderBottomWidth: 4,
+    borderBottomColor: GAME_THEME.color.ink,
+  },
+  choiceLetter: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GAME_THEME.color.paper,
+    borderWidth: 2,
+    borderColor: GAME_THEME.color.ink,
+  },
+  choiceLetterActive: {
+    backgroundColor: GAME_THEME.color.ink,
+    borderColor: GAME_THEME.color.ink,
+  },
+  choiceLetterText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
+  },
+  choiceLetterTextActive: {
+    color: '#FFFFFF',
   },
   choiceText: {
-    fontSize: 17,
+    flex: 1,
+    fontSize: 16,
     lineHeight: 22,
     fontWeight: '700',
     color: GAME_THEME.color.ink,

@@ -11,3 +11,4 @@ export * from './export.js';
 export * from './finalize-authoritative.js';
 export * from './service.js';
 export * from './replay.js';
+export * from './session-recovery.js';
