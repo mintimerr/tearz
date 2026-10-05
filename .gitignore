@@ -57,3 +57,4 @@ landing/*.apk
 
 # Signing / store upload secrets
 credentials/
+.github/
