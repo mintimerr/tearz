@@ -15,15 +15,15 @@ import {
 import {
   Alert,
   Animated,
-  InteractionManager,
+  FlatList,
   Keyboard,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type ListRenderItemInfo,
 } from 'react-native';
 import Reanimated, {
   Easing as ReEasing,
@@ -34,7 +34,6 @@ import Reanimated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -172,31 +171,28 @@ type BoardMessagesProps = {
   typing: boolean;
   gameChrome: boolean;
   markerFamily?: string;
-  threadViewportH: number;
-  lastCoachId: string | null;
   typingLabel: string;
   teacherTextStyle: object;
-  scrollRef: RefObject<ScrollView | null>;
+  listRef: RefObject<FlatList<CompanionMsg> | null>;
   onDismissChrome: () => void;
-  onThreadLayout: (height: number) => void;
-  onContentSizeChange: () => void;
+  onScrollNearEndChange?: (nearEnd: boolean) => void;
   renderPracticeActions: (message: CompanionMsg) => ReactNode;
 };
 
-/** Лента отдельно от композера — ввод текста не перерисовывает все пузыри. */
+const NEAR_END_PX = 80;
+
+/** Лента отдельно от композера — ввод текста не перерисовывает все пузыри.
+ *  inverted FlatList: offset 0 = последнее сообщение, без scrollToEnd при открытии. */
 const TeacherBoardMessages = memo(function TeacherBoardMessages({
   messages,
   typing,
   gameChrome,
   markerFamily,
-  threadViewportH,
-  lastCoachId,
   typingLabel,
   teacherTextStyle,
-  scrollRef,
+  listRef,
   onDismissChrome,
-  onThreadLayout,
-  onContentSizeChange,
+  onScrollNearEndChange,
   renderPracticeActions,
 }: BoardMessagesProps) {
   const bubbleVariant = gameChrome ? 'game' : 'default';
@@ -206,113 +202,134 @@ const TeacherBoardMessages = memo(function TeacherBoardMessages({
   }
   const animatedOnce = useRef(new Set<string>());
 
+  /** Newest first — с inverted index 0 оказывается внизу экрана. */
+  const data = useMemo(() => messages.slice().reverse(), [messages]);
+
+  const renderMessage = useCallback(
+    ({ item: m }: ListRenderItemInfo<CompanionMsg>) => {
+      const isMe = m.from === 'me';
+      const photo = isImageMsg(m) && Boolean(m.imageUri);
+      const file = isFileMsg(m);
+      const caption = m.text.trim();
+      const showCaption = caption.length > 0 && caption !== '📷 Фото' && !caption.startsWith('📷 ');
+      const showFileCaption =
+        caption.length > 0 && !caption.startsWith('📎 ') && caption !== (m.fileName ?? '');
+      const isNew = !knownIds.current!.has(m.id);
+      if (isNew) {
+        knownIds.current!.add(m.id);
+        animatedOnce.current.add(m.id);
+      }
+      const soft = animatedOnce.current.has(m.id);
+      const Wrap = soft ? Reanimated.View : View;
+      const wrapProps = soft ? { entering: BOARD_SOFT_MSG } : {};
+
+      if (isMe && photo && m.imageUri) {
+        return (
+          <Wrap style={styles.photoOnlyWrap} {...wrapProps}>
+            <Pressable onPress={onDismissChrome} accessible={false}>
+              <View style={styles.photoBody}>
+                <ImageMessageBubble uri={m.imageUri} outgoing />
+                {showCaption ? (
+                  <BoardLessonBubble side="student" compact variant={bubbleVariant}>
+                    <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
+                      {caption}
+                    </BoardStudentText>
+                  </BoardLessonBubble>
+                ) : null}
+              </View>
+            </Pressable>
+          </Wrap>
+        );
+      }
+
+      if (isMe && file) {
+        return (
+          <Wrap style={styles.photoOnlyWrap} {...wrapProps}>
+            <Pressable onPress={onDismissChrome} accessible={false}>
+              <View style={styles.photoBody}>
+                <BoardLessonBubble side="student" compact variant={bubbleVariant}>
+                  <FileMessageBubble fileName={m.fileName?.trim() || 'Файл'} outgoing />
+                </BoardLessonBubble>
+                {showFileCaption ? (
+                  <BoardLessonBubble side="student" compact variant={bubbleVariant}>
+                    <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
+                      {caption}
+                    </BoardStudentText>
+                  </BoardLessonBubble>
+                ) : null}
+              </View>
+            </Pressable>
+          </Wrap>
+        );
+      }
+
+      return (
+        <Wrap {...wrapProps}>
+          <Pressable onPress={onDismissChrome} accessible={false}>
+            <BoardLessonBubble
+              side={isMe ? 'student' : 'teacher'}
+              compact={m.text.length < 56}
+              variant={bubbleVariant}>
+              {isMe ? (
+                <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
+                  {m.text}
+                </BoardStudentText>
+              ) : (
+                <TeacherMessageBody
+                  text={m.text}
+                  messageId={m.id}
+                  textStyle={teacherTextStyle}
+                  variant={gameChrome ? 'game' : 'default'}
+                  practiceActions={renderPracticeActions(m)}
+                  wordCoach
+                />
+              )}
+            </BoardLessonBubble>
+          </Pressable>
+        </Wrap>
+      );
+    },
+    [
+      bubbleVariant,
+      gameChrome,
+      markerFamily,
+      onDismissChrome,
+      renderPracticeActions,
+      teacherTextStyle,
+    ],
+  );
+
   return (
-    <ScrollView
-      ref={scrollRef}
+    <FlatList
+      ref={listRef}
       style={styles.flex}
-      onLayout={(e) => onThreadLayout(e.nativeEvent.layout.height)}
-      contentContainerStyle={[
-        styles.thread,
-        gameChrome && styles.threadGame,
-        threadViewportH > 0 ? { minHeight: threadViewportH } : null,
-      ]}
+      data={data}
+      inverted
+      keyExtractor={(m) => m.id}
+      renderItem={renderMessage}
+      contentContainerStyle={[styles.thread, gameChrome && styles.threadGame]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       showsVerticalScrollIndicator={false}
+      scrollEventThrottle={16}
+      initialNumToRender={10}
+      maxToRenderPerBatch={6}
+      windowSize={7}
+      removeClippedSubviews={Platform.OS === 'android'}
+      onScroll={(e) => {
+        if (!onScrollNearEndChange) return;
+        // inverted: «низ» диалога = offset ≈ 0
+        onScrollNearEndChange(e.nativeEvent.contentOffset.y <= NEAR_END_PX);
+      }}
       onScrollBeginDrag={onDismissChrome}
-      onContentSizeChange={onContentSizeChange}>
-      <Pressable
-        onPress={onDismissChrome}
-        accessible={false}
-        style={[
-          styles.threadTapDismiss,
-          threadViewportH > 0 ? { minHeight: threadViewportH } : null,
-        ]}>
-        {messages.map((m) => {
-          const isMe = m.from === 'me';
-          const photo = isImageMsg(m) && Boolean(m.imageUri);
-          const file = isFileMsg(m);
-          const caption = m.text.trim();
-          const showCaption = caption.length > 0 && caption !== '📷 Фото' && !caption.startsWith('📷 ');
-          const showFileCaption =
-            caption.length > 0 && !caption.startsWith('📎 ') && caption !== (m.fileName ?? '');
-          const isNew = !knownIds.current!.has(m.id);
-          if (isNew) {
-            knownIds.current!.add(m.id);
-            animatedOnce.current.add(m.id);
-          }
-          const soft = animatedOnce.current.has(m.id);
-          const Wrap = soft ? Reanimated.View : View;
-          const wrapProps = soft ? { entering: BOARD_SOFT_MSG } : {};
-
-          if (isMe && photo && m.imageUri) {
-            return (
-              <Wrap key={m.id} style={styles.photoOnlyWrap} {...wrapProps}>
-                <View style={styles.photoBody}>
-                  <ImageMessageBubble uri={m.imageUri} outgoing />
-                  {showCaption ? (
-                    <BoardLessonBubble side="student" compact variant={bubbleVariant}>
-                      <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
-                        {caption}
-                      </BoardStudentText>
-                    </BoardLessonBubble>
-                  ) : null}
-                </View>
-              </Wrap>
-            );
-          }
-
-          if (isMe && file) {
-            return (
-              <Wrap key={m.id} style={styles.photoOnlyWrap} {...wrapProps}>
-                <View style={styles.photoBody}>
-                  <BoardLessonBubble side="student" compact variant={bubbleVariant}>
-                    <FileMessageBubble fileName={m.fileName?.trim() || 'Файл'} outgoing />
-                  </BoardLessonBubble>
-                  {showFileCaption ? (
-                    <BoardLessonBubble side="student" compact variant={bubbleVariant}>
-                      <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
-                        {caption}
-                      </BoardStudentText>
-                    </BoardLessonBubble>
-                  ) : null}
-                </View>
-              </Wrap>
-            );
-          }
-
-          return (
-            <Wrap key={m.id} {...wrapProps}>
-              <BoardLessonBubble
-                side={isMe ? 'student' : 'teacher'}
-                compact={m.text.length < 56}
-                variant={bubbleVariant}>
-                {isMe ? (
-                  <BoardStudentText markerFamily={markerFamily} game={gameChrome}>
-                    {m.text}
-                  </BoardStudentText>
-                ) : (
-                  <TeacherMessageBody
-                    text={m.text}
-                    messageId={m.id}
-                    textStyle={teacherTextStyle}
-                    variant={gameChrome ? 'game' : 'default'}
-                    practiceActions={m.id === lastCoachId ? renderPracticeActions(m) : null}
-                    wordCoach={m.id === lastCoachId}
-                  />
-                )}
-              </BoardLessonBubble>
-            </Wrap>
-          );
-        })}
-
-        {typing ? (
+      ListHeaderComponent={
+        typing ? (
           <Reanimated.View entering={BOARD_SOFT_TYPING_IN} exiting={BOARD_SOFT_TYPING_OUT}>
             <BoardLessonTyping label={typingLabel} variant={gameChrome ? 'game' : 'default'} />
           </Reanimated.View>
-        ) : null}
-      </Pressable>
-    </ScrollView>
+        ) : null
+      }
+    />
   );
 });
 
@@ -348,7 +365,7 @@ export function TeacherBoardChat({
   );
   const miniDrillUserId = user?.id ?? '';
 
-  const scrollRef = useRef<ScrollView>(null);
+  const listRef = useRef<FlatList<CompanionMsg>>(null);
   const composerRef = useRef<TextInput>(null);
   const lessonIdRef = useRef<string | null>(lessonId ?? null);
   const lessonTopicRef = useRef<string>(lessonTopic?.trim() || t('teacher.lessonDefault'));
@@ -373,7 +390,6 @@ export function TeacherBoardChat({
   const [drillNotice, setDrillNotice] = useState<string | null>(null);
   const drillNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [miniDrillUsage, setMiniDrillUsage] = useState<MiniDrillUsage>({ perMessage: {}, priorSets: {} });
-  const [threadViewportH, setThreadViewportH] = useState(0);
   const { clearWordSelections } = useWordAddSheet();
 
   useEffect(() => {
@@ -441,9 +457,10 @@ export function TeacherBoardChat({
     void loadDrillMistakes(miniDrillUserId).then(setDrillMistakes);
   }, [miniDrillUserId]);
 
+  /** inverted: низ диалога = offset 0 */
   const scrollToEnd = (animated = true) => {
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollToEnd({ animated });
+      listRef.current?.scrollToOffset({ offset: 0, animated });
     });
   };
 
@@ -451,7 +468,7 @@ export function TeacherBoardChat({
   useEffect(() => {
     if (!keyboardOpen) return;
     const id = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: false });
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
     }, 200);
     return () => clearTimeout(id);
   }, [keyboardOpen]);
@@ -508,6 +525,7 @@ export function TeacherBoardChat({
       image?: { base64: string; mimeType: string },
     ) => {
       setTyping(true);
+      scrollToEnd();
       try {
         const switched = detectExplicitL2Switch(userText);
         const replyLanguage = switched ?? language;
@@ -897,7 +915,7 @@ export function TeacherBoardChat({
       const text = buildNextTopicChatMessage(topic);
       setTimeout(() => {
         void send(text);
-        scrollRef.current?.scrollToEnd({ animated: true });
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 120);
     },
     [send],
@@ -1069,14 +1087,14 @@ export function TeacherBoardChat({
         const text = buildFollowUpChatMessage(followUp, uiLanguage);
         setTimeout(() => {
           void send(text);
-          scrollRef.current?.scrollToEnd({ animated: true });
+          listRef.current?.scrollToOffset({ offset: 0, animated: true });
         }, 120);
         return;
       }
       const text = buildFollowUpChatMessage(followUp, uiLanguage);
       setTimeout(() => {
         void send(text);
-        scrollRef.current?.scrollToEnd({ animated: true });
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
       }, 120);
     },
     [generateExerciseForMessage, prepareDrillForMessage, send],
@@ -1151,16 +1169,13 @@ export function TeacherBoardChat({
     [gameChrome],
   );
   const typingLabel = t('teacher.boardChatTyping');
-  const onThreadLayout = useCallback((height: number) => {
-    setThreadViewportH(height);
-  }, []);
-  const onThreadContentSizeChange = useCallback(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
+  const stickToEndRef = useRef(true);
+  const onScrollNearEndChange = useCallback((nearEnd: boolean) => {
+    stickToEndRef.current = nearEnd;
   }, []);
 
-  const [threadReady, setThreadReady] = useState(false);
   const enterProgress = useSharedValue(0);
-  const threadFade = useSharedValue(0);
+  const threadFade = useSharedValue(1);
   const headerEnterStyle = useAnimatedStyle(() => ({
     opacity: interpolate(enterProgress.value, [0, 0.42], [0, 1], Extrapolation.CLAMP),
     transform: [
@@ -1168,10 +1183,7 @@ export function TeacherBoardChat({
     ],
   }));
   const threadEnterStyle = useAnimatedStyle(() => ({
-    opacity: threadFade.value * interpolate(enterProgress.value, [0.1, 0.7], [0, 1], Extrapolation.CLAMP),
-    transform: [
-      { translateY: interpolate(enterProgress.value, [0.1, 0.8], [10, 0], Extrapolation.CLAMP) },
-    ],
+    opacity: threadFade.value,
   }));
   const footEnterStyle = useAnimatedStyle(() => ({
     opacity: interpolate(enterProgress.value, [0.22, 0.92], [0, 1], Extrapolation.CLAMP),
@@ -1181,25 +1193,11 @@ export function TeacherBoardChat({
   }));
 
   useEffect(() => {
-    let alive = true;
-    setThreadReady(false);
+    stickToEndRef.current = true;
     enterProgress.value = 0;
     threadFade.value = 0;
-    enterProgress.value = withDelay(
-      32,
-      withTiming(1, { duration: 520, easing: BOARD_SOFT_EASING }),
-    );
-    const task = InteractionManager.runAfterInteractions(() => {
-      setTimeout(() => {
-        if (!alive) return;
-        setThreadReady(true);
-        threadFade.value = withTiming(1, { duration: 420, easing: BOARD_SOFT_EASING });
-      }, 100);
-    });
-    return () => {
-      alive = false;
-      task.cancel();
-    };
+    enterProgress.value = withTiming(1, { duration: 360, easing: BOARD_SOFT_EASING });
+    threadFade.value = withTiming(1, { duration: 220, easing: BOARD_SOFT_EASING });
   }, [enterProgress, lessonId, threadFade]);
 
   const pressSendIn = () => {
@@ -1260,25 +1258,18 @@ export function TeacherBoardChat({
         </Reanimated.View>
 
         <Reanimated.View style={[styles.flex, threadEnterStyle]}>
-          {threadReady ? (
-            <TeacherBoardMessages
-              messages={messages}
-              typing={typing}
-              gameChrome={gameChrome}
-              markerFamily={markerFamily}
-              threadViewportH={threadViewportH}
-              lastCoachId={lastCoachId}
-              typingLabel={typingLabel}
-              teacherTextStyle={teacherTextStyle}
-              scrollRef={scrollRef}
-              onDismissChrome={dismissChatChrome}
-              onThreadLayout={onThreadLayout}
-              onContentSizeChange={onThreadContentSizeChange}
-              renderPracticeActions={renderPracticeActions}
-            />
-          ) : (
-            <View style={styles.flex} onLayout={(e) => onThreadLayout(e.nativeEvent.layout.height)} />
-          )}
+          <TeacherBoardMessages
+            messages={messages}
+            typing={typing}
+            gameChrome={gameChrome}
+            markerFamily={markerFamily}
+            typingLabel={typingLabel}
+            teacherTextStyle={teacherTextStyle}
+            listRef={listRef}
+            onDismissChrome={dismissChatChrome}
+            onScrollNearEndChange={onScrollNearEndChange}
+            renderPracticeActions={renderPracticeActions}
+          />
         </Reanimated.View>
 
         <WordAddSheetHost />
@@ -1412,7 +1403,7 @@ export function TeacherBoardChat({
                   clearWordSelections();
                   setAttachOpen(false);
                   setTimeout(() => {
-                    scrollRef.current?.scrollToEnd({ animated: false });
+                    listRef.current?.scrollToOffset({ offset: 0, animated: false });
                   }, 220);
                 }}
               />
@@ -1517,7 +1508,7 @@ export function TeacherBoardChat({
                   clearWordSelections();
                   setAttachOpen(false);
                   setTimeout(() => {
-                    scrollRef.current?.scrollToEnd({ animated: false });
+                    listRef.current?.scrollToOffset({ offset: 0, animated: false });
                   }, 220);
                 }}
               />
@@ -1689,20 +1680,16 @@ const styles = StyleSheet.create({
   },
   thread: {
     paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 16,
+    // inverted FlatList зеркалит padding: top = визуальный низ (у композера)
+    paddingTop: 16,
+    paddingBottom: 10,
     flexGrow: 1,
-    justifyContent: 'flex-end',
   },
   threadGame: {
     paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
     backgroundColor: GAME_THEME.color.cream,
-  },
-  threadTapDismiss: {
-    flexGrow: 1,
-    width: '100%',
   },
   teacherText: {
     fontSize: 16,

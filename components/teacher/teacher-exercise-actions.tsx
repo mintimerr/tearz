@@ -179,9 +179,9 @@ export function TeacherExerciseActions({
   );
 
   useEffect(() => {
-    if (!examplesAvailable) return;
+    if (!examplesAvailable || !coach) return;
     void fetchRemoteExamples({ silent: true });
-  }, [cacheKey, examplesAvailable, fetchRemoteExamples]);
+  }, [cacheKey, coach, examplesAvailable, fetchRemoteExamples]);
 
   const openExamples = useCallback(() => {
     const cached = getCachedTeacherExamples(cacheKey);

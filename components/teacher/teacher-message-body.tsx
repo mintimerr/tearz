@@ -277,11 +277,22 @@ export const TeacherMessageBody = memo(function TeacherMessageBody({
         animKey={messageId}
       />
     );
-    if (!wordCoach) return plain;
-    return (
+    const withCoach = !wordCoach ? (
+      plain
+    ) : (
       <SpotlightAnchor tipId="coachWords2" line={wordLine} style={styles.spot}>
         {plain}
       </SpotlightAnchor>
+    );
+    if (!practiceActions) return withCoach;
+    return (
+      <View style={styles.wrap}>
+        {withCoach}
+        <View style={styles.practiceFallback}>
+          <SectionTitleBar label={t('teacher.drill.practiceLabel')} icon="barbell-outline" game={game} />
+          <View style={styles.practiceSlot}>{practiceActions}</View>
+        </View>
+      </View>
     );
   }
 

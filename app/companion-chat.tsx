@@ -417,6 +417,9 @@ const TeacherDialogMessages = memo(function TeacherDialogMessages({
   onPrepare,
   onPress,
   onBlocked,
+  stickToEndRef,
+  threadRevealedRef,
+  onInitialEndPinned,
 }: {
   messages: CompanionMsg[];
   typing: boolean;
@@ -432,8 +435,20 @@ const TeacherDialogMessages = memo(function TeacherDialogMessages({
   onPrepare: (message: CompanionMsg) => boolean;
   onPress: (message: CompanionMsg) => void;
   onBlocked: (reason: string) => void;
+  stickToEndRef: RefObject<boolean>;
+  threadRevealedRef: RefObject<boolean>;
+  onInitialEndPinned?: () => void;
 }) {
   const claimNew = useSoftMessageIds(messages);
+  const contentHRef = useRef(0);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const viewportHRef = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    };
+  }, []);
 
   return (
     <ScrollView
@@ -443,8 +458,30 @@ const TeacherDialogMessages = memo(function TeacherDialogMessages({
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="always"
       removeClippedSubviews={false}
+      scrollEventThrottle={16}
+      onLayout={(e) => {
+        viewportHRef.current = e.nativeEvent.layout.height;
+      }}
+      onScroll={(e) => {
+        const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+        const dist =
+          contentSize.height - layoutMeasurement.height - contentOffset.y;
+        stickToEndRef.current = dist <= 96;
+      }}
       onScrollBeginDrag={onDismiss}
-      onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+      onContentSizeChange={(_w, h) => {
+        contentHRef.current = h;
+        if (!stickToEndRef.current) return;
+        if (threadRevealedRef.current) return;
+        const y = Math.max(0, h - viewportHRef.current);
+        scrollRef.current?.scrollTo({ y, animated: false });
+        if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+        settleTimerRef.current = setTimeout(() => {
+          const y2 = Math.max(0, contentHRef.current - viewportHRef.current);
+          scrollRef.current?.scrollTo({ y: y2, animated: false });
+          onInitialEndPinned?.();
+        }, 90);
+      }}>
       <Pressable onPress={onDismiss} style={tStyles.threadTapDismiss}>
         <View style={tStyles.dateWrap}>
           <View style={tStyles.dateChip}>
@@ -454,6 +491,10 @@ const TeacherDialogMessages = memo(function TeacherDialogMessages({
 
         {messages.map((m, msgIdx) => {
           const animate = claimNew(m.id);
+          const canPractice =
+            m.from === 'them' &&
+            !m.id.startsWith('ex-') &&
+            !m.text.startsWith('Не удалось');
           const row =
             m.from === 'them' ? (
               <View style={tStyles.teacherBlock}>
@@ -465,7 +506,7 @@ const TeacherDialogMessages = memo(function TeacherDialogMessages({
                     <View style={tStyles.teacherCardTopEdge} pointerEvents="none" />
                     {renderBody(m, tStyles.teacherText)}
                   </View>
-                  {m.id === lastCoachId ? (
+                  {canPractice ? (
                     <>
                       <View style={tStyles.teacherActionsGap} collapsable={false} />
                       <View style={tStyles.teacherActions}>
@@ -487,7 +528,7 @@ const TeacherDialogMessages = memo(function TeacherDialogMessages({
                           onPrepare={onPrepare}
                           onPress={onPress}
                           onBlocked={onBlocked}
-                          coach
+                          coach={m.id === lastCoachId}
                         />
                       </View>
                     </>
@@ -1649,11 +1690,20 @@ function CompanionChatScreenInner() {
    *  всплывают раньше хедера и композера (синяя «рамка со словами»). */
   const [threadReady, setThreadReady] = useState(false);
   const threadFade = useSharedValue(0);
+  const stickToEndRef = useRef(true);
+  const threadRevealedRef = useRef(false);
   const softEnter = useChatSoftEnter(threadKey);
   const threadFadeStyle = useAnimatedStyle(() => ({ opacity: threadFade.value }));
+  const revealThreadAfterPin = useCallback(() => {
+    if (threadRevealedRef.current) return;
+    threadRevealedRef.current = true;
+    threadFade.value = withTiming(1, { duration: 280, easing: CHAT_SOFT_EASING });
+  }, [threadFade]);
 
   useLayoutEffect(() => {
     setThreadReady(false);
+    stickToEndRef.current = true;
+    threadRevealedRef.current = false;
     threadFade.value = 0;
   }, [threadFade, threadKey]);
   useEffect(() => {
@@ -1662,14 +1712,19 @@ function CompanionChatScreenInner() {
       setTimeout(() => {
         if (!alive) return;
         setThreadReady(true);
-        threadFade.value = withTiming(1, { duration: 420, easing: CHAT_SOFT_EASING });
-      }, 100);
+        // Страховка, если contentSize не пришёл.
+        setTimeout(() => {
+          if (!alive || threadRevealedRef.current) return;
+          scrollRef.current?.scrollToEnd({ animated: false });
+          revealThreadAfterPin();
+        }, 480);
+      }, 60);
     });
     return () => {
       alive = false;
       task.cancel();
     };
-  }, [threadFade, threadKey]);
+  }, [revealThreadAfterPin, threadKey]);
 
   if (!companionChatsHydrated) {
     return (
@@ -1735,6 +1790,9 @@ function CompanionChatScreenInner() {
                 onPrepare={prepareDrillForMessage}
                 onPress={handlePracticePress}
                 onBlocked={onDrillBlocked}
+                stickToEndRef={stickToEndRef}
+                threadRevealedRef={threadRevealedRef}
+                onInitialEndPinned={revealThreadAfterPin}
               />
             ) : (
               <View style={tStyles.thread} />
