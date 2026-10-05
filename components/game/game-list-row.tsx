@@ -23,8 +23,8 @@ export function GameListRow({
   selected,
   style,
 }: Props) {
-  const body = (
-    <View style={[styles.row, selected && styles.rowSelected, style]}>
+  const copy = (
+    <>
       {leading ? <View style={styles.leading}>{leading}</View> : null}
       <View style={styles.copy}>
         <Text style={styles.title} numberOfLines={1}>
@@ -36,20 +36,24 @@ export function GameListRow({
           </Text>
         ) : null}
       </View>
-      {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
-    </View>
+    </>
   );
 
-  if (!onPress) return body;
-
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={title}>
-      {body}
-    </Pressable>
+    <View style={[styles.row, selected && styles.rowSelected, style]}>
+      {onPress ? (
+        <Pressable
+          onPress={onPress}
+          style={({ pressed }) => [styles.main, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={title}>
+          {copy}
+        </Pressable>
+      ) : (
+        <View style={styles.main}>{copy}</View>
+      )}
+      {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
+    </View>
   );
 }
 
@@ -73,6 +77,13 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.88,
+  },
+  main: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   leading: {
     width: 40,

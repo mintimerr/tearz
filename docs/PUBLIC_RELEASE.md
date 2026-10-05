@@ -3,7 +3,9 @@
 Soft launch checklist for App Store and Google Play. **v1.0 non-goals:** IAP/subscriptions, remote push (APNs/FCM), unfinished world locations, server-synced coins/streak.
 
 > **Только Play (проще стартовать без Apple):** [PLAY.md](./PLAY.md) → `npm run finish:play`  
-> **Только TestFlight:** [TESTFLIGHT.md](./TESTFLIGHT.md) → `npm run finish:testflight`
+> **Только RuStore (Android, РФ):** [RUSTORE.md](./RUSTORE.md) → `npm run finish:rustore`  
+> **Только TestFlight:** [TESTFLIGHT.md](./TESTFLIGHT.md) → `npm run finish:testflight`  
+> **Режим преподавателя (человек) / школы:** [INSTRUCTOR_MODE.md](./INSTRUCTOR_MODE.md)
 
 ## 1. Production API (required)
 

@@ -53,6 +53,14 @@ function lineToItem(line: TeacherBodyLine, index: number, prefix: string): Teach
       kind: line.kind,
     };
   }
+  if (line.kind === 'vocab') {
+    return {
+      id: `${prefix}-${index}`,
+      text: line.word,
+      subtext: line.gloss,
+      kind: line.kind,
+    };
+  }
   const text = line.text.trim();
   if (!text) return null;
   return { id: `${prefix}-${index}`, text, kind: line.kind };
@@ -118,13 +126,33 @@ export function estimateVocabWordCount(text: string): number {
   if (blocks) {
     let count = 0;
     for (const block of blocks) {
-      if (!isVocabularyTitle(block.title) && !isPhraseTitle(block.title)) continue;
+      const titleOk =
+        isVocabularyTitle(block.title) ||
+        isPhraseTitle(block.title) ||
+        /простым\s+языком|plain\s+english|简单说明|лексик|vocab/i.test(block.title);
+      if (!titleOk) continue;
       count += parseTeacherBlockLines(block.body, {
-        vocabulary: isVocabularyTitle(block.title),
+        vocabulary: true,
         phrase: isPhraseTitle(block.title),
       }).length;
     }
     if (count > 0) return Math.min(8, count);
   }
   return Math.min(8, extractPairsFromTeacherText(text).length);
+}
+
+/** Ближайший ответ учителя с лексикой (для кнопки «Примеры» на мета-сообщениях). */
+export function findTeacherVocabSourceText(
+  messages: { id: string; from: string; text: string }[],
+  fromIndex: number,
+): { messageId: string; text: string } | null {
+  for (let i = fromIndex; i >= 0; i -= 1) {
+    const m = messages[i];
+    if (!m || m.from !== 'them') continue;
+    if (m.text.startsWith('Не удалось')) continue;
+    if (estimateVocabWordCount(m.text) > 0) {
+      return { messageId: m.id, text: m.text };
+    }
+  }
+  return null;
 }

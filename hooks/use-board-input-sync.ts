@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { boardInkProgress, estimateBoardInkCursor } from '@/utils/board-ink-cursor';

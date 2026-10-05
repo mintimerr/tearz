@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
+  MINI_DRILL_LIMITS_DISABLED,
   MINI_DRILL_MAX_LESSONS,
   MINI_DRILL_MAX_REFRESHES,
 } from '@/constants/teacher-drill';
@@ -91,6 +92,17 @@ export function evaluateMiniDrillAccess(usage: MiniDrillUsage, messageId: string
   const isRepeat = generationsUsed > 0;
   const refreshesLeft = isRepeat ? remainingGenerations : MINI_DRILL_MAX_REFRESHES;
 
+  if (MINI_DRILL_LIMITS_DISABLED) {
+    return {
+      allowed: true,
+      generationsUsed,
+      refreshesLeft: MINI_DRILL_MAX_REFRESHES,
+      questionsUsed,
+      questionsLeft: MINI_DRILL_MAX_LESSONS,
+      isRepeat,
+    };
+  }
+
   if (isRepeat) {
     if (generationsUsed >= MAX_GENERATIONS_PER_MESSAGE) {
       return {
@@ -146,7 +158,11 @@ export async function loadMiniDrillUsage(userId: string): Promise<MiniDrillUsage
     if (!parsed || typeof parsed !== 'object' || !parsed.perMessage) return emptyUsage();
     const perMessage: Record<string, number> = {};
     for (const [id, count] of Object.entries(parsed.perMessage)) {
-      if (typeof count === 'number' && count > 0) perMessage[id] = Math.min(count, MAX_GENERATIONS_PER_MESSAGE);
+      if (typeof count === 'number' && count > 0) {
+        perMessage[id] = MINI_DRILL_LIMITS_DISABLED
+          ? Math.floor(count)
+          : Math.min(count, MAX_GENERATIONS_PER_MESSAGE);
+      }
     }
     return { perMessage, priorSets: normalizePriorSets(parsed.priorSets) };
   } catch {
@@ -177,7 +193,9 @@ export function recordMiniDrillGeneration(
   return {
     perMessage: {
       ...usage.perMessage,
-      [messageId]: Math.min(next + 1, MAX_GENERATIONS_PER_MESSAGE),
+      [messageId]: MINI_DRILL_LIMITS_DISABLED
+        ? next + 1
+        : Math.min(next + 1, MAX_GENERATIONS_PER_MESSAGE),
     },
     priorSets: {
       ...usage.priorSets,

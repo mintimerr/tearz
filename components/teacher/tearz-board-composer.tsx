@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Kalam_700Bold, useFonts } from '@expo-google-fonts/kalam';
 import * as DocumentPicker from 'expo-document-picker';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { Image } from 'expo-image';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
@@ -739,7 +739,11 @@ export const TearzBoardComposer = forwardRef<TeacherHomeComposerRef, Props>(func
 
       {attachOpen ? (
         <View style={[styles.attachPanel, { top: Math.max(12, screenH * 0.08) }]}>
-          <TeacherAttachGallery visible={attachOpen} onPhotoSelected={onGalleryPhoto} />
+          <TeacherAttachGallery
+            visible={attachOpen}
+            onClose={() => setAttachOpen(false)}
+            onPhotoSelected={onGalleryPhoto}
+          />
           <Pressable
             onPress={() => void handleBrowseFiles()}
             style={({ pressed }) => [styles.attachFileBtn, pressed && styles.attachFileBtnPressed]}

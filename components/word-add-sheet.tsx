@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import {
   createContext,
   useCallback,
@@ -24,9 +24,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PremiumButton } from '@/components/ui';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useTranslation } from '@/contexts/locale-context';
+import { usePlacement } from '@/contexts/placement-context';
 import { useVocabulary } from '@/contexts/vocabulary-context';
+import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
+import { getActiveStudyLanguage } from '@/utils/active-study-language';
 import { detectWordLang } from '@/utils/detect-word-lang';
-import { fetchCardSuggestion, instantCardFields } from '@/utils/card-suggestion';
+import {
+  fetchCardSuggestion,
+  instantCardFields,
+  normalizeSelectedLexeme,
+} from '@/utils/card-suggestion';
 import { isAbortError } from '@/utils/abort-error';
 import {
   BUILTIN_FOLDER_EN,
@@ -35,8 +42,13 @@ import {
   resolveFolderMeta,
 } from '@/utils/vocab-folders';
 
+export type OpenWordOptions = {
+  context?: string | null;
+  sourceLanguage?: CompanionChatApiLanguage | null;
+};
+
 type WordAddSheetContextValue = {
-  openWord: (word: string) => void;
+  openWord: (word: string, options?: OpenWordOptions) => void;
   registerHost: () => () => void;
   registerSelectionClearer: (clear: () => void) => () => void;
   clearWordSelections: () => void;
@@ -52,6 +64,8 @@ type WordAddSheetContextValue = {
   prefetchedTr: string | null;
   prefetchedPy: string | null;
   closeSheet: (after?: () => void) => void;
+  /** Сброс выделения / тап мимо — с grace после openWord (иначе Pressable съедает плашку). */
+  dismissSheetFromOutside: () => void;
   confirmAdd: () => void;
   setFolderId: (id: string) => void;
 };
@@ -64,6 +78,7 @@ export function useWordAddSheet() {
   return {
     openWord: ctx.openWord,
     closeSheet: ctx.closeSheet,
+    dismissSheetFromOutside: ctx.dismissSheetFromOutside,
     clearWordSelections: ctx.clearWordSelections,
     registerSelectionClearer: ctx.registerSelectionClearer,
   };
@@ -105,7 +120,7 @@ function WordAddSheetPanel() {
   if (!visible || !sheetWord) return null;
 
   return (
-    <View style={styles.barWrap}>
+    <View style={styles.barWrap} onStartShouldSetResponder={() => true}>
       <View style={styles.bar}>
         <View style={styles.barTop}>
           <View style={styles.barCopy}>
@@ -237,11 +252,14 @@ export function WordAddSheetHost() {
 
 export function WordAddSheetProvider({ children }: { children: ReactNode }) {
   const { t, locale } = useTranslation();
+  const { targetLanguage } = usePlacement();
   const { addWord, hasWord, entries, customFolders, addCardToFolder, hasCardInFolder } = useVocabulary();
 
   const [hostCount, setHostCount] = useState(0);
   const [visible, setVisible] = useState(false);
   const [sheetWord, setSheetWord] = useState<string | null>(null);
+  const [sheetContext, setSheetContext] = useState<string | null>(null);
+  const [sheetSourceLang, setSheetSourceLang] = useState<CompanionChatApiLanguage | null>(null);
   const [folderId, setFolderId] = useState(BUILTIN_FOLDER_EN);
   const [sheetDuplicate, setSheetDuplicate] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -255,6 +273,11 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
   const sheetWordRef = useRef<string | null>(null);
   const visibleRef = useRef(false);
   const selectionClearersRef = useRef(new Set<() => void>());
+  const sheetContextRef = useRef<string | null>(null);
+  const sheetSourceLangRef = useRef<CompanionChatApiLanguage | null>(null);
+  /** Block Pressable/onClear from eating the bar right after a word open. */
+  const openedAtRef = useRef(0);
+  const OPEN_GRACE_MS = 900;
 
   const registerSelectionClearer = useCallback((clear: () => void) => {
     selectionClearersRef.current.add(clear);
@@ -270,8 +293,12 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
 
   const resetSheetState = useCallback(() => {
     sheetWordRef.current = null;
+    sheetContextRef.current = null;
+    sheetSourceLangRef.current = null;
     visibleRef.current = false;
     setSheetWord(null);
+    setSheetContext(null);
+    setSheetSourceLang(null);
     setSheetDuplicate(false);
     setSheetErr(null);
     setAdding(false);
@@ -291,12 +318,17 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
     [resetSheetState],
   );
 
-  const clearWordSelections = useCallback(() => {
-    selectionClearersRef.current.forEach((clear) => clear());
-    if (visibleRef.current) {
-      closeSheet();
-    }
+  const dismissSheetFromOutside = useCallback(() => {
+    if (Date.now() - openedAtRef.current < OPEN_GRACE_MS) return;
+    if (visibleRef.current) closeSheet();
   }, [closeSheet]);
+
+  const clearWordSelections = useCallback(() => {
+    // Parent Pressable fires onPress on finger-up after long-press — ignore briefly.
+    if (Date.now() - openedAtRef.current < OPEN_GRACE_MS) return;
+    selectionClearersRef.current.forEach((clear) => clear());
+    dismissSheetFromOutside();
+  }, [dismissSheetFromOutside]);
 
   const isDuplicate = useCallback(
     (word: string, id: string) => {
@@ -308,15 +340,24 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
   );
 
   const openWord = useCallback(
-    (raw: string) => {
-      const w = raw.trim();
+    (raw: string, options?: OpenWordOptions) => {
+      const w = normalizeSelectedLexeme(raw);
       if (!w) return;
       const prev = sheetWordRef.current;
       const wasOpen = visibleRef.current;
       if (w === prev && wasOpen) return;
 
+      openedAtRef.current = Date.now();
       addCancelled.current = false;
       setSheetErr(null);
+
+      const source =
+        options?.sourceLanguage ?? getActiveStudyLanguage() ?? targetLanguage ?? null;
+      const context = options?.context?.trim() || null;
+      sheetContextRef.current = context;
+      sheetSourceLangRef.current = source;
+      setSheetContext(context);
+      setSheetSourceLang(source);
 
       const nextFolder =
         wasOpen && prev && detectWordLang(w) === detectWordLang(prev) ? folderId : folderForWord(w);
@@ -334,7 +375,7 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
       setSheetWord(w);
       setVisible(true);
     },
-    [folderId, isDuplicate],
+    [folderId, isDuplicate, targetLanguage],
   );
 
   useEffect(() => {
@@ -366,7 +407,12 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
     setPrefetching(true);
     setSheetErr(null);
 
-    void fetchCardSuggestion(w, locale, { entries, signal: controller.signal })
+    void fetchCardSuggestion(w, locale, {
+      entries,
+      signal: controller.signal,
+      sourceLanguage: sheetSourceLang,
+      context: sheetContext,
+    })
       .then((result) => {
         setPrefetchedTr(result.translation);
         setPrefetchedPy(result.pinyin);
@@ -381,7 +427,7 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
       });
 
     return () => controller.abort();
-  }, [entries, sheetWord, sheetDuplicate, t, locale]);
+  }, [entries, sheetWord, sheetDuplicate, sheetContext, sheetSourceLang, t, locale]);
 
   useEffect(() => {
     if (!savedToastVisible) return;
@@ -403,7 +449,11 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
       let tr = prefetchedTr?.trim() || null;
       let py: string | null | undefined = prefetchedPy;
       if (!tr) {
-        const result = await fetchCardSuggestion(w, locale, { entries });
+        const result = await fetchCardSuggestion(w, locale, {
+          entries,
+          sourceLanguage: sheetSourceLangRef.current,
+          context: sheetContextRef.current,
+        });
         tr = result.translation;
         py = result.pinyin;
       }
@@ -469,6 +519,7 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
       prefetchedTr,
       prefetchedPy,
       closeSheet,
+      dismissSheetFromOutside,
       confirmAdd: () => {
         void confirmAdd();
       },
@@ -478,6 +529,7 @@ export function WordAddSheetProvider({ children }: { children: ReactNode }) {
       adding,
       closeSheet,
       confirmAdd,
+      dismissSheetFromOutside,
       folderId,
       hostCount,
       openWord,

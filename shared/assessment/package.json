@@ -1,0 +1,32 @@
+{
+  "name": "@tearz/assessment",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./placement": {
+      "types": "./src/placement/index.ts",
+      "import": "./src/placement/index.ts",
+      "default": "./dist/placement/index.js"
+    }
+  },
+  "scripts": {
+    "test": "tsx --test 'tests/**/*.test.ts'",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "audit": "tsx scripts/audit-diagnostic.ts",
+    "audit:orchestrator": "tsx scripts/orchestrator-audit.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.20.5",
+    "typescript": "~5.9.2"
+  }
+}

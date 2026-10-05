@@ -1,15 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import * as DocumentPicker from 'expo-document-picker';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
   Animated,
   AppState,
   Easing,
+  InteractionManager,
   Keyboard,
   Platform,
   Pressable,
@@ -21,9 +31,21 @@ import {
   type AppStateStatus,
 } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
-import Reanimated from 'react-native-reanimated';
+import Reanimated, {
+  Easing as ReEasing,
+  Extrapolation,
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { ReactNode } from 'react';
 
 import { CompanionAttachmentSheet } from '@/components/companion/companion-attachment-sheet';
 import { CompanionIncomingBubble } from '@/components/companion/companion-incoming-bubble';
@@ -41,8 +63,6 @@ import {
 } from '@/components/teacher/teacher-full-workout-paywall';
 import { TeacherChatComposer } from '@/components/teacher/teacher-chat-composer';
 import { teacherChatStyles as tStyles } from '@/components/teacher/teacher-chat-styles';
-import { FadeInView } from '@/components/ui';
-import type { ReactNode } from 'react';
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
 import { FileMessageBubble } from '@/components/companion/file-message-bubble';
 import { ImageMessageBubble } from '@/components/companion/image-message-bubble';
@@ -58,6 +78,7 @@ import { useEngagement } from '@/contexts/engagement-context';
 import { useLexicon } from '@/contexts/lexicon-context';
 import { useKeyboardInset } from '@/hooks/use-keyboard-inset';
 import { useCompanionCall } from '@/hooks/use-companion-call';
+import { useLearnerModel } from '@/hooks/use-learner-model';
 import {
   postCompanionChatReply,
   postTeacherChatReply,
@@ -65,6 +86,7 @@ import {
   postTeacherExerciseSet,
 } from '@/services/companion-chat-ai';
 import { postCompanionVoiceTranscribe } from '@/services/companion-voice-transcribe';
+import { buildFallbackExercises } from '@/utils/teacher-exercise-fallback';
 import type {
   CompanionChatApiLanguage,
   TeacherDrillFollowUp,
@@ -106,6 +128,70 @@ import { buildFollowUpChatMessage } from '@/utils/teacher-drill-followup';
 import { takeTeacherLessonBootstrap } from '@/utils/teacher-lesson-bootstrap';
 import { persistCompanionVoice } from '@/utils/companion-voice-storage';
 import { pickCompanionPhoto } from '@/utils/pick-companion-photo';
+
+const CHAT_SOFT_EASING = ReEasing.bezier(0.22, 1, 0.36, 1);
+const CHAT_SOFT_MS = 520;
+const SOFT_MSG_ENTER = FadeInDown.duration(340)
+  .easing(CHAT_SOFT_EASING)
+  .withInitialValues({ opacity: 0, transform: [{ translateY: 8 }] });
+const SOFT_TYPING_ENTER = FadeIn.duration(280).easing(CHAT_SOFT_EASING);
+const SOFT_TYPING_EXIT = FadeOut.duration(180).easing(ReEasing.out(ReEasing.quad));
+
+function useChatSoftEnter(resetKey: string) {
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = 0;
+    progress.value = withDelay(
+      32,
+      withTiming(1, { duration: CHAT_SOFT_MS, easing: CHAT_SOFT_EASING }),
+    );
+  }, [progress, resetKey]);
+
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.42], [0, 1], Extrapolation.CLAMP),
+    transform: [
+      { translateY: interpolate(progress.value, [0, 0.55], [-6, 0], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  const midStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.1, 0.7], [0, 1], Extrapolation.CLAMP),
+    transform: [
+      { translateY: interpolate(progress.value, [0.1, 0.8], [10, 0], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  const footStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.22, 0.92], [0, 1], Extrapolation.CLAMP),
+    transform: [
+      { translateY: interpolate(progress.value, [0.22, 1], [14, 0], Extrapolation.CLAMP) },
+    ],
+  }));
+
+  return { headerStyle, midStyle, footStyle };
+}
+
+/** Первый кадр ленты — без анимации; новые id после этого — мягкий FadeInDown. */
+function useSoftMessageIds(messages: CompanionMsg[]) {
+  const knownRef = useRef<Set<string> | null>(null);
+  if (knownRef.current === null) {
+    knownRef.current = new Set(messages.map((m) => m.id));
+  }
+  return useCallback((id: string) => {
+    const known = knownRef.current!;
+    if (known.has(id)) return false;
+    known.add(id);
+    return true;
+  }, []);
+}
+
+function SoftBubble({ animate, children }: { animate: boolean; children: ReactNode }) {
+  const once = useRef(animate);
+  if (animate) once.current = true;
+  if (!once.current) return <>{children}</>;
+  return <Reanimated.View entering={SOFT_MSG_ENTER}>{children}</Reanimated.View>;
+}
 
 function formatChatTime(d = new Date()) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -313,6 +399,247 @@ function GameChatHeader({
   );
 }
 
+type RenderMessageBody = (m: CompanionMsg, textStyle: object) => ReactNode;
+
+/** Лента отдельно от композера — набор текста не гоняет все пузыри. */
+const TeacherDialogMessages = memo(function TeacherDialogMessages({
+  messages,
+  typing,
+  lastCoachId,
+  scrollRef,
+  onDismiss,
+  renderBody,
+  exerciseLoadingId,
+  miniDrillUsage,
+  language,
+  uiLanguage,
+  lessonTopic,
+  onPrepare,
+  onPress,
+  onBlocked,
+}: {
+  messages: CompanionMsg[];
+  typing: boolean;
+  lastCoachId: string | null;
+  scrollRef: RefObject<ScrollView | null>;
+  onDismiss: () => void;
+  renderBody: RenderMessageBody;
+  exerciseLoadingId: string | null;
+  miniDrillUsage: MiniDrillUsage;
+  language: CompanionChatApiLanguage;
+  uiLanguage: 'ru' | 'en' | 'zh';
+  lessonTopic?: string;
+  onPrepare: (message: CompanionMsg) => boolean;
+  onPress: (message: CompanionMsg) => void;
+  onBlocked: (reason: string) => void;
+}) {
+  const claimNew = useSoftMessageIds(messages);
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      style={tStyles.thread}
+      contentContainerStyle={tStyles.threadContent}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="always"
+      removeClippedSubviews={false}
+      onScrollBeginDrag={onDismiss}
+      onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+      <Pressable onPress={onDismiss} style={tStyles.threadTapDismiss}>
+        <View style={tStyles.dateWrap}>
+          <View style={tStyles.dateChip}>
+            <Text style={tStyles.dateChipText}>Сегодня · урок</Text>
+          </View>
+        </View>
+
+        {messages.map((m, msgIdx) => {
+          const animate = claimNew(m.id);
+          const row =
+            m.from === 'them' ? (
+              <View style={tStyles.teacherBlock}>
+                <View style={tStyles.teacherAvatar}>
+                  <Ionicons name="sparkles" size={16} color={GAME_THEME.color.sky} />
+                </View>
+                <View style={tStyles.teacherColumn}>
+                  <View style={tStyles.teacherCard}>
+                    <View style={tStyles.teacherCardTopEdge} pointerEvents="none" />
+                    {renderBody(m, tStyles.teacherText)}
+                  </View>
+                  {m.id === lastCoachId ? (
+                    <>
+                      <View style={tStyles.teacherActionsGap} collapsable={false} />
+                      <View style={tStyles.teacherActions}>
+                        <TeacherExerciseActions
+                          messageId={m.id}
+                          message={m}
+                          exerciseLoadingId={exerciseLoadingId}
+                          typing={typing}
+                          miniAccess={evaluateMiniDrillAccess(miniDrillUsage, m.id)}
+                          language={language}
+                          uiLanguage={uiLanguage}
+                          lessonTopic={lessonTopic}
+                          lastUserMessage={(() => {
+                            for (let i = msgIdx - 1; i >= 0; i -= 1) {
+                              if (messages[i]?.from === 'me') return messages[i].text;
+                            }
+                            return undefined;
+                          })()}
+                          onPrepare={onPrepare}
+                          onPress={onPress}
+                          onBlocked={onBlocked}
+                          coach
+                        />
+                      </View>
+                    </>
+                  ) : null}
+                  <Text style={tStyles.teacherTime}>{m.time}</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={tStyles.studentWrap}>
+                {isImageMsg(m) && m.imageUri ? (
+                  <>
+                    {renderBody(m, tStyles.studentText)}
+                    <Text style={tStyles.studentTime}>{m.time}</Text>
+                  </>
+                ) : (
+                  <View style={tStyles.studentCard}>
+                    {renderBody(m, tStyles.studentText)}
+                    <Text style={tStyles.studentTime}>{m.time}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          return (
+            <SoftBubble key={m.id} animate={animate}>
+              {row}
+            </SoftBubble>
+          );
+        })}
+
+        {typing ? (
+          <Reanimated.View
+            entering={SOFT_TYPING_ENTER}
+            exiting={SOFT_TYPING_EXIT}
+            style={tStyles.teacherBlock}>
+            <View style={tStyles.teacherAvatar}>
+              <Ionicons name="sparkles" size={16} color={GAME_THEME.color.sky} />
+            </View>
+            <View style={tStyles.teacherColumn}>
+              <View style={tStyles.teacherCard}>
+                <View style={tStyles.teacherCardTopEdge} pointerEvents="none" />
+                <TypingDots dotStyle={tStyles.typingDot} />
+                <Text style={tStyles.typingCaption}>Готовит объяснение…</Text>
+              </View>
+            </View>
+          </Reanimated.View>
+        ) : null}
+      </Pressable>
+    </ScrollView>
+  );
+});
+
+const CompanionDialogMessages = memo(function CompanionDialogMessages({
+  messages,
+  typing,
+  scrollRef,
+  onDismiss,
+  renderBody,
+  attachOpen,
+  readGlyph,
+}: {
+  messages: CompanionMsg[];
+  typing: boolean;
+  scrollRef: RefObject<ScrollView | null>;
+  onDismiss: () => void;
+  renderBody: RenderMessageBody;
+  attachOpen: boolean;
+  readGlyph: (r?: CompanionReadState) => string | null;
+}) {
+  const claimNew = useSoftMessageIds(messages);
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      style={styles.thread}
+      contentContainerStyle={msgStyles.threadContent}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      removeClippedSubviews={false}
+      pointerEvents={attachOpen ? 'none' : 'auto'}
+      onScrollBeginDrag={onDismiss}
+      onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
+      <Pressable onPress={onDismiss} style={msgStyles.threadTapDismiss}>
+        <View style={msgStyles.dateWrap}>
+          <View style={msgStyles.dateChip}>
+            <Text style={msgStyles.dateChipText}>Сегодня</Text>
+          </View>
+        </View>
+
+        {messages.map((m) => {
+          const animate = claimNew(m.id);
+          const row =
+            m.from === 'them' ? (
+              <View style={msgStyles.incomingWrap}>
+                {isImageMsg(m) && m.imageUri ? (
+                  <>
+                    {renderBody(m, msgStyles.incomingText)}
+                    <Text style={msgStyles.bubbleTimeIn}>{m.time}</Text>
+                  </>
+                ) : (
+                  <CompanionIncomingBubble>
+                    {renderBody(m, msgStyles.incomingText)}
+                    <Text style={msgStyles.bubbleTimeIn}>{m.time}</Text>
+                  </CompanionIncomingBubble>
+                )}
+              </View>
+            ) : (
+              <View style={msgStyles.outgoingWrap}>
+                {isImageMsg(m) && m.imageUri ? (
+                  <>
+                    {renderBody(m, msgStyles.outgoingText)}
+                    <View style={msgStyles.outMeta}>
+                      <Text style={msgStyles.bubbleTimeOut}>{m.time}</Text>
+                      <Text style={[msgStyles.readMark, m.read === 'read' && msgStyles.readMarkRead]}>
+                        {readGlyph(m.read)}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <View style={msgStyles.outgoingBubble}>
+                    {renderBody(m, msgStyles.outgoingText)}
+                    <View style={msgStyles.outMeta}>
+                      <Text style={msgStyles.bubbleTimeOut}>{m.time}</Text>
+                      <Text style={[msgStyles.readMark, m.read === 'read' && msgStyles.readMarkRead]}>
+                        {readGlyph(m.read)}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          return (
+            <SoftBubble key={m.id} animate={animate}>
+              {row}
+            </SoftBubble>
+          );
+        })}
+        {typing ? (
+          <Reanimated.View
+            entering={SOFT_TYPING_ENTER}
+            exiting={SOFT_TYPING_EXIT}
+            style={msgStyles.incomingWrap}>
+            <CompanionIncomingBubble compact>
+              <TypingDots dotStyle={msgStyles.typingDot} />
+              <Text style={msgStyles.typingCaption}>печатает…</Text>
+            </CompanionIncomingBubble>
+          </Reanimated.View>
+        ) : null}
+      </Pressable>
+    </ScrollView>
+  );
+});
+
 function TypingDots({ dotStyle }: { dotStyle?: object }) {
   const a1 = useRef(new Animated.Value(0.35)).current;
   const a2 = useRef(new Animated.Value(0.35)).current;
@@ -408,6 +735,7 @@ function CompanionChatScreenInner() {
     typeof params.seed === 'string' && params.seed.length > 0 ? safeDecode(params.seed) : undefined;
 
   const { user } = useAuth();
+  const { learnerModel, learnerContext } = useLearnerModel();
   const miniDrillUserId = user?.id ?? '';
   const { chats, companionChatsHydrated, getCompanionThread, saveCompanionThread } = useCompanionChats();
   const { addLessonSpentSeconds } = useTeacherJourney();
@@ -634,6 +962,8 @@ function CompanionChatScreenInner() {
           language: teacherSessionLang,
           uiLanguage,
           lessonTopic: lessonTopicParam,
+          ...(learnerModel?.overallLevel ? { learnerLevel: learnerModel.overallLevel } : {}),
+          ...(learnerContext ? { learnerContext } : {}),
           ...(image?.base64 ? { imageBase64: image.base64, imageMimeType: image.mimeType } : {}),
         });
         ingestTeacherText(reply);
@@ -667,7 +997,7 @@ function CompanionChatScreenInner() {
         setTyping(false);
       }
     },
-    [ingestTeacherText, lessonTopicParam, teacherSessionLang, uiLanguage],
+    [ingestTeacherText, learnerContext, learnerModel, lessonTopicParam, teacherSessionLang, uiLanguage],
   );
 
   const teacherSeedRepliedRef = useRef(false);
@@ -821,70 +1151,66 @@ function CompanionChatScreenInner() {
     [companionSessionLang, isTeacher, registerUserStudyText, requestCompanionReply, trackUserMessage],
   );
 
-  const readGlyph = (r?: CompanionReadState) => {
+  const readGlyph = useCallback((r?: CompanionReadState) => {
     if (!r) return null;
     if (r === 'read') return '✓✓';
     return '✓';
-  };
+  }, []);
 
-  const isPhotoMessage = (m: CompanionMsg) => isImageMsg(m) && Boolean(m.imageUri);
-
-  const imageMessageCaption = (m: CompanionMsg) => {
-    const caption = m.text.trim();
-    if (!caption || caption === '📷 Фото') return null;
-    return caption;
-  };
-
-  const renderMessageBody = (m: CompanionMsg, textStyle: object) => {
-    if (isVoiceMsg(m) && m.audioUri) {
-      return (
-        <VoiceMessageBubble
-          uri={m.audioUri}
-          durationMs={m.durationMs ?? 0}
-          outgoing={m.from === 'me'}
-          pending={m.voicePending}
-        />
-      );
-    }
-    if (isImageMsg(m) && m.imageUri) {
-      const caption = imageMessageCaption(m);
-      const captionBubbleStyle =
-        m.from === 'me'
-          ? isTeacher
-            ? tStyles.imageCaptionOut
-            : msgStyles.imageCaptionOut
-          : isTeacher
-            ? tStyles.imageCaptionIn
-            : msgStyles.imageCaptionIn;
-      return (
-        <View style={isTeacher ? tStyles.imageMsgBody : msgStyles.imageMsgBody}>
-          <ImageMessageBubble uri={m.imageUri} outgoing={m.from === 'me'} />
-          {caption ? (
-            <View style={captionBubbleStyle}>
+  const renderMessageBody = useCallback(
+    (m: CompanionMsg, textStyle: object) => {
+      if (isVoiceMsg(m) && m.audioUri) {
+        return (
+          <VoiceMessageBubble
+            uri={m.audioUri}
+            durationMs={m.durationMs ?? 0}
+            outgoing={m.from === 'me'}
+            pending={m.voicePending}
+          />
+        );
+      }
+      if (isImageMsg(m) && m.imageUri) {
+        const captionRaw = m.text.trim();
+        const caption = !captionRaw || captionRaw === '📷 Фото' ? null : captionRaw;
+        const captionBubbleStyle =
+          m.from === 'me'
+            ? isTeacher
+              ? tStyles.imageCaptionOut
+              : msgStyles.imageCaptionOut
+            : isTeacher
+              ? tStyles.imageCaptionIn
+              : msgStyles.imageCaptionIn;
+        return (
+          <View style={isTeacher ? tStyles.imageMsgBody : msgStyles.imageMsgBody}>
+            <ImageMessageBubble uri={m.imageUri} outgoing={m.from === 'me'} />
+            {caption ? (
+              <View style={captionBubbleStyle}>
+                <LongPressWordText text={caption} style={textStyle} animKey={`${m.id}-cap`} />
+              </View>
+            ) : null}
+          </View>
+        );
+      }
+      if (isFileMsg(m) && m.fileUri) {
+        const caption = m.text.trim();
+        const label = m.fileName ?? 'Файл';
+        const showCaption = caption.length > 0 && caption !== `📎 ${label}`;
+        return (
+          <View style={isTeacher ? tStyles.imageMsgBody : msgStyles.imageMsgBody}>
+            <FileMessageBubble fileName={label} outgoing={m.from === 'me'} />
+            {showCaption ? (
               <LongPressWordText text={caption} style={textStyle} animKey={`${m.id}-cap`} />
-            </View>
-          ) : null}
-        </View>
-      );
-    }
-    if (isFileMsg(m) && m.fileUri) {
-      const caption = m.text.trim();
-      const label = m.fileName ?? 'Файл';
-      const showCaption = caption.length > 0 && caption !== `📎 ${label}`;
-      return (
-        <View style={isTeacher ? tStyles.imageMsgBody : msgStyles.imageMsgBody}>
-          <FileMessageBubble fileName={label} outgoing={m.from === 'me'} />
-          {showCaption ? (
-            <LongPressWordText text={caption} style={textStyle} animKey={`${m.id}-cap`} />
-          ) : null}
-        </View>
-      );
-    }
-    if (isTeacher && m.from === 'them') {
-      return <TeacherMessageBody text={m.text} messageId={m.id} textStyle={textStyle} />;
-    }
-    return <LongPressWordText text={m.text} style={textStyle} animKey={m.id} />;
-  };
+            ) : null}
+          </View>
+        );
+      }
+      if (isTeacher && m.from === 'them') {
+        return <TeacherMessageBody text={m.text} messageId={m.id} textStyle={textStyle} />;
+      }
+      return <LongPressWordText text={m.text} style={textStyle} animKey={m.id} />;
+    },
+    [isTeacher],
+  );
 
   const finishAttachmentReply = useCallback(
     async (msgId: string, apiText: string, image?: { base64: string; mimeType: string }) => {
@@ -1187,18 +1513,31 @@ function CompanionChatScreenInner() {
       drillExplanationRef.current = explanation;
       drillLanguageRef.current = drillLanguage;
       try {
-        const { exercises: raw, nextTopic } = await postTeacherExerciseSet({
-          explanation,
-          lastUserMessage: lastUser,
-          conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
-          language: drillLanguage,
-          uiLanguage,
-          lessonTopic: lessonTopicParam,
-          generationSeed,
-          generationAttempt: access.generationsUsed + 1,
-          avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
-          recentMistakes: getMistakeSummariesForApi(drillMistakes),
-        });
+        let raw: TeacherExerciseItem[] | undefined;
+        let nextTopic: TeacherNextTopicRecommendation | undefined;
+        try {
+          const generated = await postTeacherExerciseSet({
+            explanation,
+            lastUserMessage: lastUser,
+            conversationHistory: messagesToCompanionApiHistory(messagesRef.current),
+            language: drillLanguage,
+            uiLanguage,
+            lessonTopic: lessonTopicParam,
+            generationSeed,
+            generationAttempt: access.generationsUsed + 1,
+            avoidExerciseTexts: getPriorExerciseTexts(miniDrillUsage, source.id),
+            recentMistakes: getMistakeSummariesForApi(drillMistakes),
+            ...(learnerModel?.overallLevel ? { learnerLevel: learnerModel.overallLevel } : {}),
+            ...(learnerContext ? { learnerContext } : {}),
+          });
+          raw = generated.exercises;
+          nextTopic = generated.nextTopic;
+        } catch (genError) {
+          const fallback = buildFallbackExercises(explanation);
+          if (!fallback) throw genError;
+          raw = fallback;
+        }
+        if (!raw?.length) throw new Error('Exercise set too short');
         if (!drillSession.isGenerationCurrent(generationToken)) return;
         const sessionKey = `drill-${generationSeed}`;
         const exercises = raw.map((ex, i) => ({
@@ -1250,6 +1589,8 @@ function CompanionChatScreenInner() {
       drillSession,
       handleDrillMistakesRecorded,
       handleDrillNextTopic,
+      learnerContext,
+      learnerModel,
       lessonTopicParam,
       miniDrillUsage,
       miniDrillUserId,
@@ -1286,6 +1627,50 @@ function CompanionChatScreenInner() {
 
   handleDrillFollowUpRef.current = handleDrillFollowUp;
 
+  const lastCoachId = useMemo(() => {
+    if (typing) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (!m || m.from !== 'them' || m.id.startsWith('ex-')) continue;
+      if (m.text.startsWith('Не удалось')) continue;
+      return m.id;
+    }
+    return null;
+  }, [messages, typing]);
+
+  const onDrillBlocked = useCallback(
+    (reason: string) => {
+      Alert.alert(t('teacher.drill.title'), reason);
+    },
+    [t],
+  );
+
+  /** Не монтируем тяжёлую ленту в первом кадре перехода — иначе UITextView/карточки
+   *  всплывают раньше хедера и композера (синяя «рамка со словами»). */
+  const [threadReady, setThreadReady] = useState(false);
+  const threadFade = useSharedValue(0);
+  const softEnter = useChatSoftEnter(threadKey);
+  const threadFadeStyle = useAnimatedStyle(() => ({ opacity: threadFade.value }));
+
+  useLayoutEffect(() => {
+    setThreadReady(false);
+    threadFade.value = 0;
+  }, [threadFade, threadKey]);
+  useEffect(() => {
+    let alive = true;
+    const task = InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => {
+        if (!alive) return;
+        setThreadReady(true);
+        threadFade.value = withTiming(1, { duration: 420, easing: CHAT_SOFT_EASING });
+      }, 100);
+    });
+    return () => {
+      alive = false;
+      task.cancel();
+    };
+  }, [threadFade, threadKey]);
+
   if (!companionChatsHydrated) {
     return (
       <View style={[styles.root, styles.hydrateRoot]}>
@@ -1300,14 +1685,16 @@ function CompanionChatScreenInner() {
       <View style={tStyles.root}>
         <StatusBar style="dark" />
         <View style={[styles.statusFill, { height: insets.top }]} />
-        <GameChatHeader
-          name={name}
-          leadingIcon="school-outline"
-          subtitle="AI преподаватель · урок"
-          onBack={() => router.back()}
-          backLabel={t('companion.backToChats')}
-        />
-        <View style={tStyles.content}>
+        <Reanimated.View style={softEnter.headerStyle}>
+          <GameChatHeader
+            name={name}
+            leadingIcon="school-outline"
+            subtitle="AI преподаватель · урок"
+            onBack={() => router.back()}
+            backLabel={t('companion.backToChats')}
+          />
+        </Reanimated.View>
+        <Reanimated.View style={[tStyles.content, softEnter.midStyle]}>
           <View style={tStyles.lessonContext}>
             <View style={tStyles.lessonBanner}>
               <View style={tStyles.lessonBannerIcon}>
@@ -1315,125 +1702,56 @@ function CompanionChatScreenInner() {
               </View>
               <View style={tStyles.lessonBannerCol}>
                 <Text style={tStyles.lessonBannerEyebrow}>Тема урока</Text>
-                <LongPressWordText
-                  text={profileLine}
-                  style={tStyles.lessonContextText}
-                  animKey="teacher-lesson-context"
-                  numberOfLines={2}
-                />
+                {threadReady ? (
+                  <LongPressWordText
+                    text={profileLine}
+                    style={tStyles.lessonContextText}
+                    animKey="teacher-lesson-context"
+                    numberOfLines={2}
+                  />
+                ) : (
+                  <Text style={tStyles.lessonContextText} numberOfLines={2}>
+                    {profileLine}
+                  </Text>
+                )}
               </View>
             </View>
           </View>
 
-          <View style={tStyles.threadHost}>
-            <View pointerEvents="none" style={styles.threadWashTop} />
-            <View pointerEvents="none" style={styles.threadWashBottom} />
-            <ScrollView
-              ref={scrollRef}
-              style={tStyles.thread}
-              contentContainerStyle={tStyles.threadContent}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="always"
-              removeClippedSubviews={false}
-              onScrollBeginDrag={clearWordSelections}
-              onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
-              <Pressable onPress={clearWordSelections} style={tStyles.threadTapDismiss}>
-              <View style={tStyles.dateWrap}>
-                <View style={tStyles.dateChip}>
-                  <Text style={tStyles.dateChipText}>Сегодня · урок</Text>
-                </View>
-              </View>
-
-              {messages.map((m, msgIdx) =>
-                m.from === 'them' ? (
-                  <View key={m.id} style={tStyles.teacherBlock}>
-                    <View style={tStyles.teacherAvatar}>
-                      <Ionicons name="sparkles" size={16} color={GAME_THEME.color.sky} />
-                    </View>
-                    <View style={tStyles.teacherColumn}>
-                      <FadeInView offsetY={10} duration={420}>
-                        <View style={tStyles.teacherCard}>
-                          <View style={tStyles.teacherCardTopEdge} pointerEvents="none" />
-                          {renderMessageBody(m, tStyles.teacherText)}
-                        </View>
-                      </FadeInView>
-                      {!m.id.startsWith('ex-') && !m.text.startsWith('Не удалось') ? (
-                        <>
-                          <View style={tStyles.teacherActionsGap} collapsable={false} />
-                          <View style={tStyles.teacherActions}>
-                            <TeacherExerciseActions
-                              messageId={m.id}
-                              message={m}
-                              exerciseLoadingId={drillSession.messageIdLoading}
-                              typing={typing}
-                              miniAccess={evaluateMiniDrillAccess(miniDrillUsage, m.id)}
-                              language={teacherSessionLang}
-                              uiLanguage={uiLanguage}
-                              lessonTopic={lessonTopicParam}
-                              lastUserMessage={(() => {
-                                for (let i = msgIdx - 1; i >= 0; i -= 1) {
-                                  if (messages[i]?.from === 'me') return messages[i].text;
-                                }
-                                return undefined;
-                              })()}
-                              onPrepare={prepareDrillForMessage}
-                              onPress={handlePracticePress}
-                              onBlocked={(reason) => Alert.alert(t('teacher.drill.title'), reason)}
-                            />
-                          </View>
-                        </>
-                      ) : null}
-                      <Text style={tStyles.teacherTime}>{m.time}</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View key={m.id} style={tStyles.studentWrap}>
-                    {isPhotoMessage(m) ? (
-                      <>
-                        {renderMessageBody(m, tStyles.studentText)}
-                        <Text style={tStyles.studentTime}>{m.time}</Text>
-                      </>
-                    ) : (
-                      <FadeInView offsetY={8} duration={360}>
-                      <View style={tStyles.studentCard}>
-                        {renderMessageBody(m, tStyles.studentText)}
-                        <Text style={tStyles.studentTime}>{m.time}</Text>
-                      </View>
-                      </FadeInView>
-                    )}
-                  </View>
-                ),
-              )}
-
-              {typing ? (
-                <View style={tStyles.teacherBlock}>
-                  <View style={tStyles.teacherAvatar}>
-                    <Ionicons name="sparkles" size={16} color={GAME_THEME.color.sky} />
-                  </View>
-                  <View style={tStyles.teacherColumn}>
-                    <View style={tStyles.teacherCard}>
-                      <View style={tStyles.teacherCardTopEdge} pointerEvents="none" />
-                      <TypingDots dotStyle={tStyles.typingDot} />
-                      <Text style={tStyles.typingCaption}>Готовит объяснение…</Text>
-                    </View>
-                  </View>
-                </View>
-              ) : null}
-              </Pressable>
-            </ScrollView>
-          </View>
-
-          <WordAddSheetHost />
-
-          <Reanimated.View style={composerInsetStyle}>
-            <TeacherChatComposer
-              input={input}
-              onChangeText={setInput}
-              onSubmit={handleTeacherSubmit}
-              disabled={typing}
-            />
+          <Reanimated.View style={[tStyles.threadHost, threadFadeStyle]}>
+            {threadReady ? (
+              <TeacherDialogMessages
+                messages={messages}
+                typing={typing}
+                lastCoachId={lastCoachId}
+                scrollRef={scrollRef}
+                onDismiss={clearWordSelections}
+                renderBody={renderMessageBody}
+                exerciseLoadingId={drillSession.messageIdLoading}
+                miniDrillUsage={miniDrillUsage}
+                language={teacherSessionLang}
+                uiLanguage={uiLanguage}
+                lessonTopic={lessonTopicParam}
+                onPrepare={prepareDrillForMessage}
+                onPress={handlePracticePress}
+                onBlocked={onDrillBlocked}
+              />
+            ) : (
+              <View style={tStyles.thread} />
+            )}
           </Reanimated.View>
-        </View>
+        </Reanimated.View>
+
+        <WordAddSheetHost />
+
+        <Reanimated.View style={[composerInsetStyle, softEnter.footStyle]}>
+          <TeacherChatComposer
+            input={input}
+            onChangeText={setInput}
+            onSubmit={handleTeacherSubmit}
+            disabled={typing}
+          />
+        </Reanimated.View>
 
         <TeacherDrillSessionOverlay mode="embedded" />
       </View>
@@ -1446,150 +1764,99 @@ function CompanionChatScreenInner() {
       <View style={[styles.statusFill, { height: insets.top }]} />
 
       <View style={styles.chatBody}>
-      <GameChatHeader
-        name={name}
-        avatarLetter={letter}
-        avatarColor={color}
-        statusText={online ? t('companion.online') : t('companion.offline')}
-        online={online}
-        onBack={() => router.back()}
-        backLabel={t('companion.backToChats')}
-        onCallPress={handleStartCall}
-        callAccessibilityLabel={t('companion.call')}
-      />
-
-      <CompanionCallScreen
-        visible={companionCall.visible}
-        name={name}
-        letter={letter}
-        color={color}
-        phase={companionCall.phase}
-        error={companionCall.error}
-        elapsedSec={companionCall.elapsedSec}
-        onEnd={handleEndCall}
-        labels={callLabels}
-      />
-
-      <TeacherFullWorkoutPaywall
-        visible={plusPaywallFeature === 'companionCall'}
-        feature="companionCall"
-        onClose={() => setPlusPaywallFeature(null)}
-        onUnlocked={() => {
-          setPlusPaywallFeature(null);
-          companionCall.startCall({
-            language: companionSessionLang,
-            companionDisplayName: name,
-            ...(companionPersona ? { companionPersona } : {}),
-          });
-        }}
-      />
-
-      <View style={styles.profileStrip}>
-        <Text style={styles.profileEyebrow}>Собеседник</Text>
-        <LongPressWordText text={profileLine} style={styles.profileStripText} animKey="profile-strip" numberOfLines={2} />
-      </View>
-
-      <View style={styles.threadHost}>
-        <View pointerEvents="none" style={styles.threadWashTop} />
-        <View pointerEvents="none" style={styles.threadWashBottom} />
-        {attachOpen ? (
-          <Pressable
-            style={styles.attachScrim}
-            onPress={() => setAttachOpen(false)}
-            accessibilityLabel="Закрыть вложения"
+        <Reanimated.View style={softEnter.headerStyle}>
+          <GameChatHeader
+            name={name}
+            avatarLetter={letter}
+            avatarColor={color}
+            statusText={online ? t('companion.online') : t('companion.offline')}
+            online={online}
+            onBack={() => router.back()}
+            backLabel={t('companion.backToChats')}
+            onCallPress={handleStartCall}
+            callAccessibilityLabel={t('companion.call')}
           />
-        ) : null}
+        </Reanimated.View>
 
-        <ScrollView
-          ref={scrollRef}
-          style={styles.thread}
-          contentContainerStyle={msgStyles.threadContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          removeClippedSubviews={false}
-          pointerEvents={attachOpen ? 'none' : 'auto'}
-          onScrollBeginDrag={clearWordSelections}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
-          <Pressable onPress={clearWordSelections} style={msgStyles.threadTapDismiss}>
-          <View style={msgStyles.dateWrap}>
-            <View style={msgStyles.dateChip}>
-              <Text style={msgStyles.dateChipText}>Сегодня</Text>
-            </View>
-          </View>
+        <CompanionCallScreen
+          visible={companionCall.visible}
+          name={name}
+          letter={letter}
+          color={color}
+          phase={companionCall.phase}
+          error={companionCall.error}
+          elapsedSec={companionCall.elapsedSec}
+          onEnd={handleEndCall}
+          labels={callLabels}
+        />
 
-        {messages.map((m) =>
-          m.from === 'them' ? (
-            <View key={m.id} style={msgStyles.incomingWrap}>
-              {isPhotoMessage(m) ? (
-                <>
-                  {renderMessageBody(m, msgStyles.incomingText)}
-                  <Text style={msgStyles.bubbleTimeIn}>{m.time}</Text>
-                </>
-              ) : (
-                <CompanionIncomingBubble>
-                  {renderMessageBody(m, msgStyles.incomingText)}
-                  <Text style={msgStyles.bubbleTimeIn}>{m.time}</Text>
-                </CompanionIncomingBubble>
-              )}
-            </View>
+        <TeacherFullWorkoutPaywall
+          visible={plusPaywallFeature === 'companionCall'}
+          feature="companionCall"
+          onClose={() => setPlusPaywallFeature(null)}
+          onUnlocked={() => {
+            setPlusPaywallFeature(null);
+            companionCall.startCall({
+              language: companionSessionLang,
+              companionDisplayName: name,
+              ...(companionPersona ? { companionPersona } : {}),
+            });
+          }}
+        />
+
+        <Reanimated.View style={[styles.profileStrip, softEnter.midStyle]}>
+          <Text style={styles.profileEyebrow}>Собеседник</Text>
+          <LongPressWordText
+            text={profileLine}
+            style={styles.profileStripText}
+            animKey="profile-strip"
+            numberOfLines={2}
+          />
+        </Reanimated.View>
+
+        <Reanimated.View style={[styles.threadHost, softEnter.midStyle, threadFadeStyle]}>
+          {attachOpen ? (
+            <Pressable
+              style={styles.attachScrim}
+              onPress={() => setAttachOpen(false)}
+              accessibilityLabel="Закрыть вложения"
+            />
+          ) : null}
+
+          {threadReady ? (
+            <CompanionDialogMessages
+              messages={messages}
+              typing={typing}
+              scrollRef={scrollRef}
+              onDismiss={clearWordSelections}
+              renderBody={renderMessageBody}
+              attachOpen={attachOpen}
+              readGlyph={readGlyph}
+            />
           ) : (
-            <View key={m.id} style={msgStyles.outgoingWrap}>
-              {isPhotoMessage(m) ? (
-                <>
-                  {renderMessageBody(m, msgStyles.outgoingText)}
-                  <View style={msgStyles.outMeta}>
-                    <Text style={msgStyles.bubbleTimeOut}>{m.time}</Text>
-                    <Text style={[msgStyles.readMark, m.read === 'read' && msgStyles.readMarkRead]}>
-                      {readGlyph(m.read)}
-                    </Text>
-                  </View>
-                </>
-              ) : (
-                <View style={msgStyles.outgoingBubble}>
-                  {renderMessageBody(m, msgStyles.outgoingText)}
-                  <View style={msgStyles.outMeta}>
-                    <Text style={msgStyles.bubbleTimeOut}>{m.time}</Text>
-                    <Text style={[msgStyles.readMark, m.read === 'read' && msgStyles.readMarkRead]}>
-                      {readGlyph(m.read)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          ),
-        )}
-        {typing ? (
-          <View style={msgStyles.incomingWrap}>
-            <CompanionIncomingBubble compact>
-              <TypingDots dotStyle={msgStyles.typingDot} />
-              <Text style={msgStyles.typingCaption}>печатает…</Text>
-            </CompanionIncomingBubble>
-          </View>
-        ) : null}
-        </Pressable>
-        </ScrollView>
-      </View>
+            <View style={styles.thread} />
+          )}
+        </Reanimated.View>
 
-      <WordAddSheetHost />
+        <WordAddSheetHost />
 
-      <Reanimated.View style={[styles.composerWrap, composerInsetStyle]}>
-        <View pointerEvents="none" style={styles.composerGoldLip} />
-        <CompanionAttachmentSheet
-          visible={attachOpen}
-          onPhotoSelected={(uri) => void sendImageFromUri(uri)}
-          onBrowseFiles={() => void handleBrowseFiles()}
-        />
+        <Reanimated.View style={[styles.composerWrap, composerInsetStyle, softEnter.footStyle]}>
+          <CompanionAttachmentSheet
+            visible={attachOpen}
+            onPhotoSelected={(uri) => void sendImageFromUri(uri)}
+            onBrowseFiles={() => void handleBrowseFiles()}
+          />
 
-        <CompanionVoiceComposer
-          input={input}
-          onChangeText={setInput}
-          onSendText={() => void send()}
-          onCaptured={handleVoiceCaptured}
-          onAttachPress={handleAttachToggle}
-          attachOpen={attachOpen}
-          typing={typing}
-        />
-      </Reanimated.View>
+          <CompanionVoiceComposer
+            input={input}
+            onChangeText={setInput}
+            onSendText={() => void send()}
+            onCaptured={handleVoiceCaptured}
+            onAttachPress={handleAttachToggle}
+            attachOpen={attachOpen}
+            typing={typing}
+          />
+        </Reanimated.View>
       </View>
     </View>
   );
@@ -1603,8 +1870,6 @@ const gameHeaderStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingBottom: 4,
     backgroundColor: GAME_THEME.color.gold,
-    borderBottomWidth: 3,
-    borderBottomColor: GAME_THEME.color.ink,
   },
   goldLip: {
     position: 'absolute',
@@ -1764,10 +2029,10 @@ const styles = StyleSheet.create({
   profileStrip: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(26,26,26,0.14)',
-    backgroundColor: 'rgba(255,252,243,0.92)',
+    borderBottomColor: 'rgba(26,26,26,0.1)',
+    backgroundColor: GAME_THEME.color.cream,
   },
   profileEyebrow: {
     fontSize: GAME_THEME.type.micro,
@@ -1788,49 +2053,23 @@ const styles = StyleSheet.create({
   threadHost: {
     flex: 1,
     position: 'relative',
-    backgroundColor: GAME_THEME.color.paper,
-  },
-  threadWashTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 88,
-    zIndex: 0,
-    backgroundColor: 'rgba(92,148,252,0.08)',
-  },
-  threadWashBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-    zIndex: 0,
-    backgroundColor: 'rgba(26,16,32,0.04)',
+    backgroundColor: GAME_THEME.color.cream,
   },
   attachScrim: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 2,
-    backgroundColor: 'rgba(26,16,32,0.55)',
+    backgroundColor: 'rgba(26,16,32,0.45)',
   },
   thread: {
     flex: 1,
     zIndex: 1,
   },
   composerWrap: {
-    borderTopWidth: 3,
-    borderTopColor: GAME_THEME.color.ink,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(26,26,26,0.12)',
     backgroundColor: GAME_THEME.color.cream,
-    paddingTop: 12,
+    paddingTop: 10,
     paddingHorizontal: 12,
     position: 'relative',
-  },
-  composerGoldLip: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: GAME_THEME.color.sky,
   },
 });

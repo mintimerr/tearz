@@ -20,6 +20,12 @@ export const USER_SUFFIX = {
   lexiconHarvest: 'lexicon.harvest.v1',
   engagement: 'engagement.v1',
   placement: 'profile.placement.v1',
+  onboardingTips: 'onboarding.tips.v1',
+  /** Human instructor mode (classes / materials) — docs/INSTRUCTOR_MODE.md */
+  instructorClasses: 'instructor.classes.v1',
+  instructorMaterials: 'instructor.materials.v1',
+  instructorMemberships: 'instructor.memberships.v1',
+  instructorEnabled: 'instructor.enabled.v1',
 } as const;
 
 /** Старые глобальные ключи (до привязки к аккаунту) — только для одноразовой миграции. */
@@ -65,6 +71,17 @@ export async function loadAccountsRegistry(): Promise<AccountsRegistry> {
 
 export async function saveAccountsRegistry(registry: AccountsRegistry) {
   await AsyncStorage.setItem(AUTH_ACCOUNTS_KEY, JSON.stringify(registry));
+}
+
+/** Копирует данные одного аккаунта в другой (гость → почта). */
+export async function copyUserData(fromUserId: string, toUserId: string) {
+  if (!fromUserId || fromUserId === toUserId) return;
+  const pairs: [string, string][] = [];
+  for (const suffix of Object.values(USER_SUFFIX)) {
+    const raw = await AsyncStorage.getItem(userDataKey(fromUserId, suffix));
+    if (raw != null) pairs.push([userDataKey(toUserId, suffix), raw]);
+  }
+  if (pairs.length) await AsyncStorage.multiSet(pairs);
 }
 
 /** Пустое состояние для нового аккаунта — без демо-чатов и уроков. */

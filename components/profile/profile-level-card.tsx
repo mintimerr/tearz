@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { AnimatedCounter, BrandGradient, GlowCard, XpLevelRing } from '@/components/ui';
+import { AnimatedCounter, XpLevelRing } from '@/components/ui';
+import { GAME_THEME } from '@/constants/game-theme';
 import { APP_THEME } from '@/constants/theme';
 
 const XP_PER_LEVEL = 400;
@@ -20,59 +21,52 @@ export function ProfileLevelCard({ xp, level, levelWord, xpWord, toNextLabel }: 
   const remaining = XP_PER_LEVEL - intoLevel;
 
   return (
-    <GlowCard style={styles.card} glowStrength={0.55} radius={APP_THEME.radius.xxl}>
-      <BrandGradient direction="diagonal" opacity={0.1} />
-      <View style={styles.inner}>
-        <XpLevelRing progress={progress} level={level} levelLabel={levelWord} />
-        <View style={styles.copy}>
-          <AnimatedCounter
-            value={xp}
-            style={styles.xpValue}
-            format={(n) => n.toLocaleString('ru-RU')}
-            suffix={` ${xpWord}`}
-          />
-          <View style={styles.track}>
-            <View style={[styles.trackFill, { width: `${Math.max(4, progress * 100)}%` }]}>
-              <BrandGradient direction="horizontal" />
-            </View>
-          </View>
-          <Text style={styles.toNext}>{toNextLabel(remaining)}</Text>
+    <View style={styles.card}>
+      <XpLevelRing progress={progress} level={level} levelLabel={levelWord} />
+      <View style={styles.copy}>
+        <AnimatedCounter
+          value={xp}
+          style={styles.xpValue}
+          format={(n) => n.toLocaleString('ru-RU')}
+          suffix={` ${xpWord}`}
+        />
+        <View style={styles.track}>
+          <View style={[styles.trackFill, { width: `${Math.max(4, progress * 100)}%` }]} />
         </View>
+        <Text style={styles.toNext}>{toNextLabel(remaining)}</Text>
       </View>
-    </GlowCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: APP_THEME.space.xxl,
-  },
-  inner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 18,
-    padding: 18,
+    marginBottom: 22,
+    paddingVertical: 4,
   },
   copy: {
     flex: 1,
-    gap: 10,
+    gap: 8,
   },
   xpValue: {
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.5,
-    color: APP_THEME.color.text,
+    color: GAME_THEME.color.ink,
   },
   track: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: APP_THEME.color.elevatedSoft,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(26,26,26,0.08)',
     overflow: 'hidden',
   },
   trackFill: {
     height: '100%',
-    borderRadius: 4,
-    overflow: 'hidden',
+    borderRadius: 2,
+    backgroundColor: GAME_THEME.color.sky,
   },
   toNext: {
     fontSize: 13,

@@ -18,6 +18,10 @@ import {
   isVagueCoachNote,
   readCoachNote,
 } from './exercise-feedback.js';
+import {
+  formatExerciseLearnerHint,
+  formatLearnerContextForAI,
+} from './learner-context.js';
 import { registerPlacementRoutes } from './placement.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -559,7 +563,7 @@ function normalizeTeacherVocabExamples(parsed) {
   return out;
 }
 
-function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', learnerLevel) {
+function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', learnerLevel, learnerContext) {
   const m = uiLangMeta(uiLanguage);
   let prompt =
     `=== REPLY LANGUAGE (ABSOLUTE #1) ===\n` +
@@ -618,15 +622,14 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', lear
         '- Stay on a coherent sequence (structure → wording → practice → freer use), not random topics.';
     }
   }
-  if (typeof learnerLevel === 'string' && learnerLevel.trim()) {
-    prompt +=
-      '\n\nPLACEMENT PRIOR (silent — never mention CEFR/level labels to the user): estimated ' +
-      learnerLevel.trim().slice(0, 8).replace(/"/g, '') +
-      '. Use as starting difficulty; refine from chat and mistakes.';
+  const learnerBlock = formatLearnerContextForAI(learnerContext, learnerLevel);
+  if (learnerBlock) {
+    prompt += `\n\n${learnerBlock}`;
   }
   prompt +=
     '\n\nLEVEL & INTENT (apply silently on every message):\n' +
-    '- Infer level from conversation history and adapt vocabulary, depth, and example difficulty.\n' +
+    '- Start from the LEARNER MODEL overall level when present; adapt vocabulary, depth, and example difficulty from observed performance.\n' +
+    '- Do not permanently rewrite or announce a new stored overall CEFR level.\n' +
     '- Language-first lens: every message is either a language lesson, a situational phrase lesson, a brief vocab pivot, or (only if truly off-topic) a short polite decline — never general life advice.\n' +
     '- Practical questions ("how do I order food") = phrases + rich vocabulary for the situation — NOT dialogue scripts in chat; dialogue is trained in mini-drill.\n' +
     '- Never label the learner\'s level or say you are adjusting difficulty.';
@@ -983,7 +986,7 @@ function buildTeacherExercisePrompt(language, lessonTopic, uiLanguage = 'ru') {
   return prompt;
 }
 
-function buildTeacherExerciseSetPrompt(language, lessonTopic, uiLanguage = 'ru') {
+function buildTeacherExerciseSetPrompt(language, lessonTopic, uiLanguage = 'ru', learnerContext, learnerLevel) {
   const m = uiLangMeta(uiLanguage);
   let prompt = TEACHER_EXERCISE_SET_PROMPT;
   prompt +=
@@ -1023,6 +1026,7 @@ function buildTeacherExerciseSetPrompt(language, lessonTopic, uiLanguage = 'ru')
       lessonTopic.trim().slice(0, 240).replace(/"/g, "'") +
       '". Keep all 5 tasks inside this topic and the vocabulary from the teacher explanation.';
   }
+  prompt += formatExerciseLearnerHint(learnerContext, learnerLevel);
   return prompt;
 }
 
@@ -2677,6 +2681,90 @@ async function topUpTeacherExerciseSet(apiKey, {
   return alignExerciseKinds(result, selectedKinds).slice(0, DRILL_TASK_COUNT);
 }
 
+function lessonPairsFromText(text) {
+  const out = [];
+  const seen = new Set();
+  const push = (word, gloss) => {
+    const w = String(word || '').trim();
+    const g = String(gloss || '').trim().split(/[;；]/)[0].trim();
+    if (w.length < 1 || g.length < 2 || w.length > 40 || g.length > 48) return;
+    const key = `${w.toLowerCase()}|${g.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ word: w, gloss: g });
+  };
+  const re = /([A-Za-z\u0400-\u04FF\u4e00-\u9fff][^:\n]{0,40}?)\s*(?:[—–→]|\s-\s)\s*([^\n]{2,48})/g;
+  let m;
+  const src = String(text || '');
+  while ((m = re.exec(src)) !== null) {
+    push(m[1], (m[2] || '').split(/[.;]/)[0]);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
+function shuffleSeeded(items, seed) {
+  const arr = [...items];
+  let s = Math.abs(seed) || 1;
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    s = (s * 16807) % 2147483647;
+    const j = s % (i + 1);
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+/** Если модель не добрала 10 заданий — добираем из пар «слово — перевод» этого урока. */
+function padExerciseSetFromLesson(exercises, { explanation }) {
+  const pairs = lessonPairsFromText(explanation);
+  if (pairs.length < 2) return exercises;
+  const out = [...exercises];
+  const have = new Set(out.map((ex) => ex.kind));
+
+  if (!have.has('match_pairs') && out.length < DRILL_TASK_COUNT) {
+    const matched = pairs.slice(0, Math.min(4, pairs.length));
+    out.push({
+      id: `pad-match-${out.length + 1}`,
+      kind: 'match_pairs',
+      instruction: 'Соедини слово и перевод',
+      segments: [],
+      pairs: matched.map((p, i) => ({ id: `p${i + 1}`, left: p.word, right: p.gloss })),
+      checkText: matched.map((p) => p.word).join(' · '),
+    });
+  }
+
+  for (let i = 0; i < pairs.length && out.length < DRILL_TASK_COUNT && i < 4; i += 1) {
+    const pair = pairs[i];
+    const glosses = [...new Set(pairs.map((p) => p.gloss))];
+    let choices = shuffleSeeded(glosses, i + 11).slice(0, 4);
+    if (!choices.includes(pair.gloss)) choices = [pair.gloss, ...choices].slice(0, 4);
+    out.push({
+      id: `pad-tr-${out.length + 1}`,
+      kind: 'choose_translation',
+      instruction: 'Выбери перевод',
+      segments: [],
+      checkText: pair.word,
+      choices: shuffleSeeded(choices, i + 29),
+      correctChoice: pair.gloss,
+    });
+  }
+
+  if (out.length < DRILL_TASK_COUNT) {
+    out.push({
+      id: `pad-real-${out.length + 1}`,
+      kind: 'read_and_select',
+      segments: [],
+      checkText: pairs[0].word,
+      selectWord: pairs[0].word,
+      selectIsReal: true,
+    });
+  }
+
+  return out.slice(0, DRILL_TASK_COUNT);
+}
+
 async function generateTeacherExerciseSetFull(apiKey, opts) {
   const {
     systemContent,
@@ -2780,13 +2868,17 @@ async function generateTeacherExerciseSetFull(apiKey, opts) {
   }
 
   if (exercises.length < DRILL_TASK_COUNT) {
-    return { ok: false, error: 'Exercise set too short' };
+    exercises = padExerciseSetFromLesson(exercises, {
+      explanation: [teacherExplanation, userRequest, lessonTopic].filter(Boolean).join('\n'),
+    });
   }
 
-  if (!exerciseSetMatchesKinds(exercises, selectedKinds)) {
-    exercises = alignExerciseKinds(exercises, selectedKinds);
-  }
   exercises = coerceExerciseSet(exercises, coerceContext).slice(0, DRILL_TASK_COUNT);
+
+  if (exercises.length < 3) {
+    console.warn('[teacher-exercise-set] still short after lesson pad', exercises.length);
+    return { ok: false, error: 'Exercise set too short' };
+  }
 
   return { ok: true, exercises, parsed };
 }
@@ -3026,7 +3118,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.4', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v4-blank-context', vocabExamples: 'v1', drillFollowUp: 'personalized-v1' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.5', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v4-blank-context', vocabExamples: 'v1', drillFollowUp: 'personalized-v1', learnerModel: 'v1' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */
@@ -3342,7 +3434,7 @@ app.post('/api/teacher-chat', async (req, res) => {
     return res.status(500).json({ error: 'Server misconfiguration: OPENAI_API_KEY is not set' });
   }
 
-  const { message, conversationHistory, language, lessonTopic, imageBase64, imageMimeType, uiLanguage, learnerLevel } =
+  const { message, conversationHistory, language, lessonTopic, imageBase64, imageMimeType, uiLanguage, learnerLevel, learnerContext } =
     req.body ?? {};
   const hasImage = hasImagePayload(imageBase64);
   if (typeof message !== 'string' || (!message.trim() && !hasImage)) {
@@ -3381,7 +3473,7 @@ app.post('/api/teacher-chat', async (req, res) => {
       : '';
     const hasUsefulOcr = photoTranscript.length >= 24;
 
-    let systemContent = buildTeacherSystemPrompt(lang, lessonTopic, ui, learnerLevel);
+    let systemContent = buildTeacherSystemPrompt(lang, lessonTopic, ui, learnerLevel, learnerContext);
     if (intent === 'practical' || isPracticalLanguageQuestion(userMessageText)) {
       systemContent += buildPracticalQuestionOverride(userMessageText, lang, ui);
     } else if (isVocabularyRequest(userMessageText)) {
@@ -3488,7 +3580,8 @@ app.post('/api/teacher-exercise', async (req, res) => {
     return res.status(500).json({ error: 'Server misconfiguration: OPENAI_API_KEY is not set' });
   }
 
-  const { explanation, conversationHistory, language, lessonTopic, uiLanguage } = req.body ?? {};
+  const { explanation, conversationHistory, language, lessonTopic, uiLanguage, learnerLevel, learnerContext } =
+    req.body ?? {};
   if (typeof explanation !== 'string' || !explanation.trim()) {
     return res.status(400).json({ error: 'explanation must be a non-empty string' });
   }
@@ -3498,7 +3591,9 @@ app.post('/api/teacher-exercise', async (req, res) => {
   const lang = resolveTeacherTargetLanguage(requestedLang, teacherExplanation, lessonTopic);
 
   const history = sanitizeHistory(conversationHistory).slice(-16);
-  const systemContent = buildTeacherExercisePrompt(lang, lessonTopic, ui);
+  const systemContent =
+    buildTeacherExercisePrompt(lang, lessonTopic, ui) +
+    formatExerciseLearnerHint(learnerContext, learnerLevel);
 
   const messages = [
     { role: 'system', content: systemContent },
@@ -3506,7 +3601,7 @@ app.post('/api/teacher-exercise', async (req, res) => {
     {
       role: 'user',
       content:
-        'Generate exactly one practice task. First silently infer the learner level from the conversation history and the question/explanation; do not reveal the level. The task must match that level and stay on the same topic.\n\nTeacher explanation:\n\n' +
+        'Generate exactly one practice task. Use LEARNER STARTING LEVEL when present; otherwise silently infer level from the conversation. Do not reveal the level. The task must match that level and stay on the same topic.\n\nTeacher explanation:\n\n' +
         teacherExplanation,
     },
   ];
@@ -3568,6 +3663,8 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     avoidExerciseTexts,
     uiLanguage,
     recentMistakes,
+    learnerLevel,
+    learnerContext,
   } = req.body ?? {};
   if (typeof explanation !== 'string' || !explanation.trim()) {
     return res.status(400).json({ error: 'explanation must be a non-empty string' });
@@ -3601,7 +3698,13 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
   const mistakeList = normalizeMistakeList(recentMistakes, 12);
 
   const history = sanitizeHistory(conversationHistory).slice(-16);
-  const systemContent = buildTeacherExerciseSetPrompt(lang, lessonTopic, ui);
+  const systemContent = buildTeacherExerciseSetPrompt(
+    lang,
+    lessonTopic,
+    ui,
+    learnerContext,
+    learnerLevel,
+  );
 
   const variationBlock =
     attempt > 1

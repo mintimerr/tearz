@@ -23,9 +23,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   }
 
   if (process.env.EAS_BUILD === 'true' && apiUrl && /ngrok/i.test(apiUrl)) {
-    console.warn(
-      '[Tearz] API URL указывает на ngrok — для публичного релиза нужен постоянный HTTPS (Render и т.п.).',
-    );
+    const msg =
+      '[Tearz] API URL указывает на ngrok — для публичного релиза (preview/production) нужен постоянный HTTPS (Render и т.п.).';
+    // preview APK уходит пользователям с лендинга — ngrok там недопустим
+    if (
+      process.env.EAS_BUILD_PROFILE === 'production' ||
+      process.env.EAS_BUILD_PROFILE === 'testflight' ||
+      process.env.EAS_BUILD_PROFILE === 'preview' ||
+      process.env.EAS_BUILD_PROFILE === 'play'
+    ) {
+      throw new Error(msg);
+    }
+    console.warn(msg);
   }
 
   return {

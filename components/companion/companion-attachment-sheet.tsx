@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import * as MediaLibrary from 'expo-media-library';
 import { useCallback, useEffect, useState } from 'react';
 import {

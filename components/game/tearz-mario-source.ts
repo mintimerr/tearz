@@ -15,13 +15,25 @@ export const TEARZ_MARIO = {
   run: require('../../assets/images/tearz-mario/tearz-mario-run-sprite.png') as ImageSource,
   fly: require('../../assets/images/tearz-mario/tearz-mario-fly-sprite.png') as ImageSource,
   talk: require('../../assets/images/tearz-mario/tearz-mario-talk-sprite.png') as ImageSource,
+  /** Онбординг: красная мантия и красная шапка, объясняет */
+  coach: require('../../assets/images/tearz-mario/tearz-onboard-coach.png') as ImageSource,
+  /** Онбординг собеседника: читает книгу, вторая рука на боку */
+  coachRead: require('../../assets/images/tearz-mario/tearz-onboard-read.png') as ImageSource,
+  /** Празднует завершение placement-теста (ref: tearz-placement-celebrate-ref.png) */
+  celebrate: require('../../assets/images/tearz-mario/tearz-placement-celebrate-sprite.png') as ImageSource,
+  /** Путь после теста — Tearz с ноутбуком на коленях (ref: tearz-path-laptop-lap-ref.png) */
+  pathLaptop: require('../../assets/images/tearz-mario/tearz-path-laptop-lap-sprite.png') as ImageSource,
+  /** Онбординг после теста — указывает на пользователя (ref: tearz-point-at-you-ref.png) */
+  pointAtYou: require('../../assets/images/tearz-mario/tearz-point-at-you-sprite.png') as ImageSource,
+  /** Первый заход — праздничная поза без шахматки и конфетти */
+  welcome: require('../../assets/images/tearz-mario/tearz-welcome-sprite.png') as ImageSource,
   cityBgDay: require('../../assets/images/tearz-mario/tearz-mario-city-world.jpg') as ImageSource,
-  cityBgNight: require('../../assets/images/tearz-mario/tearz-mario-city-world-night.jpg') as ImageSource,
+  cityBgNight: require('../../assets/images/tearz-mario/tearz-mario-city-world-night.png') as ImageSource,
 } as const;
 
 export type TearzMarioPose = Exclude<
   keyof typeof TEARZ_MARIO,
-  'cityBgDay' | 'cityBgNight' | 'phoneMetro'
+  'cityBgDay' | 'cityBgNight' | 'phoneMetro' | 'celebrate' | 'pathLaptop' | 'pointAtYou' | 'welcome' | 'coach' | 'coachRead'
 >;
 
 /** Вечер/ночь по локальному времени устройства: 19:00–06:59. */

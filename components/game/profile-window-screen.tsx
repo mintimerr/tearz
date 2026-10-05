@@ -1,37 +1,39 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { useCallback, useMemo } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View, Platform } from 'react-native';
+import { Children, useCallback, useState, type ReactNode } from 'react';
+import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CartoonStudyFlagsRow } from '@/components/profile/cartoon-study-flags';
+import { GuestSignupSheet } from '@/components/auth/guest-signup-sheet';
 import { ProfileLevelCard } from '@/components/profile/profile-level-card';
 import { ProfileMistakesSection } from '@/components/profile/profile-mistakes-section';
 import { GameWindowShell } from '@/components/game/game-window-shell';
 import { HubTearzShelf } from '@/components/game/hub-tearz-shelf';
-import { StreakChip } from '@/components/engagement/streak-chip';
+import { TearzAvatar } from '@/components/game/tearz-avatar';
+import { CoinAmount } from '@/components/game/tearz-drop';
+import { TearzWardrobeSheet } from '@/components/game/tearz-wardrobe-sheet';
+import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
+import { TearzFirstVisit } from '@/components/onboarding/tearz-first-visit';
 import { ProfileViralCard } from '@/components/viral/profile-viral-card';
-import { AnimatedCounter, PremiumChip } from '@/components/ui';
-import { DEMO_SKIP_AUTH } from '@/constants/demo';
+import { AnimatedCounter } from '@/components/ui';
 import { GAME_THEME } from '@/constants/game-theme';
 import { getPrivacyPolicyUrl, getTermsOfServiceUrl } from '@/constants/legal';
 import { COIN_REWARDS } from '@/constants/reward-rules';
 import { REF_USER_PROFILE } from '@/constants/user-profile-reference';
-import { useAuth, type NativeLanguage } from '@/contexts/auth-context';
+import { isGuestAccount, useAuth, type NativeLanguage } from '@/contexts/auth-context';
 import { useEngagement } from '@/contexts/engagement-context';
 import { usePlacement } from '@/contexts/placement-context';
 import { useTranslation } from '@/contexts/locale-context';
 import { useTeacherJourney } from '@/contexts/teacher-journey-context';
 import { useUserProfile } from '@/contexts/user-profile-context';
 import { useVocabulary } from '@/contexts/vocabulary-context';
-import { entryScriptLang, type WordScriptLang } from '@/utils/detect-word-lang';
-import { computeStudyXp, formatProfileStatNumber } from '@/utils/profile-study-stats';
+import { computeStudyXp } from '@/utils/profile-study-stats';
 import { studyLevelFromXp } from '@/utils/study-level';
 
 const SECTION_GAP = 16;
+const MENU_ICON = 'rgba(26,26,26,0.38)';
 
 export function ProfileWindowScreen() {
   const insets = useSafeAreaInsets();
@@ -39,22 +41,17 @@ export function ProfileWindowScreen() {
   const { lessons } = useTeacherJourney();
   const { t, locale, setAppLocale } = useTranslation();
   const { user, signOut, updateNativeLanguage } = useAuth();
-  const { dailyStreak, longestStreak, bonusXp, streakFreezeAvailable, ownedTearzIds } =
+  const { dailyStreak, longestStreak, bonusXp, streakFreezeAvailable, ownedTearzIds, coins, tearzLoadout } =
     useEngagement();
-  const { lifetimeStats, avatarUri, setAvatarUri, activityScriptLangs } = useUserProfile();
+  const { lifetimeStats, avatarUri, setAvatarUri } = useUserProfile();
   const { record: placementRecord } = usePlacement();
   const bottomPad = insets.bottom + 24;
+  const [wardrobeOpen, setWardrobeOpen] = useState(false);
+  const [rewardsOpen, setRewardsOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const guest = !user || isGuestAccount(user);
 
   const myWords = entries.length;
-  const myZh = entries.filter((e) => entryScriptLang(e) === 'zh').length;
-  const myEn = entries.filter((e) => entryScriptLang(e) !== 'zh').length;
-
-  const studyingLangs = useMemo(() => {
-    const set = new Set<WordScriptLang>();
-    for (const e of entries) set.add(entryScriptLang(e));
-    for (const l of activityScriptLangs) set.add(l);
-    return (['en', 'zh', 'ru'] as const).filter((l) => set.has(l));
-  }, [entries, activityScriptLangs]);
 
   const { correct: lifeC, wrong: lifeW } = lifetimeStats;
   const lifeTotal = lifeC + lifeW;
@@ -113,35 +110,41 @@ export function ProfileWindowScreen() {
   }, [avatarUri, pickAvatar, setAvatarUri, t]);
 
   return (
-    <GameWindowShell title={t('profile.title')}>
+    <>
+    <GameWindowShell title={t('profile.title')} titleDivider={false}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.lead}>{t('profile.lead')}</Text>
-
         <View style={styles.hero}>
           <Pressable
-            onPress={openAvatarSheet}
+            onPress={() => setWardrobeOpen(true)}
             accessibilityRole="button"
-            accessibilityLabel={t('profile.changeAvatar')}
+            accessibilityLabel={t('profile.wardrobe')}
             style={styles.avatarPress}>
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.avatarImage} contentFit="cover" />
-            ) : (
-              <View style={[styles.avatarFallback, { backgroundColor: REF_USER_PROFILE.avatarColor }]}>
-                <Text style={styles.avatarLetter}>{REF_USER_PROFILE.letter}</Text>
-              </View>
-            )}
-            <View style={styles.avatarBadge}>
-              <Ionicons name="camera" size={15} color="rgba(12,12,20,0.92)" />
-            </View>
+            <TearzAvatar loadout={tearzLoadout} size={120} />
           </Pressable>
-          <Text style={styles.name}>{user?.displayName ?? REF_USER_PROFILE.displayName}</Text>
-          <Text style={styles.handle}>{user?.email ?? REF_USER_PROFILE.handle}</Text>
-          <Text style={styles.meta}>{REF_USER_PROFILE.city}</Text>
-          <Text style={styles.metaDim}>{REF_USER_PROFILE.joinedLabel}</Text>
-          <CartoonStudyFlagsRow langs={studyingLangs} />
+          <Pressable
+            onPress={() => setRewardsOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.rewardsTitle')}
+            style={({ pressed }) => [styles.coinsRow, pressed && styles.rowPressed]}>
+            <CoinAmount value={coins} textStyle={styles.coinsLabel} size={16} />
+          </Pressable>
+          {guest || !user ? (
+            <Pressable
+              onPress={() => setAuthOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.guestAuthCta')}
+              style={({ pressed }) => [styles.guestLink, pressed && styles.rowPressed]}>
+              <Text style={styles.guestLinkText}>{t('profile.guestAuthCta')}</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.identity}>
+              <Text style={styles.name}>{user.displayName}</Text>
+              <Text style={styles.handle}>{user.email}</Text>
+            </View>
+          )}
         </View>
 
         <ProfileLevelCard
@@ -152,238 +155,251 @@ export function ProfileWindowScreen() {
           toNextLabel={(remaining) => t('profile.toNextLevel', { count: remaining })}
         />
 
-        {placementRecord ? (
-          <View style={styles.placementBadge}>
-            <Ionicons name="ribbon-outline" size={18} color={GAME_THEME.color.ink} />
-            <Text style={styles.placementBadgeText}>
-              {t('placement.profileLevel', { level: placementRecord.level })}
-              {placementRecord.hskLevel ? ` · ${placementRecord.hskLevel}` : ''}
-            </Text>
+        <View style={styles.statStrip}>
+          <View style={styles.statCell}>
+            <AnimatedCounter value={lessonCount} style={styles.statValue} />
+            <Text style={styles.statHint}>{t('profile.lessons')}</Text>
           </View>
+          <View style={styles.statCell}>
+            <AnimatedCounter value={myWords} style={styles.statValue} />
+            <Text style={styles.statHint}>{t('profile.words')}</Text>
+          </View>
+          <View style={styles.statCell}>
+            <Text style={styles.statValue}>{accuracyPct != null ? `${accuracyPct}%` : '—'}</Text>
+            <Text style={styles.statHint}>{t('profile.accuracy')}</Text>
+          </View>
+        </View>
+        {lifeTotal > 0 ? (
+          <Text style={styles.practiceLine}>
+            {lifeC} {t('profile.correct')} · {lifeW} {t('profile.wrong')}
+          </Text>
         ) : null}
 
-        <Pressable
-          onPress={() => router.push('/onboarding/placement')}
-          style={({ pressed }) => [styles.placementCta, pressed && styles.rowPressed]}>
-          <Ionicons name="school-outline" size={20} color={GAME_THEME.color.ink} />
-          <Text style={styles.placementCtaText}>
-            {placementRecord ? t('placement.retake') : t('placement.openTest')}
-          </Text>
-          <Ionicons name="chevron-forward" size={18} color="rgba(26,26,26,0.45)" />
-        </Pressable>
-
-        {dailyStreak > 0 ? (
-          <>
-            <Text style={styles.sectionLabel}>{t('engagement.streakTitle')}</Text>
-            <View style={[styles.gamePanel, styles.streakPanel]}>
-              <View style={styles.streakRow}>
-                <StreakChip />
-                {longestStreak > dailyStreak ? (
-                  <Text style={styles.streakBest}>{t('engagement.streakBest', { count: longestStreak })}</Text>
-                ) : null}
-              </View>
-              <Text style={styles.streakLead}>{t('engagement.streakLead')}</Text>
-              {streakFreezeAvailable ? (
-                <View style={styles.freezeRow}>
-                  <Ionicons name="snow-outline" size={16} color={GAME_THEME.color.sky} />
-                  <Text style={styles.freezeText}>{t('engagement.streakFreeze')}</Text>
-                </View>
+        <Group>
+          {dailyStreak > 0 ? (
+            <View style={styles.menuRow}>
+              <Ionicons name="flame-outline" size={18} color={MENU_ICON} />
+              <Text style={styles.menuLabel}>{t('engagement.streakDays', { count: dailyStreak })}</Text>
+              {streakFreezeAvailable ? <Ionicons name="snow-outline" size={15} color={MENU_ICON} /> : null}
+              {longestStreak > dailyStreak ? (
+                <Text style={styles.menuValue}>{t('engagement.streakBest', { count: longestStreak })}</Text>
               ) : null}
             </View>
-          </>
-        ) : null}
+          ) : null}
+          <ProfileMistakesSection asRow />
+          <MenuRow icon="storefront-outline" label={t('profile.wardrobe')} onPress={() => setWardrobeOpen(true)} />
+          <MenuRow
+            icon="clipboard-outline"
+            label={placementRecord ? t('placement.retakeEntrance') : t('placement.openEntrance')}
+            value={
+              placementRecord
+                ? `${placementRecord.level}${placementRecord.hskLevel ? ` · ${placementRecord.hskLevel}` : ''}`
+                : undefined
+            }
+            onPress={() => router.push('/onboarding/placement')}
+          />
+          <ProfileViralCard
+            asRow
+            displayName={!guest && user ? user.displayName : 'Tearz'}
+            lessonCount={lessonCount}
+            wordCount={myWords}
+            accuracyPct={accuracyPct}
+            studyXp={studyXp}
+            level={studyLevel}
+            avatarUri={avatarUri}
+            avatarLetter={!guest && user ? user.displayName.trim().charAt(0).toUpperCase() || 'T' : 'T'}
+            avatarColor={REF_USER_PROFILE.avatarColor}
+            sectionTitle={t('viral.shareSection')}
+            sectionLead={t('viral.shareSectionLead')}
+            shareProgressLabel={t('viral.shareProgress')}
+            userId={user?.id ?? null}
+            shareMessage={t('viral.shareMessage')}
+            shareInviteLine={t('viral.shareInviteLine')}
+            shareCardTagline={t('viral.shareCardTagline')}
+            shareErrorTitle={t('viral.shareErrorTitle')}
+            shareErrorMessage={t('viral.shareErrorMessage')}
+            shareDialogTitle={t('viral.shareModalTitle')}
+            cardLabels={{
+              level: t('viral.level'),
+              lessons: t('profile.lessons'),
+              words: t('profile.words'),
+              accuracy: t('profile.accuracy'),
+              xp: t('profile.xp'),
+              progressTitle: t('viral.shareModalTitle'),
+              joinCta: t('viral.shareCardJoinCta'),
+              inviteHint: t('viral.shareCardInviteHint'),
+            }}
+          />
+        </Group>
 
-        <ProfileMistakesSection />
-
-        <Text style={styles.sectionLabel}>{t('profile.appLanguage')}</Text>
-        <View style={styles.langRow}>
-          {langOptions.map((lang) => (
-            <PremiumChip
-              key={lang.id}
-              label={t(lang.labelKey)}
-              active={locale === lang.id}
-              onPress={() => {
-                void (async () => {
-                  if (user) await updateNativeLanguage(lang.id);
-                  await setAppLocale(lang.id);
-                })();
-              }}
-              style={styles.langChip}
-            />
-          ))}
+        <View style={styles.langLine}>
+          {langOptions.map((lang) => {
+            const on = locale === lang.id;
+            return (
+              <Pressable
+                key={lang.id}
+                hitSlop={8}
+                onPress={() => {
+                  void (async () => {
+                    if (user) await updateNativeLanguage(lang.id);
+                    await setAppLocale(lang.id);
+                  })();
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}>
+                <Text style={[styles.langWord, on && styles.langWordOn]}>{t(lang.labelKey)}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
-        <Text style={styles.sectionLabel}>{t('profile.stats')}</Text>
-        <View style={[styles.gamePanel, styles.statPanel]}>
-          <View style={styles.statRow}>
-            <View style={styles.statCell}>
-              <AnimatedCounter value={lessonCount} style={styles.statValue} />
-              <Text style={styles.statHint}>{t('profile.lessons')}</Text>
-              <Text style={styles.statSub}>{t('profile.lessonsSub')}</Text>
-            </View>
-            <View style={styles.statRuleV} />
-            <View style={styles.statCell}>
-              <AnimatedCounter value={myWords} style={styles.statValue} />
-              <Text style={styles.statHint}>{t('profile.words')}</Text>
-              <Text style={styles.statSub}>
-                EN {myEn} · 中文 {myZh}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.statRuleH} />
-          <View style={styles.statRow}>
-            <View style={styles.statCell}>
-              <Text style={styles.statValue}>{accuracyPct != null ? `${accuracyPct}%` : '—'}</Text>
-              <Text style={styles.statHint}>{t('profile.accuracy')}</Text>
-              <Text style={styles.statSub}>
-                {lifeTotal ? t('profile.accuracyTraining') : t('profile.accuracyNoData')}
-              </Text>
-            </View>
-            <View style={styles.statRuleV} />
-            <View style={styles.statCell}>
-              <AnimatedCounter
-                value={studyXp}
-                style={styles.statValue}
-                format={formatProfileStatNumber}
-              />
-              <Text style={styles.statHint}>{t('profile.xp')}</Text>
-              <Text style={styles.statSub}>{t('profile.xpSub')}</Text>
-            </View>
-          </View>
-        </View>
+        <Group>
+          <MenuRow
+            icon="easel-outline"
+            label={t('profile.instructor')}
+            locked
+            onPress={() => Alert.alert(t('profile.instructor'), t('profile.instructorSoon'))}
+          />
+        </Group>
 
-        <ProfileViralCard
-          displayName={user?.displayName ?? REF_USER_PROFILE.displayName}
-          lessonCount={lessonCount}
-          wordCount={myWords}
-          accuracyPct={accuracyPct}
-          studyXp={studyXp}
-          level={studyLevel}
-          avatarUri={avatarUri}
-          avatarLetter={(user?.displayName ?? REF_USER_PROFILE.displayName).trim().charAt(0).toUpperCase() || REF_USER_PROFILE.letter}
-          avatarColor={REF_USER_PROFILE.avatarColor}
-          sectionTitle={t('viral.shareSection')}
-          sectionLead={t('viral.shareSectionLead')}
-          shareProgressLabel={t('viral.shareProgress')}
-          userId={user?.id ?? null}
-          shareMessage={t('viral.shareMessage')}
-          shareInviteLine={t('viral.shareInviteLine')}
-          shareCardTagline={t('viral.shareCardTagline')}
-          shareErrorTitle={t('viral.shareErrorTitle')}
-          shareErrorMessage={t('viral.shareErrorMessage')}
-          shareDialogTitle={t('viral.shareModalTitle')}
-          cardLabels={{
-            level: t('viral.level'),
-            lessons: t('profile.lessons'),
-            words: t('profile.words'),
-            accuracy: t('profile.accuracy'),
-            xp: t('profile.xp'),
-            progressTitle: t('viral.shareModalTitle'),
-            joinCta: t('viral.shareCardJoinCta'),
-            inviteHint: t('viral.shareCardInviteHint'),
-          }}
-        />
-
-        <Text style={styles.sectionLabel}>{t('profile.training')}</Text>
-        <Text style={styles.sectionSub}>{t('profile.trainingLead')}</Text>
-        <View style={[styles.gamePanel, styles.statPanel]}>
-          <View style={styles.statRow}>
-            <View style={styles.statCell}>
-              <AnimatedCounter value={lifeC} style={styles.statValue} />
-              <Text style={styles.statHint}>{t('profile.correct')}</Text>
-              <Text style={styles.statSub}>{t('profile.correctSub')}</Text>
-            </View>
-            <View style={styles.statRuleV} />
-            <View style={styles.statCell}>
-              <AnimatedCounter value={lifeW} style={styles.statValue} />
-              <Text style={styles.statHint}>{t('profile.wrong')}</Text>
-              <Text style={styles.statSub}>{t('profile.wrongSub')}</Text>
-            </View>
-          </View>
-          <View style={styles.statRuleH} />
-          <View style={styles.statRow}>
-            <View style={[styles.statCell, styles.statCellWide]}>
-              <AnimatedCounter value={lifeTotal} style={styles.statValue} />
-              <Text style={styles.statHint}>{t('profile.total')}</Text>
-              <Text style={styles.statSub}>{t('profile.totalSub')}</Text>
-            </View>
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>{t('profile.collection')}</Text>
-        <View style={[styles.gamePanel, styles.shelfPanel]}>
+        <View style={styles.shelfWrap}>
           <HubTearzShelf ownedIds={ownedTearzIds} />
         </View>
 
-        <Text style={styles.sectionLabel}>{t('profile.rewards')}</Text>
-        <View style={styles.gamePanel}>
-          <View style={styles.rewardsBlock}>
-            <Text style={styles.rewardsTitle}>{t('profile.rewardsTitle')}</Text>
-            <Text style={styles.rewardsBody}>
-              {t('profile.rewardsBody', {
-                starter: COIN_REWARDS.starter,
-                message: COIN_REWARDS.message,
-                messageMax: COIN_REWARDS.messageMaxPerDay,
-                vocab: COIN_REWARDS.vocabSession,
-                drill: COIN_REWARDS.drillPerCorrect,
-                dailyGoal: COIN_REWARDS.dailyGoal,
-              })}
+        <View style={styles.footer}>
+          <Text style={styles.footerLinks}>
+            <Text onPress={() => void Linking.openURL(getTermsOfServiceUrl())} style={styles.footerLink}>
+              {t('profile.terms')}
             </Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>{t('profile.about')}</Text>
-        <View style={styles.gamePanel}>
-          <Row icon="information-circle-outline" title={t('profile.version')} value={appVersion} showSeparator />
-          <Pressable
-            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => void Linking.openURL(getTermsOfServiceUrl())}
-            accessibilityRole="link">
-            <Ionicons name="document-text-outline" size={22} color={GAME_THEME.color.ink} style={styles.rowIcon} />
-            <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>{t('profile.terms')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="rgba(26,26,26,0.35)" />
-          </Pressable>
-          <View style={styles.rowSeparator} />
-          <Pressable
-            style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            onPress={() => void Linking.openURL(getPrivacyPolicyUrl())}
-            accessibilityRole="link">
-            <Ionicons name="shield-checkmark-outline" size={22} color={GAME_THEME.color.ink} style={styles.rowIcon} />
-            <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>{t('profile.privacy')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="rgba(26,26,26,0.35)" />
-          </Pressable>
-          {!DEMO_SKIP_AUTH ? (
-            <>
-              <View style={styles.rowSeparator} />
-              <Pressable
-                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-                onPress={() => {
-                  Alert.alert(t('profile.signOutTitle'), t('profile.signOutMessage'), [
-                    { text: t('common.cancel'), style: 'cancel' },
-                    {
-                      text: t('profile.signOutAction'),
-                      style: 'destructive',
-                      onPress: () => {
-                        void signOut().then(() => router.replace('/(auth)/welcome'));
-                      },
+            <Text style={styles.footerDot}>  ·  </Text>
+            <Text onPress={() => void Linking.openURL(getPrivacyPolicyUrl())} style={styles.footerLink}>
+              {t('profile.privacy')}
+            </Text>
+          </Text>
+          <Text style={styles.footerVersion}>{appVersion}</Text>
+          {!guest ? (
+            <Pressable
+              onPress={() => {
+                Alert.alert(t('profile.signOutTitle'), t('profile.signOutMessage'), [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  {
+                    text: t('profile.signOutAction'),
+                    style: 'destructive',
+                    onPress: () => {
+                      void signOut().then(() => router.replace('/(auth)/welcome'));
                     },
-                  ]);
-                }}>
-                <Ionicons name="log-out-outline" size={22} color={GAME_THEME.color.danger} style={styles.rowIcon} />
-                <View style={styles.rowBody}>
-                  <Text style={styles.rowTitle}>{t('profile.account')}</Text>
-                  <Text style={[styles.rowValue, styles.signOutValue]}>{t('profile.signOut')}</Text>
-                </View>
-              </Pressable>
-            </>
+                  },
+                ]);
+              }}
+              hitSlop={8}>
+              <Text style={styles.footerSignOut}>{t('profile.signOut')}</Text>
+            </Pressable>
           ) : null}
         </View>
       </ScrollView>
     </GameWindowShell>
+    <TearzWardrobeSheet visible={wardrobeOpen} onClose={() => setWardrobeOpen(false)} />
+    <RewardsSheet visible={rewardsOpen} onClose={() => setRewardsOpen(false)} />
+    <GuestSignupSheet visible={authOpen} variant="profile" onClose={() => setAuthOpen(false)} />
+    <TearzFirstVisit
+      tipId="profile"
+      pose={TEARZ_MARIO.idle}
+      lines={[t('onboarding.profileLine1'), t('onboarding.profileLine2')]}
+      ctaLabel={t('onboarding.gotIt')}
+    />
+    </>
+  );
+}
+
+function Group({ children }: { children: ReactNode }) {
+  const items = Children.toArray(children).filter((child) => child != null && child !== false);
+  if (items.length === 0) return null;
+  return (
+    <View style={styles.group}>
+      {items.map((child, index) => (
+        <View key={index}>
+          {index > 0 ? <View style={styles.groupSep} /> : null}
+          {child}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function MenuRow({
+  icon,
+  label,
+  value,
+  locked,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value?: string;
+  locked?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.menuRow, pressed && styles.rowPressed]}>
+      <Ionicons name={icon} size={18} color={MENU_ICON} />
+      <Text style={styles.menuLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      {value ? <Text style={styles.menuValue}>{value}</Text> : null}
+      <Ionicons
+        name={locked ? 'lock-closed-outline' : 'chevron-forward'}
+        size={16}
+        color="rgba(26,26,26,0.28)"
+      />
+    </Pressable>
+  );
+}
+
+function RewardsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const rows: { label: string; value: number; note?: string }[] = [
+    { label: t('profile.rewardStart'), value: COIN_REWARDS.starter },
+    {
+      label: t('profile.rewardLesson'),
+      value: COIN_REWARDS.message,
+      note: t('profile.rewardLessonCap', { count: COIN_REWARDS.messageMaxPerDay }),
+    },
+    { label: t('profile.rewardCards'), value: COIN_REWARDS.vocabSession },
+    { label: t('profile.rewardAnswer'), value: COIN_REWARDS.drillPerCorrect },
+    { label: t('profile.rewardGoal'), value: COIN_REWARDS.dailyGoal },
+  ];
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <View style={[styles.rewardsRoot, { paddingTop: Math.max(insets.top, 12), paddingBottom: insets.bottom + 16 }]}>
+        <View style={styles.rewardsTop}>
+          <Text style={styles.rewardsSheetTitle}>{t('profile.rewardsTitle')}</Text>
+          <Pressable onPress={onClose} hitSlop={10} style={styles.rewardsClose} accessibilityLabel="Закрыть">
+            <Ionicons name="close" size={22} color={GAME_THEME.color.ink} />
+          </Pressable>
+        </View>
+        <Text style={styles.rewardsLead}>{t('profile.rewardsLead')}</Text>
+        <View style={styles.gamePanel}>
+          {rows.map((row, index) => (
+            <View key={row.label}>
+              {index > 0 ? <View style={styles.rowSeparator} /> : null}
+              <View style={styles.rewardRow}>
+                <View style={styles.rowBody}>
+                  <Text style={styles.rowTitle}>{row.label}</Text>
+                  {row.note ? <Text style={styles.rowValue}>{row.note}</Text> : null}
+                </View>
+                <CoinAmount value={row.value} textStyle={styles.rewardValue} size={16} />
+              </View>
+            </View>
+          ))}
+        </View>
+        <Text style={styles.rewardsFoot}>{t('profile.rewardStreak')}</Text>
+      </View>
+    </Modal>
   );
 }
 
@@ -445,30 +461,213 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 10,
   },
-  rewardsBlock: {
-    paddingVertical: 16,
+  rewardsRoot: {
+    flex: 1,
+    backgroundColor: GAME_THEME.color.cream,
     paddingHorizontal: 16,
-    gap: 8,
   },
-  rewardsTitle: {
+  rewardsTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  rewardsSheetTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
+  },
+  rewardsClose: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rewardsLead: {
+    marginBottom: 16,
+    fontSize: GAME_THEME.type.body,
+    fontWeight: '600',
+    lineHeight: 20,
+    color: 'rgba(26,26,26,0.55)',
+  },
+  rewardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  rewardValue: {
     fontSize: 16,
     fontWeight: '800',
     color: GAME_THEME.color.ink,
   },
-  rewardsBody: {
+  rewardsFoot: {
+    marginTop: 4,
     fontSize: 13,
-    lineHeight: 19,
     fontWeight: '600',
-    color: 'rgba(26,26,26,0.62)',
+    lineHeight: 18,
+    color: 'rgba(26,26,26,0.55)',
   },
   hero: {
-    marginBottom: 24,
+    marginBottom: 8,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingTop: 4,
   },
   avatarPress: {
     marginBottom: 16,
     position: 'relative',
+  },
+  tearzAvatarRing: {
+    width: 120,
+    height: 120,
+    borderRadius: 36,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: 'rgba(26,26,26,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+  coinsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  coinsLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: GAME_THEME.color.ink,
+  },
+  coinsHint: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.45)',
+  },
+  identity: {
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  guestLink: {
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
+  guestLinkText: {
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    color: GAME_THEME.color.ink,
+  },
+  statStrip: {
+    flexDirection: 'row',
+    marginBottom: 22,
+  },
+  practiceLine: {
+    marginTop: -14,
+    marginBottom: 22,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.45)',
+  },
+  group: {
+    marginTop: 8,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(26,26,26,0.12)',
+    overflow: 'hidden',
+  },
+  groupSep: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 16,
+    backgroundColor: 'rgba(26,26,26,0.1)',
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 15,
+    paddingHorizontal: 16,
+  },
+  menuLabel: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    color: GAME_THEME.color.ink,
+  },
+  menuValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.4)',
+  },
+  langLine: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 22,
+    marginTop: 22,
+    marginBottom: 8,
+  },
+  langWord: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.32)',
+  },
+  langWordOn: {
+    color: GAME_THEME.color.ink,
+    fontWeight: '700',
+  },
+  shelfWrap: {
+    marginTop: 28,
+  },
+  footer: {
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 28,
+  },
+  footerLinks: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.45)',
+  },
+  footerLink: {
+    color: 'rgba(26,26,26,0.45)',
+  },
+  footerDot: {
+    color: 'rgba(26,26,26,0.28)',
+  },
+  footerVersion: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.32)',
+  },
+  footerSignOut: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: GAME_THEME.color.danger,
+  },
+  wardrobeCta: {
+    marginTop: 12,
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(26,26,26,0.08)',
+  },
+  wardrobeCtaText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: GAME_THEME.color.ink,
   },
   avatarImage: {
     width: 96,
@@ -503,6 +702,38 @@ const styles = StyleSheet.create({
     backgroundColor: GAME_THEME.color.gold,
     borderWidth: 2,
     borderColor: GAME_THEME.color.ink,
+  },
+  guestAuthBtn: {
+    alignSelf: 'stretch',
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(26,26,26,0.08)',
+  },
+  placementRow: {
+    alignSelf: 'stretch',
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(26,26,26,0.08)',
+  },
+  guestAuthLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: GAME_THEME.color.ink,
   },
   name: {
     fontSize: 24,
@@ -598,9 +829,9 @@ const styles = StyleSheet.create({
   },
   statCell: {
     flex: 1,
-    paddingVertical: 18,
-    paddingHorizontal: 16,
-    alignItems: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    alignItems: 'center',
   },
   statCellWide: {
     flex: 1,
@@ -616,16 +847,16 @@ const styles = StyleSheet.create({
     opacity: 0.12,
   },
   statValue: {
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 22,
+    fontWeight: '800',
     color: GAME_THEME.color.ink,
     letterSpacing: -0.4,
   },
   statHint: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: '700',
-    color: 'rgba(26,26,26,0.55)',
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(26,26,26,0.4)',
   },
   statSub: {
     marginTop: 6,

@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -26,7 +26,7 @@ export function HubTearzShelf({ ownedIds }: Props) {
     ? focusOwned
       ? `${focus.nameRu} — ${focus.blurbRu}`
       : `${focus.nameRu} · ${focus.howToGetRu}`
-    : 'Твои Tearz за уроки и диалоги';
+    : 'Открываются с уровнем и опытом';
 
   return (
     <View style={styles.wrap} accessibilityRole="summary" accessibilityLabel={`Коллекция Tearz, ${count} из ${TEARZ_CATALOG.length}`}>

@@ -19,6 +19,7 @@ import { TeacherLessonWindow } from '@/components/teacher/teacher-lesson-window'
 import { GAME_THEME } from '@/constants/game-theme';
 import { useLexicon } from '@/contexts/lexicon-context';
 import { useLocale } from '@/contexts/locale-context';
+import { useLearnerModel } from '@/hooks/use-learner-model';
 import { postTeacherChatReply, warmCompanionApi } from '@/services/companion-chat-ai';
 import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 import type { CompanionMsg } from '@/types/companion-message';
@@ -119,6 +120,7 @@ export function TearzLessonTransit({
   const { width: W, height: H } = useWindowDimensions();
   const { ingestTeacherText } = useLexicon();
   const { locale } = useLocale();
+  const { learnerModel, learnerContext } = useLearnerModel();
   const uiLanguage = teacherUiLanguageFromLocale(locale);
 
   const [messages, setMessages] = useState<CompanionMsg[] | null>(null);
@@ -248,6 +250,8 @@ export function TearzLessonTransit({
           language,
           uiLanguage,
           lessonTopic: (q || 'Фото').length > 72 ? `${(q || 'Фото').slice(0, 72)}…` : q || 'Фото',
+          ...(learnerModel?.overallLevel ? { learnerLevel: learnerModel.overallLevel } : {}),
+          ...(learnerContext ? { learnerContext } : {}),
           ...(image?.base64 ? { imageBase64: image.base64, imageMimeType: image.mimeType } : {}),
         });
         if (!cancelled) ingestTeacherText(reply);

@@ -1,6 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -23,7 +22,7 @@ import { GameGoldButton } from '@/components/game/game-gold-button';
 import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
 import { FadeInView } from '@/components/ui';
 import { GAME_THEME } from '@/constants/game-theme';
-import { translate } from '@/constants/i18n/translations';
+import { useTranslation } from '@/contexts/locale-context';
 import { usePlacement } from '@/contexts/placement-context';
 import {
   clearPlacementPrefetch,
@@ -32,14 +31,29 @@ import {
   runPlacementStep,
   warmPlacementApi,
 } from '@/services/placement-step';
+import { mintNextLocalPlacementQuestion } from '@/utils/placement-local-engine';
+import {
+  canonicalPlacementFields,
+  notePlacementItemAnswered,
+  notePlacementItemPresented,
+  resetCanonicalPlacementSession,
+} from '@/utils/placement-canonical-client';
 import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 import type {
   PlacementHistoryItem,
   PlacementQuestion,
   PlacementResult,
 } from '@/types/placement-api';
-import { buildSeenQuestionKeys, isQuestionAlreadySeen, questionContentKey } from '@/utils/placement-seen';
 import { PLACEMENT_TOTAL, START_ABILITY } from '@/utils/placement-adaptive';
+import {
+  flushLifetimeSeen,
+  getPlacementUserEntropy,
+  loadLifetimeSeen,
+  mergeLifetimeIntoSeen,
+  rememberLifetimeQuestion,
+  rememberLifetimeQuestions,
+} from '@/utils/placement-lifetime-seen';
+import { questionContentKey, normalizePlacementPrompt, stripPlacementPromptDecorations } from '@/utils/placement-seen';
 
 const LANGUAGES: { id: CompanionChatApiLanguage; labelKey: string; emoji: string }[] = [
   { id: 'french', labelKey: 'lang.french', emoji: '🇫🇷' },
@@ -61,9 +75,6 @@ const CONFETTI = [
 
 type Phase = 'language' | 'test' | 'result';
 
-const pt = (key: string, params?: Record<string, string | number>) =>
-  translate('en', `placement.${key}`, params);
-
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -83,13 +94,19 @@ function useProgressAnim(progress: number) {
 
 export function PlacementOnboardingScreen() {
   const insets = useSafeAreaInsets();
-  const uiLanguage = 'en' as const;
+  const { t, locale } = useTranslation();
+  const uiLanguage = (locale === 'zh' ? 'zh' : locale === 'ru' ? 'ru' : 'en') as 'ru' | 'en' | 'zh';
   const { savePlacement } = usePlacement();
+  const pt = useCallback(
+    (key: string, params?: Record<string, string | number>) => t(`placement.${key}`, params),
+    [t],
+  );
 
   const [phase, setPhase] = useState<Phase>('language');
   const [language, setLanguage] = useState<CompanionChatApiLanguage>('english');
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [question, setQuestion] = useState<PlacementQuestion | null>(null);
   const [answerKey, setAnswerKey] = useState<string | null>(null);
   const [ability, setAbility] = useState(START_ABILITY);
@@ -104,25 +121,71 @@ export function PlacementOnboardingScreen() {
   const [seenPrompts, setSeenPrompts] = useState<string[]>([]);
   const [seenContentKeys, setSeenContentKeys] = useState<string[]>([]);
   const sessionSaltRef = useRef(Date.now());
+  const userEntropyRef = useRef(0);
+  const historyRef = useRef<PlacementHistoryItem[]>([]);
+  const abilityRef = useRef(START_ABILITY);
+  const seenIdsRef = useRef<string[]>([]);
+  const seenPromptsRef = useRef<string[]>([]);
+  const seenContentKeysRef = useRef<string[]>([]);
 
   const rememberQuestion = useCallback(
     (q: PlacementQuestion) => {
       const contentKey = questionContentKey(q);
-      setSeenQuestionIds((prev) => (prev.includes(q.id) ? prev : [...prev, q.id]));
-      setSeenPrompts((prev) => (prev.includes(q.prompt) ? prev : [...prev, q.prompt]));
-      setSeenContentKeys((prev) => (prev.includes(contentKey) ? prev : [...prev, contentKey]));
+      const norm = normalizePlacementPrompt(q.prompt);
+      // Update refs synchronously so a fast next answer never loses session seen.
+      if (!seenIdsRef.current.includes(q.id)) {
+        seenIdsRef.current = [...seenIdsRef.current, q.id];
+      }
+      if (
+        !seenPromptsRef.current.some((p) => normalizePlacementPrompt(p) === norm)
+      ) {
+        seenPromptsRef.current = [...seenPromptsRef.current, q.prompt];
+      }
+      if (!seenContentKeysRef.current.includes(contentKey)) {
+        seenContentKeysRef.current = [...seenContentKeysRef.current, contentKey];
+      }
+      setSeenQuestionIds(seenIdsRef.current);
+      setSeenPrompts(seenPromptsRef.current);
+      setSeenContentKeys(seenContentKeysRef.current);
       void rememberLifetimeQuestion(language, q);
     },
     [language],
   );
 
   useEffect(() => {
+    void getPlacementUserEntropy().then((entropy) => {
+      userEntropyRef.current = entropy;
+    });
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     void loadLifetimeSeen(language).then((record) => {
       if (cancelled) return;
-      setSeenQuestionIds(record.ids);
-      setSeenPrompts(record.prompts);
-      setSeenContentKeys(record.contentKeys);
+      // Merge — never replace session progress if the user already started answering.
+      const mergeIds = [...seenIdsRef.current];
+      for (const id of record.ids) {
+        if (!mergeIds.includes(id)) mergeIds.push(id);
+      }
+      const mergePrompts = [...seenPromptsRef.current];
+      const seenNorm = new Set(mergePrompts.map(normalizePlacementPrompt));
+      for (const prompt of record.prompts) {
+        const n = normalizePlacementPrompt(prompt);
+        if (!seenNorm.has(n)) {
+          seenNorm.add(n);
+          mergePrompts.push(prompt);
+        }
+      }
+      const mergeKeys = [...seenContentKeysRef.current];
+      for (const key of record.contentKeys) {
+        if (!mergeKeys.includes(key)) mergeKeys.push(key);
+      }
+      seenIdsRef.current = mergeIds;
+      seenPromptsRef.current = mergePrompts;
+      seenContentKeysRef.current = mergeKeys;
+      setSeenQuestionIds(mergeIds);
+      setSeenPrompts(mergePrompts);
+      setSeenContentKeys(mergeKeys);
     });
     return () => {
       cancelled = true;
@@ -158,9 +221,27 @@ export function PlacementOnboardingScreen() {
       res: Awaited<ReturnType<typeof runPlacementStep>>,
       prevQuestion: PlacementQuestion | null,
     ) => {
+      abilityRef.current = res.ability;
       setAbility(res.ability);
       if (res.done) {
         setResult(res.result);
+        const batch = [
+          ...historyRef.current.map((h) => ({
+            id: h.questionId ?? `h-${h.prompt.slice(0, 24)}`,
+            prompt: h.prompt,
+            choices: h.choices ?? [],
+          })),
+          ...(prevQuestion
+            ? [
+                {
+                  id: prevQuestion.id,
+                  prompt: prevQuestion.prompt,
+                  choices: prevQuestion.choices,
+                },
+              ]
+            : []),
+        ];
+        void rememberLifetimeQuestions(language, batch).then(() => flushLifetimeSeen());
         void savePlacement({
           completedAt: Date.now(),
           language,
@@ -168,61 +249,116 @@ export function PlacementOnboardingScreen() {
           score: res.result.score,
           summary: res.result.summary,
           hskLevel: res.result.hskLevel,
+          statisticalEstimate: res.result.statisticalEstimate,
+          theta: res.result.theta,
+          thetaCredibleInterval: res.result.thetaCredibleInterval,
+          confidence: res.result.confidence,
+          confidenceLabel: res.result.confidenceLabel,
+          levelProbabilities: res.result.levelProbabilities,
+          skillProfile: res.result.skillProfile,
+          verification: res.result.verification,
+          assessmentEngineVersion: res.result.assessmentEngineVersion,
+          orchestratorVersion: res.result.orchestratorVersion,
+          cefrMapVersion: res.result.cefrMapVersion,
+          itemQualityVersion: res.result.itemQualityVersion,
+          placementVersion: res.result.placementVersion,
+          sessionId: res.result.sessionId,
+          assessmentSessionId: res.result.assessmentSessionId ?? res.result.sessionId,
         });
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setPhase('result');
+        setError(null);
         return;
       }
 
       if (prevQuestion) {
-        setHistory((prev) => {
-          if (
-            prev.some(
-              (h) => h.questionId === prevQuestion.id || h.prompt === prevQuestion.prompt,
-            )
-          ) {
-            return prev;
-          }
-          return [
-            ...prev,
-            {
-              section: prevQuestion.section,
-              difficulty: prevQuestion.difficulty,
-              correct: typeof res.correct === 'boolean' ? res.correct : false,
-              prompt: prevQuestion.prompt,
-              questionId: prevQuestion.id,
-              choices: prevQuestion.choices,
-            },
-          ];
+        const entry = {
+          section: prevQuestion.section,
+          difficulty: prevQuestion.difficulty,
+          correct: typeof res.correct === 'boolean' ? res.correct : false,
+          prompt: prevQuestion.prompt,
+          questionId: prevQuestion.id,
+          choices: prevQuestion.choices,
+        };
+        if (
+          !historyRef.current.some(
+            (h) =>
+              h.questionId === prevQuestion.id ||
+              normalizePlacementPrompt(h.prompt) ===
+                normalizePlacementPrompt(prevQuestion.prompt),
+          )
+        ) {
+          historyRef.current = [...historyRef.current, entry];
+          setHistory(historyRef.current);
+        }
+      }
+
+      // Engine must never return a within-session duplicate; remint without re-scoring.
+      let nextRes = res;
+      if (
+        !nextRes.done &&
+        (seenIdsRef.current.includes(nextRes.question.id) ||
+          seenPromptsRef.current.some(
+            (p) =>
+              normalizePlacementPrompt(p) === normalizePlacementPrompt(nextRes.question.prompt),
+          ) ||
+          (prevQuestion &&
+            (prevQuestion.id === nextRes.question.id ||
+              normalizePlacementPrompt(prevQuestion.prompt) ===
+                normalizePlacementPrompt(nextRes.question.prompt))))
+      ) {
+        const reminted = mintNextLocalPlacementQuestion({
+          action: 'answer',
+          language,
+          uiLanguage,
+          ability: abilityRef.current,
+          history: historyRef.current,
+          questionIndex: historyRef.current.length,
+          seenQuestionIds: [...seenIdsRef.current, nextRes.question.id],
+          seenPrompts: [...seenPromptsRef.current, nextRes.question.prompt],
+          seenContentKeys: [...seenContentKeysRef.current, questionContentKey(nextRes.question)],
+          sessionSalt: sessionSaltRef.current + 17_011 + Date.now(),
+          userEntropy: userEntropyRef.current ^ 0x9e3779b9,
+          lastQuestion: prevQuestion
+            ? {
+                id: prevQuestion.id,
+                prompt: prevQuestion.prompt,
+                section: prevQuestion.section,
+                difficulty: prevQuestion.difficulty,
+                choices: prevQuestion.choices,
+              }
+            : undefined,
         });
+        if (!reminted.done) {
+          nextRes = { ...reminted, correct: res.correct, ability: res.ability };
+        }
       }
 
-      const seen = buildSeenQuestionKeys(history);
-      for (const id of seenQuestionIds) seen.ids.add(id);
-      for (const prompt of seenPrompts) seen.prompts.add(prompt);
-      for (const key of seenContentKeys) seen.contents.add(key);
-      if (isQuestionAlreadySeen(res.question, seen)) {
-        setError(pt('error'));
-        return;
-      }
-
-      if (prevQuestion?.prompt === res.question.prompt || prevQuestion?.id === res.question.id) {
-        setError(pt('error'));
+      if (
+        !nextRes.done &&
+        prevQuestion &&
+        (prevQuestion.id === nextRes.question.id ||
+          normalizePlacementPrompt(prevQuestion.prompt) ===
+            normalizePlacementPrompt(nextRes.question.prompt))
+      ) {
+        setError(null);
         return;
       }
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setQuestion(res.question);
-      setAnswerKey(res.answerKey);
-      setQuestionIndex(res.questionIndex);
-      setTotalQuestions(res.totalQuestions);
+      setError(null);
+      setQuestion(nextRes.question);
+      notePlacementItemPresented(nextRes.question, language);
+      setAnswerKey(nextRes.answerKey);
+      setQuestionIndex(nextRes.questionIndex);
+      setTotalQuestions(nextRes.totalQuestions);
       setSelected(null);
       setSecondsLeft(QUESTION_SECONDS);
       setQuestionEpoch((n) => n + 1);
-      rememberQuestion(res.question);
+      rememberQuestion(nextRes.question);
     },
-    [language, rememberQuestion, savePlacement, history, seenContentKeys, seenPrompts, seenQuestionIds],
+    [language, rememberQuestion, savePlacement, uiLanguage],
   );
 
   const submitAnswer = useCallback(
@@ -238,21 +374,49 @@ export function PlacementOnboardingScreen() {
       );
 
       const prevQuestion = question;
+      const liveHistory = historyRef.current;
+      const liveSeenIds = [...seenIdsRef.current, question.id];
+      const liveSeenPrompts = [...seenPromptsRef.current, question.prompt];
+      const liveSeenKeys = [...seenContentKeysRef.current, questionContentKey(question)];
+
       try {
-        const res = await runPlacementStep({
+        // Decode answerKey for accurate canonical correctness before server SoT finalize.
+        let scoredCorrect = false;
+        if (!timedOut && answer && answerKey) {
+          try {
+            const padded = answerKey.replace(/-/g, '+').replace(/_/g, '/');
+            const json = decodeURIComponent(escape(atob(padded)));
+            const parsed = JSON.parse(json) as { c?: string };
+            if (parsed?.c) {
+              scoredCorrect =
+                answer.trim().toLowerCase().replace(/\s+/g, ' ') ===
+                parsed.c.trim().toLowerCase().replace(/\s+/g, ' ');
+            }
+          } catch {
+            scoredCorrect = false;
+          }
+        }
+        notePlacementItemAnswered({
+          correct: timedOut ? false : scoredCorrect,
+          timedOut,
+          selectedAnswer: answer ?? undefined,
+        });
+        let res = await runPlacementStep({
           action: 'answer',
           language,
           uiLanguage,
-          ability,
-          history,
+          ability: abilityRef.current,
+          history: liveHistory,
           answer: answer ?? '',
           answerKey,
-          questionIndex,
+          questionIndex: liveHistory.length,
           timedOut,
-          seenQuestionIds: [...seenQuestionIds, question.id],
-          seenPrompts: [...seenPrompts, question.prompt],
-          seenContentKeys: [...seenContentKeys, questionContentKey(question)],
+          seenQuestionIds: liveSeenIds,
+          seenPrompts: liveSeenPrompts,
+          seenContentKeys: liveSeenKeys,
           sessionSalt: sessionSaltRef.current,
+          userEntropy: userEntropyRef.current,
+          ...canonicalPlacementFields(),
           lastQuestion: {
             id: question.id,
             prompt: question.prompt,
@@ -261,29 +425,63 @@ export function PlacementOnboardingScreen() {
             choices: question.choices,
           },
         });
+        if (typeof res.correct === 'boolean') {
+          const fields = canonicalPlacementFields();
+          const last = fields.canonicalResponses[fields.canonicalResponses.length - 1];
+          if (last) last.correct = res.correct;
+        }
+
+        // Extra client-side guarantee: never accept a within-session duplicate.
+        if (!res.done) {
+          const current = res;
+          const isSessionDup =
+            current.question.id === prevQuestion.id ||
+            normalizePlacementPrompt(current.question.prompt) ===
+              normalizePlacementPrompt(prevQuestion.prompt) ||
+            liveSeenIds.includes(current.question.id) ||
+            liveSeenPrompts.some(
+              (p) =>
+                normalizePlacementPrompt(p) ===
+                normalizePlacementPrompt(current.question.prompt),
+            ) ||
+            liveSeenKeys.includes(questionContentKey(current.question));
+          if (isSessionDup) {
+            const reminted = mintNextLocalPlacementQuestion({
+              action: 'answer',
+              language,
+              uiLanguage,
+              ability: abilityRef.current,
+              history: liveHistory,
+              questionIndex: liveHistory.length,
+              seenQuestionIds: [...liveSeenIds, current.question.id],
+              seenPrompts: [...liveSeenPrompts, current.question.prompt],
+              seenContentKeys: [...liveSeenKeys, questionContentKey(current.question)],
+              sessionSalt: sessionSaltRef.current + 7777 + Date.now(),
+              userEntropy: userEntropyRef.current ^ 0x85ebca6b,
+              lastQuestion: {
+                id: question.id,
+                prompt: question.prompt,
+                section: question.section,
+                difficulty: question.difficulty,
+                choices: question.choices,
+              },
+            });
+            if (!reminted.done) {
+              res = { ...reminted, correct: current.correct, ability: current.ability };
+            }
+          }
+        }
+
         applyStepResult(res, prevQuestion);
         if (res.done) clearPlacementPrefetch();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : pt('error'));
+      } catch {
+        // Local engine must not fail; if it somehow does, stay on current question silently.
+        setError(null);
       } finally {
         setChecking(false);
       }
     },
-    [
-      ability,
-      answerKey,
-      applyStepResult,
-      checking,
-      history,
-      language,
-      question,
-      questionIndex,
-      seenPrompts,
-      seenQuestionIds,
-      seenContentKeys,
-      selected,
-      uiLanguage,
-    ],
+    [answerKey, applyStepResult, checking, language, question, selected, uiLanguage],
   );
 
   const submitRef = useRef(submitAnswer);
@@ -295,15 +493,16 @@ export function PlacementOnboardingScreen() {
       action: 'answer',
       language,
       uiLanguage,
-      ability,
-      history,
+      ability: abilityRef.current,
+      history: historyRef.current,
       answer: selected,
       answerKey,
-      questionIndex,
-      seenQuestionIds: [...seenQuestionIds, question.id],
-      seenPrompts: [...seenPrompts, question.prompt],
-      seenContentKeys: [...seenContentKeys, questionContentKey(question)],
+      questionIndex: historyRef.current.length,
+      seenQuestionIds: [...seenIdsRef.current, question.id],
+      seenPrompts: [...seenPromptsRef.current, question.prompt],
+      seenContentKeys: [...seenContentKeysRef.current, questionContentKey(question)],
       sessionSalt: sessionSaltRef.current,
+      userEntropy: userEntropyRef.current,
       lastQuestion: {
         id: question.id,
         prompt: question.prompt,
@@ -312,21 +511,7 @@ export function PlacementOnboardingScreen() {
         choices: question.choices,
       },
     });
-  }, [
-    ability,
-    answerKey,
-    checking,
-    history,
-    language,
-    phase,
-    question,
-    questionIndex,
-    seenContentKeys,
-    seenPrompts,
-    seenQuestionIds,
-    selected,
-    uiLanguage,
-  ]);
+  }, [answerKey, checking, language, phase, question, selected, uiLanguage]);
 
   useEffect(() => {
     if (phase !== 'test' || !question || checking) return;
@@ -347,32 +532,60 @@ export function PlacementOnboardingScreen() {
   const startTest = useCallback(async () => {
     setError(null);
     setSelected(null);
+    setPreparing(true);
     clearPlacementPrefetch();
+    historyRef.current = [];
     setHistory([]);
+    abilityRef.current = START_ABILITY;
+    setAbility(START_ABILITY);
     try {
+      // Fire-and-forget wake; runPlacementStart has a hard ~8s AI budget then local.
+      warmPlacementApi();
+      await flushLifetimeSeen();
       const merged = await mergeLifetimeIntoSeen(language, {
         ids: [],
         prompts: [],
         contentKeys: [],
       });
-      const sessionSalt = Date.now() ^ Math.floor(Math.random() * 1_000_000_000);
+      if (!userEntropyRef.current) {
+        userEntropyRef.current = await getPlacementUserEntropy();
+      }
+      // Fresh salt every retake — xor with lifetime size so sequences never align with prior runs.
+      const sessionSalt =
+        (Date.now() ^
+          Math.floor(Math.random() * 0xffffffff) ^
+          (merged.prompts.length * 104729) ^
+          (userEntropyRef.current * 31)) >>>
+        0;
       sessionSaltRef.current = sessionSalt;
-      setSeenQuestionIds(merged.ids);
-      setSeenPrompts(merged.prompts);
-      setSeenContentKeys(merged.contentKeys);
-      const res = runPlacementStart({
+      userEntropyRef.current =
+        (userEntropyRef.current ^ sessionSalt ^ (merged.prompts.length + 1) * 2654435761) >>> 0;
+      resetCanonicalPlacementSession(String(sessionSalt));
+      const ids = merged.ids;
+      const prompts = merged.prompts;
+      const keys = merged.contentKeys;
+      seenIdsRef.current = ids;
+      seenPromptsRef.current = prompts;
+      seenContentKeysRef.current = keys;
+      setSeenQuestionIds(ids);
+      setSeenPrompts(prompts);
+      setSeenContentKeys(keys);
+      const res = await runPlacementStart({
         action: 'start',
         language,
         uiLanguage,
-        seenQuestionIds: merged.ids,
-        seenPrompts: merged.prompts,
-        seenContentKeys: merged.contentKeys,
+        seenQuestionIds: ids,
+        seenPrompts: prompts,
+        seenContentKeys: keys,
         sessionSalt,
+        userEntropy: userEntropyRef.current,
       });
       if (res.done) return;
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      abilityRef.current = res.ability;
       setAbility(res.ability);
       setQuestion(res.question);
+      notePlacementItemPresented(res.question, language);
       setAnswerKey(res.answerKey);
       setQuestionIndex(res.questionIndex);
       setTotalQuestions(res.totalQuestions);
@@ -380,21 +593,19 @@ export function PlacementOnboardingScreen() {
       setQuestionEpoch((n) => n + 1);
       rememberQuestion(res.question);
       setPhase('test');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : pt('error'));
+      setError(null);
+    } catch {
+      setError(pt('error'));
+    } finally {
+      setPreparing(false);
     }
   }, [language, rememberQuestion, uiLanguage]);
 
   const finish = useCallback(() => {
     clearPlacementPrefetch();
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace('/hub');
+    router.replace('/onboarding/learning-path');
   }, []);
 
-  const timerProgress = secondsLeft / QUESTION_SECONDS;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}>
@@ -435,10 +646,18 @@ export function PlacementOnboardingScreen() {
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <GameGoldButton
-            onPress={startTest}
+            onPress={() => void startTest()}
+            disabled={preparing}
             style={styles.primaryBtn}
             accessibilityLabel={pt('start')}>
-            <Text style={styles.primaryBtnText}>{pt('start')}</Text>
+            {preparing ? (
+              <View style={styles.checkingRow}>
+                <ActivityIndicator color={GAME_THEME.color.ink} />
+                <Text style={styles.primaryBtnText}>{pt('preparing')}</Text>
+              </View>
+            ) : (
+              <Text style={styles.primaryBtnText}>{pt('start')}</Text>
+            )}
           </GameGoldButton>
           </ScrollView>
         </FadeInView>
@@ -446,19 +665,6 @@ export function PlacementOnboardingScreen() {
 
       {phase === 'test' && question ? (
         <View style={styles.testWrap}>
-          <View style={styles.topMetaRow}>
-            <View style={styles.timerPill}>
-              <Ionicons
-                name="time-outline"
-                size={16}
-                color={secondsLeft <= 10 ? '#B42318' : GAME_THEME.color.ink}
-              />
-              <Text style={[styles.timerText, secondsLeft <= 10 && styles.timerTextUrgent]}>
-                {pt('timer', { seconds: secondsLeft })}
-              </Text>
-            </View>
-          </View>
-
           <View style={styles.progressTrack}>
             <Animated.View
               style={[
@@ -476,23 +682,17 @@ export function PlacementOnboardingScreen() {
             {pt('progress', { current: questionIndex, total: totalQuestions })}
           </Text>
 
-          <View style={styles.timerTrack}>
-            <Animated.View
-              style={[
-                styles.timerFill,
-                {
-                  width: `${Math.round(timerProgress * 100)}%`,
-                  backgroundColor: secondsLeft <= 10 ? '#F97066' : GAME_THEME.color.sky,
-                },
-              ]}
-            />
-          </View>
+          <Text style={[styles.timerText, secondsLeft <= 10 && styles.timerTextUrgent]}>
+            {pt('timer', { seconds: secondsLeft })}
+          </Text>
 
           <ScrollView contentContainerStyle={styles.testScroll} showsVerticalScrollIndicator={false}>
             <FadeInView key={`${question.id}-${questionEpoch}`} duration={480} offsetY={16}>
               <Text style={styles.instruction}>{question.instruction}</Text>
               <View style={styles.promptCard}>
-                <Text style={styles.prompt}>{question.prompt}</Text>
+                <Text style={styles.prompt}>
+                  {stripPlacementPromptDecorations(question.prompt)}
+                </Text>
               </View>
 
               <View style={styles.choices}>
@@ -684,27 +884,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
-  topMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  timerPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: GAME_THEME.color.paperWarm,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
-  },
   timerText: {
-    fontSize: 13,
+    marginBottom: 10,
+    fontSize: 15,
     fontWeight: '800',
     color: GAME_THEME.color.ink,
+    textAlign: 'center',
   },
   timerTextUrgent: {
     color: '#B42318',
@@ -728,17 +913,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: 'rgba(26,26,26,0.55)',
     textAlign: 'center',
-  },
-  timerTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(26,26,26,0.06)',
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  timerFill: {
-    height: '100%',
-    borderRadius: 2,
   },
   testScroll: {
     paddingBottom: 16,

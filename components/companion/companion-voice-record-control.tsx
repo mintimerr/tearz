@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -573,10 +573,8 @@ const styles = StyleSheet.create({
     height: MIC_SIZE,
     borderRadius: MIC_SIZE / 2,
     backgroundColor: SEND_BTN_ACTIVE,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 3,
-    borderBottomColor: GAME_THEME.color.goldLip,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -595,10 +593,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 3,
-    borderBottomColor: GAME_THEME.color.goldLip,
   },
   attachBtnIdle: {
     backgroundColor: GAME_THEME.color.paper,
@@ -615,12 +611,10 @@ const styles = StyleSheet.create({
     maxHeight: 120,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: GAME_THEME.color.paper,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 3,
-    borderBottomColor: GAME_THEME.color.goldLip,
+    borderWidth: 1.5,
+    borderColor: 'rgba(26,26,26,0.88)',
     fontSize: 16,
     lineHeight: 21,
     letterSpacing: -0.2,
@@ -644,10 +638,8 @@ const styles = StyleSheet.create({
     height: MIC_SIZE,
     borderRadius: MIC_SIZE / 2,
     backgroundColor: SEND_BTN_ACTIVE,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 3,
-    borderBottomColor: GAME_THEME.color.goldLip,
     alignItems: 'center',
     justifyContent: 'center',
   },

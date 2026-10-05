@@ -1,0 +1,3 @@
+node_modules/
+scripts/audit-artifact.json
+scripts/orchestrator-artifact.json

@@ -31,6 +31,8 @@ type Props = {
   text: string;
   style?: StyleProp<TextStyle>;
   numberOfLines?: number;
+  /** Inside a wrapping row — size to content, not full width. */
+  inline?: boolean;
   onSelect: (word: string) => void;
   /** Снятие выделения (тап в пустоту) — закрыть плашку перевода. */
   onClear?: () => void;
@@ -73,17 +75,35 @@ export function SelectableChatText({
   text,
   style,
   numberOfLines,
+  inline = false,
   onSelect,
   onClear,
   registerSelectionClearer,
   onInteract,
 }: Props) {
   const [height, setHeight] = useState<number | undefined>(undefined);
+  const [width, setWidth] = useState<number | undefined>(undefined);
   const hadSelectionRef = useRef(false);
   const nativeRef = useRef<{ clearSelection?: () => Promise<void> }>(null);
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flat = useMemo(() => StyleSheet.flatten(style) ?? {}, [style]);
+  const fontSize = typeof flat.fontSize === 'number' ? flat.fontSize : 16;
+  // Без явного lineHeight не подставлять 24: на крупном кегле (слово в тренировке, 28)
+  // строка ниже шрифта обрезает иероглифы.
+  const lineHeight =
+    typeof flat.lineHeight === 'number' ? flat.lineHeight : Math.max(24, Math.ceil(fontSize * 1.35));
+
+  // Новый текст — сбросить размер, иначе может остаться высота «столбика».
+  useEffect(() => {
+    setHeight(undefined);
+    setWidth(undefined);
+  }, [text]);
 
   const clearNativeSelection = useCallback(() => {
+    if (clearTimerRef.current) {
+      clearTimeout(clearTimerRef.current);
+      clearTimerRef.current = null;
+    }
     void nativeRef.current?.clearSelection?.();
   }, []);
 
@@ -92,15 +112,32 @@ export function SelectableChatText({
     return registerSelectionClearer(clearNativeSelection);
   }, [clearNativeSelection, registerSelectionClearer]);
 
+  useEffect(
+    () => () => {
+      if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+    },
+    [],
+  );
+
   const onSelectionChange = useCallback(
     (event: NativeSyntheticEvent<{ text: string; start: number; end: number }>) => {
       const selected = event.nativeEvent.text.trim();
       if (!selected) {
-        if (hadSelectionRef.current) {
+        if (!hadSelectionRef.current) return;
+        if (clearTimerRef.current) clearTimeout(clearTimerRef.current);
+        // Debounce empty — handle release / stretch often emits empty briefly.
+        clearTimerRef.current = setTimeout(() => {
+          clearTimerRef.current = null;
+          if (!hadSelectionRef.current) return;
+          // Don't clear sheet from a flicker — only if still empty after settle.
           hadSelectionRef.current = false;
           onClear?.();
-        }
+        }, 420);
         return;
+      }
+      if (clearTimerRef.current) {
+        clearTimeout(clearTimerRef.current);
+        clearTimerRef.current = null;
       }
       hadSelectionRef.current = true;
       onSelect(selected);
@@ -108,32 +145,53 @@ export function SelectableChatText({
     [onClear, onSelect],
   );
 
-  const onContentSize = useCallback((event: NativeSyntheticEvent<{ width: number; height: number }>) => {
-    const next = Math.ceil(event.nativeEvent.height);
-    setHeight((prev) => (prev === next ? prev : next));
-  }, []);
+  const onContentSize = useCallback(
+    (event: NativeSyntheticEvent<{ width: number; height: number }>) => {
+      const nextH = Math.ceil(event.nativeEvent.height);
+      const nextW = Math.ceil(event.nativeEvent.width);
+      setHeight((prev) => (prev === nextH ? prev : nextH));
+      // Всегда фиксируем intrinsic width — иначе CJK пузырь схлопывается в 1 символ.
+      setWidth((prev) => (prev === nextW ? prev : nextW));
+    },
+    [],
+  );
 
   return (
     <NativeSelectableChatText
       ref={nativeRef}
       text={text}
       color={typeof flat.color === 'string' ? flat.color : '#1A1A1A'}
-      fontSize={typeof flat.fontSize === 'number' ? flat.fontSize : 16}
-      lineHeight={typeof flat.lineHeight === 'number' ? flat.lineHeight : 24}
+      fontSize={fontSize}
+      lineHeight={lineHeight}
       fontWeight={fontWeightToNumber(flat.fontWeight)}
-      selectionColor="#007AFF"
+      selectionColor="rgba(0, 122, 255, 0.22)"
       numberOfLines={numberOfLines ?? 0}
       onSelectionChange={onSelectionChange}
       onContentSize={onContentSize}
       onInteract={onInteract}
-      style={[styles.fill, height != null ? { height } : null]}
+      style={[
+        inline ? styles.inline : styles.fill,
+        // Пока нет intrinsic size — не рисуем: иначе на fade/slide мелькает
+        // синий selection/frame до хрома экрана.
+        height == null || width == null ? styles.pending : null,
+        height != null ? { height } : null,
+        width != null ? { width } : null,
+      ]}
     />
   );
 }
 
 const styles = StyleSheet.create({
   fill: {
-    alignSelf: 'stretch',
-    width: '100%',
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+  },
+  inline: {
+    alignSelf: 'flex-start',
+    flexShrink: 1,
+    maxWidth: '100%',
+  },
+  pending: {
+    opacity: 0,
   },
 });

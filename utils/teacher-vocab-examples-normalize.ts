@@ -1,4 +1,5 @@
 import type { TeacherVocabWordCard } from '@/types/companion-chat-api';
+import { isHollowVocabExample } from '@/utils/teacher-vocab-examples-filter';
 
 export function normalizeTeacherVocabExamples(raw: unknown): TeacherVocabWordCard[] {
   if (!raw || typeof raw !== 'object') return [];
@@ -26,6 +27,7 @@ export function normalizeTeacherVocabExamples(raw: unknown): TeacherVocabWordCar
             ? (s as { translation: string }).translation.trim()
             : '';
         if (!l2 || !translation) continue;
+        if (isHollowVocabExample(l2, translation)) continue;
         const sp = (s as { pinyin?: unknown }).pinyin;
         const note = (s as { note?: unknown }).note;
         sentences.push({

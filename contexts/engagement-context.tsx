@@ -1,15 +1,19 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState, Platform } from 'react-native';
 
 import type { NativeLanguage } from '@/contexts/auth-context';
 import { useAuth } from '@/contexts/auth-context';
+import { COIN_REWARDS, coinsForActivity } from '@/constants/reward-rules';
+import { ownedTearzIdsForXp, STARTER_TEARZ_ID } from '@/constants/tearz-collection';
 import {
-  COIN_REWARDS,
-  TEARZ_UNLOCK_BY_ACTIVITY,
-  coinsForActivity,
-} from '@/constants/reward-rules';
-import { STARTER_TEARZ_ID } from '@/constants/tearz-collection';
+  DEFAULT_TEARZ_LOADOUT,
+  STARTER_COSMETIC_IDS,
+  TEARZ_COSMETIC_BY_ID,
+  applyCosmeticToLoadout,
+  normalizeLoadout,
+  type TearzLoadout,
+} from '@/constants/tearz-cosmetics';
 import { PLUS_DAY_COIN_COST, PLUS_DAY_MS } from '@/types/lexicon';
 import type { DailyTasks, EngagementState, RecordActivityParams } from '@/types/engagement';
 import { DEFAULT_ENGAGEMENT_STATE, EMPTY_DAILY_TASKS } from '@/types/engagement';
@@ -48,6 +52,8 @@ type EngagementContextValue = {
   bonusXp: number;
   coins: number;
   ownedTearzIds: string[];
+  ownedCosmeticIds: string[];
+  tearzLoadout: TearzLoadout;
   /** Локальный Tearz Plus (монеты / день). */
   hasPlusAccess: boolean;
   plusExpiresAt: number | null;
@@ -65,8 +71,11 @@ type EngagementContextValue = {
   grantCoins: (amount: number) => void;
   spendCoinsForPlusDay: () => boolean;
   unlockTearz: (tearzId: string) => boolean;
+  syncTearzForStudyXp: (xp: number) => void;
+  purchaseCosmetic: (cosmeticId: string) => boolean;
+  equipCosmetic: (cosmeticId: string) => boolean;
+  equipSkin: (skinId: string) => boolean;
 };
-
 const DAILY_TASK_KEYS: (keyof DailyTasks)[] = ['lesson', 'drill', 'vocab'];
 
 function taskKeyForActivity(kind: RecordActivityParams['kind']): keyof DailyTasks {
@@ -366,10 +375,6 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
         if (coinGain > 0) {
           current = { ...current, coins: current.coins + coinGain };
         }
-        const tearzGain = TEARZ_UNLOCK_BY_ACTIVITY[params.kind];
-        if (tearzGain && !current.ownedTearzIds.includes(tearzGain)) {
-          current = { ...current, ownedTearzIds: [...current.ownedTearzIds, tearzGain] };
-        }
 
         if (params.kind === 'message') {
           await cancelReengagementNotifications();
@@ -452,12 +457,15 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       ? current.ownedTearzIds
       : [...current.ownedTearzIds, STARTER_TEARZ_ID];
     const starterCoins = COIN_REWARDS.starter;
+    const cosmetics = Array.from(new Set([...current.ownedCosmeticIds, ...STARTER_COSMETIC_IDS]));
 
     const next: EngagementState = {
       ...current,
       starterPackClaimed: true,
       coins: current.coins + starterCoins,
       ownedTearzIds: owned,
+      ownedCosmeticIds: cosmetics,
+      tearzLoadout: normalizeLoadout(current.tearzLoadout ?? DEFAULT_TEARZ_LOADOUT),
     };
     stateRef.current = next;
     setState(next);
@@ -500,6 +508,25 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     return true;
   }, [isAuthenticated, persist, user?.id]);
 
+  const syncTearzForStudyXp = useCallback(
+    (xp: number) => {
+      if (!user?.id || !isAuthenticated) return;
+      const current = stateRef.current;
+      const nextIds = ownedTearzIdsForXp(Math.max(0, Math.floor(xp)), current.ownedTearzIds);
+      const same =
+        nextIds.length === current.ownedTearzIds.length &&
+        nextIds.every((id) => current.ownedTearzIds.includes(id));
+      if (same) return;
+      const gained = nextIds.some((id) => !current.ownedTearzIds.includes(id));
+      const next: EngagementState = { ...current, ownedTearzIds: nextIds };
+      stateRef.current = next;
+      setState(next);
+      void persist(next);
+      if (gained) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    },
+    [isAuthenticated, persist, user?.id],
+  );
+
   const unlockTearz = useCallback(
     (tearzId: string): boolean => {
       if (!user?.id || !isAuthenticated || !tearzId) return false;
@@ -513,6 +540,80 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       setState(next);
       void persist(next);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return true;
+    },
+    [isAuthenticated, persist, user?.id],
+  );
+
+  const purchaseCosmetic = useCallback(
+    (cosmeticId: string): boolean => {
+      if (!user?.id || !isAuthenticated || !cosmeticId) return false;
+      const item = TEARZ_COSMETIC_BY_ID[cosmeticId];
+      if (!item) return false;
+      const current = stateRef.current;
+      if (current.ownedCosmeticIds.includes(cosmeticId)) return false;
+      if (current.coins < item.price) return false;
+
+      const loadout = normalizeLoadout(current.tearzLoadout);
+      const equipped = applyCosmeticToLoadout(loadout, item);
+
+      const next: EngagementState = {
+        ...current,
+        coins: current.coins - item.price,
+        ownedCosmeticIds: [...current.ownedCosmeticIds, cosmeticId],
+        tearzLoadout: equipped,
+      };
+      stateRef.current = next;
+      setState(next);
+      void persist(next);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return true;
+    },
+    [isAuthenticated, persist, user?.id],
+  );
+
+  const equipCosmetic = useCallback(
+    (cosmeticId: string): boolean => {
+      if (!user?.id || !isAuthenticated || !cosmeticId) return false;
+      const item = TEARZ_COSMETIC_BY_ID[cosmeticId];
+      if (!item) return false;
+      const current = stateRef.current;
+      if (!current.ownedCosmeticIds.includes(cosmeticId) && item.price > 0) return false;
+
+      const loadout = normalizeLoadout(current.tearzLoadout);
+      const equipped = applyCosmeticToLoadout(loadout, item);
+
+      const owned = current.ownedCosmeticIds.includes(cosmeticId)
+        ? current.ownedCosmeticIds
+        : [...current.ownedCosmeticIds, cosmeticId];
+
+      const next: EngagementState = {
+        ...current,
+        ownedCosmeticIds: owned,
+        tearzLoadout: equipped,
+      };
+      stateRef.current = next;
+      setState(next);
+      void persist(next);
+      void Haptics.selectionAsync();
+      return true;
+    },
+    [isAuthenticated, persist, user?.id],
+  );
+
+  const equipSkin = useCallback(
+    (skinId: string): boolean => {
+      if (!user?.id || !isAuthenticated || !skinId) return false;
+      const current = stateRef.current;
+      if (!current.ownedTearzIds.includes(skinId)) return false;
+      const next: EngagementState = {
+        ...current,
+        tearzLoadout: { ...normalizeLoadout(current.tearzLoadout), skinId },
+      };
+      stateRef.current = next;
+      setState(next);
+      void persist(next);
+      void Haptics.selectionAsync();
       return true;
     },
     [isAuthenticated, persist, user?.id],
@@ -578,6 +679,8 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       bonusXp: state.bonusXp,
       coins: state.coins,
       ownedTearzIds: state.ownedTearzIds,
+      ownedCosmeticIds: state.ownedCosmeticIds,
+      tearzLoadout: normalizeLoadout(state.tearzLoadout),
       hasPlusAccess: typeof state.plusExpiresAt === 'number' && state.plusExpiresAt > Date.now(),
       plusExpiresAt: state.plusExpiresAt ?? null,
       streakFreezeAvailable: state.streakFreezeAvailable,
@@ -594,27 +697,37 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       grantCoins,
       spendCoinsForPlusDay,
       unlockTearz,
+      syncTearzForStudyXp,
+      purchaseCosmetic,
+      equipCosmetic,
+      equipSkin,
     }),
     [
       claimStarterPack,
       dailyDoneCount,
       dailyTasks,
       dismissXpReward,
+      equipCosmetic,
+      equipSkin,
       grantCoins,
       hydrated,
+      purchaseCosmetic,
       recordActivity,
       requestNotifications,
       spendCoinsForPlusDay,
       state.bonusXp,
       state.coins,
-      state.dailyStreak,
-      state.longestStreak,
+      state.ownedCosmeticIds,
       state.ownedTearzIds,
       state.plusExpiresAt,
       state.streakFreezeAvailable,
+      state.tearzLoadout,
       streakExtendedToday,
       unlockTearz,
+      syncTearzForStudyXp,
       xpReward,
+      state.dailyStreak,
+      state.longestStreak,
     ],
   );
 

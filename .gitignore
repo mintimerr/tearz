@@ -50,3 +50,10 @@ tmp-*.png
 # generated native folders
 /ios
 /android
+
+# Android sideload artifact (keep off git)
+landing/*.apk
+*.apk
+
+# Signing / store upload secrets
+credentials/

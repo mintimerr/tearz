@@ -91,9 +91,10 @@ export function buildPlacementQuestionSystemPrompt({
 
   return `${PLACEMENT_BRAIN_SUMMARY}
 
-YOUR SUB-ROLE NOW: write exactly ONE multiple-choice item at the difficulty the adaptive engine requests.
-You do NOT choose the numeric difficulty — the engine already decided: ${difficulty}/100 (${band}).
-You DO choose linguistic demand: the stem MUST be authentic ${band} content.
+YOUR SUB-ROLE NOW: write exactly ONE multiple-choice item.
+The engine's ceiling is ${difficulty}/100 (${band}). Do not write harder than that.
+You DO choose linguistic demand: the stem must be real ${band} content, or easier if you cannot honestly reach ${band}.
+Report that true demand in "difficulty". Never report a number above ${difficulty}.
 Invent the item from scratch — never pull from a fixed item bank or recycle textbook stock drills.
 Return JSON only — no markdown.
 
@@ -106,7 +107,7 @@ ${languageSpecificRules(lang)}
 
 BAND CONTENT CONTRACT for ${band} (${difficulty}/100):
 ${bandContract}
-If this band is B2/C1/C2, it is a HARD FAILURE to produce A1/A2 classroom drills (e.g. German "geht/fahren", English "went/goes", Chinese HSK1 是/有 blanks) even if you set "difficulty": ${difficulty}.
+If this band is B2/C1/C2, it is a HARD FAILURE to produce A1/A2 classroom drills (e.g. German "geht/fahren", English "went/goes", Chinese HSK1 是/有 blanks). When the stem is easier than ${band}, set "difficulty" to the easier band's number. Do not keep ${difficulty}.
 
 OUTPUT SCHEMA:
 {
@@ -116,7 +117,7 @@ OUTPUT SCHEMA:
   "prompt": "stem mostly in L2",
   "choices": ["A","B","C","D"],
   "correctChoice": "exact match from choices",
-  "difficulty": ${difficulty},
+  "difficulty": "integer 0–${difficulty}: the TRUE demand of the stem you wrote. Never higher than ${difficulty}. If the stem is easier than ${band}, write the lower number",
   "section": "${section}"
 }
 
@@ -132,7 +133,7 @@ FORBIDDEN: isolated word translation, pinyin, true/false, copying ALREADY USED i
 CRITICAL: Never produce the same prompt text (or a near-paraphrase) as any ALREADY USED item.
 
 Self-check before return:
-1) Would a teacher rate this stem as ${band}, not easier?
+1) If the stem is easier than ${band}, is "difficulty" the lower number, not ${difficulty}?
 2) Could a careful ${band} learner still miss it for a good reason?
 3) Are distractors serious, not joke extremes?${buildAvoidBlock({ history, seenPrompts })}`;
 }
@@ -148,7 +149,7 @@ export function buildPlacementQuestionUserPrompt({
   const last = history.length ? history[history.length - 1] : null;
   const lastLine = last
     ? `Previous (${last.correct ? 'CORRECT' : 'INCORRECT'}, difficulty ${last.difficulty}/100): "${last.prompt.slice(0, 100)}"`
-    : 'First item — difficulty≈30/100 (honest A2 calibration).';
+    : 'First item — difficulty≈8/100 (honest A1, zero experience).';
   const band = cefrBandFrom100(probe.targetDifficulty);
 
   return (
@@ -162,7 +163,7 @@ export function buildPlacementQuestionUserPrompt({
   );
 }
 
-/** Final level prompt — conservative CEFR from adaptive ability + answer log. */
+/** @deprecated Final CEFR — use finalizePlacementWithAssessment. Kept for PLACEMENT_USE_LEGACY_LLM_CEFR rollback only. */
 export function buildPlacementResultBrainPrompt(lang, ability, history) {
   const lines = history
     .map(

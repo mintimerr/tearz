@@ -8,7 +8,7 @@ import { APP_THEME } from '@/constants/theme';
 import { LongPressWordText } from '@/components/long-press-word-text';
 import { TEACHER_TITLE } from '@/components/teacher/teacher-tokens';
 import { drillTaskStyles as styles } from '@/components/teacher/teacher-drill-styles';
-import { DrillDropZone, DraggableWordBank, useWordDragAssign } from '@/components/teacher/teacher-word-drag';
+import { DrillDropZone, DraggableWordBank, SentenceOrderBoard, useWordDragAssign } from '@/components/teacher/teacher-word-drag';
 import { useTranslation } from '@/contexts/locale-context';
 import type { TeacherExerciseItem, TeacherExerciseSegment } from '@/types/companion-chat-api';
 import { hashSeed } from '@/utils/teacher-exercise-bank';
@@ -97,6 +97,7 @@ function InlineDragBlankLine({
   dropIdForBlank,
   onFocusBlank,
   onTapBlank,
+  onClearBlank,
   withDrag,
 }: {
   segments: TeacherExerciseSegment[];
@@ -105,6 +106,7 @@ function InlineDragBlankLine({
   dropIdForBlank: (blankId: string) => string;
   onFocusBlank: (blankId: string) => void;
   onTapBlank: (blankId: string) => void;
+  onClearBlank?: (blankId: string) => void;
   withDrag: boolean;
 }) {
   return (
@@ -130,6 +132,7 @@ function InlineDragBlankLine({
               key={seg.id}
               id={dropIdForBlank(seg.id)}
               onPress={() => onTapBlank(seg.id)}
+              onClear={value && onClearBlank ? () => onClearBlank(seg.id) : undefined}
               style={blankStyle}>
               <Text style={[styles.blankFilledText, !value && styles.blankPlaceholder]}>
                 {value || '___'}
@@ -285,6 +288,11 @@ export function TeacherExerciseTaskBody({
   const [activeNumberedId, setActiveNumberedId] = useState<string | null>(null);
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const [usedChipIndices, setUsedChipIndices] = useState<Set<number>>(() => new Set());
+  /** Какой чип банка стоит в каком пропуске / numbered / image. */
+  const [blankChipById, setBlankChipById] = useState<Record<string, number>>({});
+  const [numberedChipById, setNumberedChipById] = useState<Record<string, number>>({});
+  /** Индексы банка в порядке сборки предложения (sentence_order / build_from_meaning). */
+  const [sentenceBankIndices, setSentenceBankIndices] = useState<number[]>([]);
 
   useEffect(() => {
     setSelectedChip(null);
@@ -292,6 +300,9 @@ export function TeacherExerciseTaskBody({
     setActiveNumberedId(null);
     setActiveImageId(null);
     setUsedChipIndices(new Set());
+    setBlankChipById({});
+    setNumberedChipById({});
+    setSentenceBankIndices([]);
   }, [exercise.id]);
 
   useEffect(() => {
@@ -306,11 +317,10 @@ export function TeacherExerciseTaskBody({
     }
   }, [disabled, exercise.id, exercise.numberedSentences, exercise.segments, onFocusBlank]);
 
-  const shuffledPool = useMemo(() => {
+  const sentenceBankWords = useMemo(() => {
     if (exercise.kind !== 'sentence_order' && exercise.kind !== 'build_from_meaning') return [];
-    const words = exercise.shuffledWords?.length ? exercise.shuffledWords : exercise.correctOrder ?? [];
-    return words.filter((w) => !state.sentenceOrder.includes(w));
-  }, [exercise, state.sentenceOrder]);
+    return exercise.shuffledWords?.length ? exercise.shuffledWords : exercise.correctOrder ?? [];
+  }, [exercise]);
 
   const rightColumn = useMemo(() => {
     if (!exercise.pairs?.length) return [];
@@ -340,32 +350,114 @@ export function TeacherExerciseTaskBody({
     });
   };
 
+  const freeChip = (index: number | undefined) => {
+    if (index == null || index < 0) return;
+    setUsedChipIndices((prev) => {
+      if (!prev.has(index)) return prev;
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+  };
+
+  const applySentenceIndices = useCallback(
+    (indices: number[]) => {
+      setSentenceBankIndices(indices);
+      onStateChange({
+        sentenceOrder: indices.map((i) => sentenceBankWords[i] ?? ''),
+      });
+    },
+    [onStateChange, sentenceBankWords],
+  );
+
+  const clearBlank = useCallback(
+    (blankId: string) => {
+      freeChip(blankChipById[blankId]);
+      setBlankChipById((prev) => {
+        const next = { ...prev };
+        delete next[blankId];
+        return next;
+      });
+      const nextBlanks = { ...state.blanks };
+      delete nextBlanks[blankId];
+      onStateChange({ blanks: nextBlanks });
+      onFocusBlank(blankId);
+      void Haptics.selectionAsync();
+    },
+    [blankChipById, onFocusBlank, onStateChange, state.blanks],
+  );
+
   const assignWordToBlank = useCallback(
     (word: string, chipIndex: number, blankId: string) => {
+      // То же слово уже стоит — ничего не делаем.
+      if (blankChipById[blankId] === chipIndex && (state.blanks[blankId] ?? '') === word) {
+        setSelectedChip(null);
+        onFocusBlank(blankId);
+        return;
+      }
+      // Замена: освободить предыдущий чип.
+      const prevChip = blankChipById[blankId];
+      if (prevChip != null && prevChip !== chipIndex) freeChip(prevChip);
+
       onStateChange({ blanks: { ...state.blanks, [blankId]: word } });
+      setBlankChipById((prev) => ({ ...prev, [blankId]: chipIndex }));
       markChipUsed(chipIndex);
       setSelectedChip(null);
       onFocusBlank(blankId);
-      const nextBlank = blankIds.find((id) => id !== blankId && !(state.blanks[id] ?? '').trim());
-      if (nextBlank) onFocusBlank(nextBlank);
+      const emptyNext = blankIds.find((id) => {
+        if (id === blankId) return false;
+        return !(state.blanks[id] ?? '').trim();
+      });
+      if (emptyNext) onFocusBlank(emptyNext);
     },
-    [blankIds, onFocusBlank, onStateChange, state.blanks],
+    [blankChipById, blankIds, onFocusBlank, onStateChange, state.blanks],
+  );
+
+  const clearNumbered = useCallback(
+    (sentenceId: string) => {
+      freeChip(numberedChipById[sentenceId]);
+      setNumberedChipById((prev) => {
+        const next = { ...prev };
+        delete next[sentenceId];
+        return next;
+      });
+      const nextAssign = { ...state.numberedAssignments };
+      delete nextAssign[sentenceId];
+      onStateChange({ numberedAssignments: nextAssign });
+      setActiveNumberedId(sentenceId);
+      void Haptics.selectionAsync();
+    },
+    [numberedChipById, onStateChange, state.numberedAssignments],
   );
 
   const assignWordToNumbered = useCallback(
     (word: string, chipIndex: number, sentenceId: string) => {
+      if (numberedChipById[sentenceId] === chipIndex) {
+        setSelectedChip(null);
+        setActiveNumberedId(sentenceId);
+        return;
+      }
+      const prevChip = numberedChipById[sentenceId];
+      if (prevChip != null && prevChip !== chipIndex) freeChip(prevChip);
+
       onStateChange({
         numberedAssignments: { ...state.numberedAssignments, [sentenceId]: word },
       });
+      setNumberedChipById((prev) => ({ ...prev, [sentenceId]: chipIndex }));
       markChipUsed(chipIndex);
       setActiveNumberedId(null);
       setSelectedChip(null);
     },
-    [onStateChange, state.numberedAssignments],
+    [numberedChipById, onStateChange, state.numberedAssignments],
   );
 
   const assignWordToTarget = useCallback(
     (targetId: string, word: string, chipIndex: number) => {
+      if (targetId === 'sentence') {
+        if (sentenceBankIndices.includes(chipIndex)) return;
+        applySentenceIndices([...sentenceBankIndices, chipIndex]);
+        return;
+      }
       if (targetId.startsWith('blank-')) {
         assignWordToBlank(word, chipIndex, targetId.slice('blank-'.length));
         return;
@@ -374,7 +466,7 @@ export function TeacherExerciseTaskBody({
         assignWordToNumbered(word, chipIndex, targetId.slice('numbered-'.length));
       }
     },
-    [assignWordToBlank, assignWordToNumbered],
+    [applySentenceIndices, assignWordToBlank, assignWordToNumbered, sentenceBankIndices],
   );
 
   useWordDragAssign(assignWordToTarget);
@@ -418,11 +510,18 @@ export function TeacherExerciseTaskBody({
             dropIdForBlank={(blankId) => `blank-${blankId}`}
             onFocusBlank={onFocusBlank}
             onTapBlank={(blankId) => {
-              onFocusBlank(blankId);
+              const filled = Boolean((state.blanks[blankId] ?? '').trim());
               if (selectedChip) {
                 assignWordToBlank(selectedChip.word, selectedChip.index, blankId);
+                return;
               }
+              if (filled) {
+                clearBlank(blankId);
+                return;
+              }
+              onFocusBlank(blankId);
             }}
+            onClearBlank={clearBlank}
             withDrag
           />
         ) : (
@@ -511,11 +610,17 @@ export function TeacherExerciseTaskBody({
                       dropIdForBlank={() => `numbered-${s.id}`}
                       onFocusBlank={() => setActiveNumberedId(s.id)}
                       onTapBlank={() => {
-                        setActiveNumberedId(s.id);
                         if (selectedChip) {
                           assignWordToNumbered(selectedChip.word, selectedChip.index, s.id);
+                          return;
                         }
+                        if (assignment.trim()) {
+                          clearNumbered(s.id);
+                          return;
+                        }
+                        setActiveNumberedId(s.id);
                       }}
+                      onClearBlank={() => clearNumbered(s.id)}
                       withDrag
                     />
                     </View>
@@ -743,42 +848,15 @@ export function TeacherExerciseTaskBody({
         );
       }
       return (
-        <>
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('teacher.drill.builtSentence')}</Text>
-            <View style={styles.sentenceBuilt}>
-              <Text style={styles.sentenceBuiltText}>
-                {state.sentenceOrder.length > 0
-                  ? state.sentenceOrder.join(' ')
-                  : t('teacher.drill.tapWordsOrder')}
-              </Text>
-              {state.sentenceOrder.length > 0 ? (
-                <Pressable
-                  onPress={() => onStateChange({ sentenceOrder: [] })}
-                  style={styles.sentenceReset}>
-                  <Ionicons name="refresh" size={14} color={APP_THEME.color.mutedSoft} />
-                </Pressable>
-              ) : null}
-            </View>
-          </View>
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>{t('teacher.drill.words')}</Text>
-            <View style={styles.bankRow}>
-              {shuffledPool.map((word, wi) => (
-                <Pressable
-                  key={`${word}-${wi}`}
-                  onPress={() => {
-                    onStateChange({ sentenceOrder: [...state.sentenceOrder, word] });
-                    void Haptics.selectionAsync();
-                  }}
-                  disabled={disabled}
-                  style={({ pressed }) => [styles.bankChip, pressed && styles.bankChipPressed]}>
-                  <Text style={styles.bankChipText}>{word}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        </>
+        <SentenceOrderBoard
+          bankWords={sentenceBankWords}
+          placedIndices={sentenceBankIndices}
+          disabled={disabled}
+          onChange={applySentenceIndices}
+          emptyHint={t('teacher.drill.tapWordsOrder')}
+          sectionLabelBuilt={t('teacher.drill.builtSentence')}
+          sectionLabelWords={t('teacher.drill.words')}
+        />
       );
 
     case 'match_pairs':

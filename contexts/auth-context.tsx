@@ -6,6 +6,7 @@ import { LOCALE_STORAGE_KEY, PENDING_SIGNUP_KEY } from '@/constants/locale-stora
 import { postAuthSendCode, postAuthVerifyCode } from '@/services/auth-api';
 import {
   clearLegacyGlobalData,
+  copyUserData,
   initEmptyUserData,
   loadAccountsRegistry,
   migrateLegacyDataToUser,
@@ -18,6 +19,11 @@ const ACTIVE_USER_KEY = '@tearz/auth_active_user';
 
 const DEMO_EMAIL = 'demo@tearz.app';
 const DEMO_PASSWORD = 'demo-tearz';
+
+/** Гость — локальный демо-аккаунт, пока человек не зарегистрировался по почте. */
+export function isGuestAccount(user: { email?: string } | null | undefined) {
+  return user?.email === DEMO_EMAIL;
+}
 
 export type NativeLanguage = 'ru' | 'zh' | 'en';
 
@@ -207,8 +213,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       [normalized]: { user: authUser, password: pending.password },
     };
 
+    let guestId: string | null = null;
+    try {
+      const prevRaw = await AsyncStorage.getItem(ACTIVE_USER_KEY);
+      if (prevRaw) {
+        const prev = JSON.parse(prevRaw) as AuthUser;
+        if (prev.email === DEMO_EMAIL) guestId = prev.id;
+      }
+    } catch {
+      guestId = null;
+    }
+
     await saveAccountsRegistry(nextRegistry);
     await initEmptyUserData(authUser.id);
+    if (guestId && guestId !== authUser.id) {
+      await copyUserData(guestId, authUser.id);
+    }
     await clearLegacyGlobalData();
     await AsyncStorage.removeItem(PENDING_SIGNUP_KEY);
     await persistSession(authUser);

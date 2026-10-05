@@ -41,12 +41,8 @@ export const COIN_REWARDS = {
   dailyGoal: 50,
 } as const;
 
-/** Tearz, которые открываются за активность (один раз) */
-export const TEARZ_UNLOCK_BY_ACTIVITY: Partial<Record<QualifyingActivityKind, string>> = {
-  message: 'plaza',
-  vocab_session: 'bookworm',
-  teacher_drill: 'builder',
-};
+/** Коллекция открывается уровнем и XP, не разовым действием. */
+export const TEARZ_UNLOCK_BY_ACTIVITY: Partial<Record<QualifyingActivityKind, string>> = {};
 
 export const DAILY_GOAL_COIN_BONUS = COIN_REWARDS.dailyGoal;
 export const DAILY_GOAL_XP_BONUS = DAILY_GOAL_BONUS_XP;

@@ -1,0 +1,20 @@
+diff --git a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+index 2a67797..98ca9a6 100644
+--- a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
++++ b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+@@ -435,7 +435,14 @@ TraceSection s(
+     @try {
+       [inv invokeWithTarget:strongModule];
+     } @catch (NSException *exception) {
+-      throw convertNSExceptionToJSError(runtime, exception, std::string{moduleName}, methodNameStr);
++      // Void methods are async: converting NSException→JSError on the TM queue
++      // corrupts Hermes (RN #53960 / #55390). Log and swallow instead.
++      RCTLogError(
++          @"Exception thrown while invoking async method %s.%s: %@ %@",
++          moduleName,
++          methodNameStr.c_str(),
++          exception.name,
++          exception.reason);
+     } @finally {
+       [retainedObjectsForInvocation removeAllObjects];
+     }

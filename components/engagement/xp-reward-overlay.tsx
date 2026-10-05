@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LayoutChangeEvent, Modal, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -14,6 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { CoinAmount, CoinText, TearzDrop } from '@/components/game/tearz-drop';
 import { GAME_THEME } from '@/constants/game-theme';
 import { APP_THEME } from '@/constants/theme';
 import { useEngagement } from '@/contexts/engagement-context';
@@ -148,7 +149,7 @@ export function XpRewardOverlay() {
           <View style={styles.cardBody}>
             <Animated.View style={[styles.medalOuter, medalStyle]}>
               <View style={styles.medalInner}>
-                <Text style={styles.medalLabel}>{showXp ? 'XP' : '◉'}</Text>
+                {showXp ? <Text style={styles.medalLabel}>XP</Text> : <TearzDrop size={26} />}
               </View>
             </Animated.View>
 
@@ -162,16 +163,14 @@ export function XpRewardOverlay() {
               {xpReward?.title ?? ''}
             </Text>
             {xpReward?.subtitle ? (
-              <Text style={styles.subtitle} numberOfLines={2}>
-                {xpReward.subtitle}
-              </Text>
+              <CoinText style={styles.subtitle} text={xpReward.subtitle} dropSize={14} />
             ) : null}
 
             {(rewardCoins > 0 && showXp) || rewardStreak != null ? (
               <View style={styles.metaRow}>
                 {rewardCoins > 0 && showXp ? (
                   <View style={styles.metaChip}>
-                    <Text style={styles.metaChipText}>◉ +{rewardCoins}</Text>
+                    <CoinAmount value={`+${rewardCoins}`} textStyle={styles.metaChipText} size={14} />
                   </View>
                 ) : null}
                 {rewardStreak != null && rewardStreak > 0 ? (

@@ -1,16 +1,16 @@
 /** @typedef {{ section: string; difficulty: number; correct: boolean; prompt: string }} PlacementHistorySlice */
 
 export const PLACEMENT_TOTAL = 15;
-/** Start in mid-A2 so C1 needs sustained success on truly hard items. */
-export const START_ABILITY = 30;
-export const FIRST_TASK_DIFFICULTY = 30;
+/** Новый пользователь без опыта: низкий A1, не середина A2. */
+export const START_ABILITY = 8;
+export const FIRST_TASK_DIFFICULTY = 8;
 
 export function clamp(n, min, max) {
   return Math.max(min, Math.min(max, n));
 }
 
+/** Difficulty is already 0–100. Values 1–25 are real A1/A2, not the old bank scale. */
 export function difficultyToScale100(d) {
-  if (d <= 25) return clamp(Math.round(((d - 1) / 24) * 100), 0, 100);
   return clamp(Math.round(d), 0, 100);
 }
 
@@ -71,6 +71,7 @@ export function updateAbility(ability, difficulty, correct, history = []) {
     else if (delta < -15) change = 0;
     else if (delta < -5) change = 1;
     else change = 3;
+    if (history.length <= 5 && delta >= 8) change = Math.max(change, 8);
     if (delta >= -5) {
       if (successStreak >= 2) change += 1;
       if (successStreak >= 3) change += 1;
@@ -109,7 +110,8 @@ export function conservativePlacementLevel(ability, history = []) {
   if (hardCorrect < 2) setMax('B2');
   if (upperMidCorrect < 2 && hardCorrect < 1) setMax('B1');
   if (midCorrect < 2 && upperMidCorrect < 1) setMax('A2');
-  if (history.filter((h) => h.correct).length < 3) setMax('A2');
+  if (history.filter((h) => h.correct).length === 0) setMax('A1');
+  else if (history.filter((h) => h.correct).length < 3) setMax('A2');
 
   return level;
 }
@@ -139,6 +141,10 @@ export function computeNextProbe(ability, history, questionIndex) {
   let explorationAdjustment = 0;
   if (alternating) {
     explorationAdjustment = taskNumber % 2 === 0 ? 2 : -2;
+  } else if (successStreak >= 3 && phase === 'explore') {
+    explorationAdjustment = 16;
+  } else if (successStreak >= 2 && phase === 'explore') {
+    explorationAdjustment = 12;
   } else if (successStreak >= 3) {
     explorationAdjustment = 6;
   } else if (successStreak >= 2) {
@@ -153,7 +159,7 @@ export function computeNextProbe(ability, history, questionIndex) {
     explorationAdjustment = -5;
   }
 
-  const maxStep = phase === 'explore' ? 8 : phase === 'narrow' ? 6 : 4;
+  const maxStep = phase === 'explore' ? 18 : phase === 'narrow' ? 6 : 4;
   explorationAdjustment = clamp(explorationAdjustment, -maxStep, maxStep);
 
   let next = clamp(Math.round(ability + explorationAdjustment), 0, 100);

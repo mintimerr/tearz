@@ -28,6 +28,8 @@ type Props = {
   onPhotoSelected: (uri: string) => void;
   /** Светлая панель под игровой chrome (аркада). */
   tone?: 'default' | 'game';
+  /** Без собственного белого фона — внутри общей карточки. */
+  embedded?: boolean;
   /** Крестик в заголовке (игровой тон). */
   onClose?: () => void;
 };
@@ -36,6 +38,7 @@ export function TeacherAttachGallery({
   visible,
   onPhotoSelected,
   tone = 'default',
+  embedded = false,
   onClose,
 }: Props) {
   const game = tone === 'game';
@@ -104,7 +107,7 @@ export function TeacherAttachGallery({
   const closeBtn = onClose ? (
     <Pressable
       onPress={onClose}
-      hitSlop={10}
+      hitSlop={12}
       accessibilityRole="button"
       accessibilityLabel="Закрыть"
       style={({ pressed }) => [
@@ -112,25 +115,29 @@ export function TeacherAttachGallery({
         game && styles.closeBtnGame,
         pressed && styles.closeBtnPressed,
       ]}>
-      <Ionicons name="close" size={game ? 15 : 16} color={ink} />
+      <Ionicons name="close" size={game ? 15 : 14} color={GAME_THEME.color.ink} />
     </Pressable>
   ) : null;
 
   const header = game ? null : (
     <View style={styles.railHeader}>
       <Text style={styles.railTitle}>Недавние фото</Text>
-      {onClose ? (
-        closeBtn
-      ) : (
-        <Text style={styles.railHint}>камера или галерея</Text>
+      {onClose ? <View style={styles.closeSpacer} /> : (
+        <Text style={styles.railHint}>камера, файлы или галерея</Text>
       )}
     </View>
   );
 
+  const cornerClose =
+    onClose && !game ? <View style={styles.closeCorner}>{closeBtn}</View> : null;
+
+  const railStyle = [styles.rail, game && styles.railGame, embedded && styles.railEmbedded];
+
   if (loading) {
     return (
-      <View style={[styles.rail, game && styles.railGame]}>
+      <View style={railStyle}>
         {header}
+        {cornerClose}
         <View style={[styles.stripRow, game && styles.stripRowGame, { gap }]}>
           {game && closeBtn ? <View style={styles.closeInStrip}>{closeBtn}</View> : null}
           <View
@@ -159,8 +166,9 @@ export function TeacherAttachGallery({
 
   if (denied || assets.length === 0) {
     return (
-      <View style={[styles.rail, game && styles.railGame]}>
+      <View style={railStyle}>
         {header}
+        {cornerClose}
         <View style={[styles.emptyActions, game && styles.emptyActionsGame]}>
           {game && closeBtn ? <View style={styles.closeInStrip}>{closeBtn}</View> : null}
           <Pressable
@@ -195,8 +203,9 @@ export function TeacherAttachGallery({
   }
 
   return (
-    <View style={[styles.rail, game && styles.railGame]}>
+    <View style={railStyle}>
       {header}
+      {cornerClose}
       <View style={game ? styles.stripWithClose : undefined}>
         {game && closeBtn ? <View style={styles.closeInStrip}>{closeBtn}</View> : null}
         <ScrollView
@@ -245,6 +254,7 @@ export function TeacherAttachGallery({
 
 const styles = StyleSheet.create({
   rail: {
+    position: 'relative',
     paddingVertical: 10,
     paddingHorizontal: 10,
     borderRadius: APP_THEME.radius.lg,
@@ -342,6 +352,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingBottom: 7,
   },
+  railEmbedded: {
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    paddingVertical: 2,
+    paddingHorizontal: 2,
+  },
   stripRowGame: {
     minHeight: THUMB_GAME,
   },
@@ -394,13 +410,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 13,
   },
+  closeSpacer: {
+    width: 22,
+    height: 22,
+  },
+  closeCorner: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    zIndex: 4,
+  },
   closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
   },
   closeBtnGame: {
     width: 34,

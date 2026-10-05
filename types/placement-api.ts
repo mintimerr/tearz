@@ -4,7 +4,10 @@ export type PlacementQuestionKind =
   | 'choose_translation'
   | 'select_missing_word'
   | 'true_false'
-  | 'multiple_choice';
+  | 'multiple_choice'
+  | 'grammar_form'
+  | 'sentence_order'
+  | 'error_correction';
 
 export type PlacementQuestion = {
   id: string;
@@ -21,6 +24,8 @@ export type PlacementHistoryItem = {
   difficulty: number;
   correct: boolean;
   prompt: string;
+  questionId?: string;
+  choices?: string[];
 };
 
 export type PlacementResult = {
@@ -30,15 +35,49 @@ export type PlacementResult = {
   strengths: string[];
   gaps: string[];
   hskLevel?: string;
+  statisticalEstimate?: string;
+  theta?: number;
+  thetaCredibleInterval?: { lower: number; upper: number };
+  confidence?: number;
+  confidenceLabel?: string;
+  levelProbabilities?: Record<string, number>;
+  /** Engine skill evidence — optional for old clients / records. */
+  skillProfile?: unknown;
+  verification?: unknown;
+  assessmentEngineVersion?: string;
+  orchestratorVersion?: string;
+  cefrMapVersion?: string;
+  itemQualityVersion?: string;
+  placementVersion?: string;
+  sessionId?: string;
+  assessmentSessionId?: string;
 };
 
 export type PlacementRecord = {
   completedAt: number;
   language: CompanionChatApiLanguage;
+  /** verifiedPlacementLevel from assessment engine */
   level: string;
+  /** Legacy ability 0–100 compatibility representation (API only — not user-facing %). */
   score: number;
   summary?: string;
   hskLevel?: string;
+  /** Extended assessment fields (optional for old consumers) */
+  statisticalEstimate?: string;
+  theta?: number;
+  thetaCredibleInterval?: { lower: number; upper: number };
+  confidence?: number;
+  confidenceLabel?: string;
+  levelProbabilities?: Record<string, number>;
+  skillProfile?: unknown;
+  verification?: unknown;
+  assessmentEngineVersion?: string;
+  orchestratorVersion?: string;
+  cefrMapVersion?: string;
+  itemQualityVersion?: string;
+  placementVersion?: string;
+  sessionId?: string;
+  assessmentSessionId?: string;
 };
 
 export type PlacementStepRequestBody = {
@@ -50,7 +89,25 @@ export type PlacementStepRequestBody = {
   answer?: string;
   answerKey?: string;
   questionIndex?: number;
-  lastQuestion?: Pick<PlacementQuestion, 'prompt' | 'section' | 'difficulty'>;
+  timedOut?: boolean;
+  lastQuestion?: Pick<PlacementQuestion, 'id' | 'prompt' | 'section' | 'difficulty' | 'choices'>;
+  seenQuestionIds?: string[];
+  seenPrompts?: string[];
+  seenContentKeys?: string[];
+  sessionSalt?: number;
+  userEntropy?: number;
+  /** Unique placement attempt id — ties client/server/analytics/record. */
+  assessmentSessionId?: string;
+  /** Canonical frozen response history for server SoT finalize / selection. */
+  canonicalResponses?: unknown[];
+  /** Client AssessmentResult hint for mismatch telemetry only — never authoritative. */
+  clientResult?: {
+    level?: string;
+    theta?: number;
+    confidence?: number;
+    statisticalEstimate?: string;
+    levelProbabilities?: Record<string, number>;
+  };
 };
 
 export type PlacementStepContinueBody = {

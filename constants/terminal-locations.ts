@@ -240,11 +240,7 @@ const SHANGHAI_METRO_FOCUS = {
   width: 0.32,
   height: 0.18,
 };
-const SHANGHAI_METRO_NEON: TerminalNormRect[] = [
-  { left: 0.55, top: 0.06, width: 0.3, height: 0.16 },
-  { left: 0.08, top: 0.1, width: 0.2, height: 0.14 },
-  { left: 0.72, top: 0.28, width: 0.16, height: 0.12 },
-];
+const SHANGHAI_METRO_NEON: TerminalNormRect[] = [];
 
 /** LCD payphone — только чёрное стекло (не безель и не металл над экраном). */
 const LONDON_PHONE_CRT = {

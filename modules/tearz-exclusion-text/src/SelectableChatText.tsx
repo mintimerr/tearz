@@ -10,12 +10,13 @@ import {
   type TextInputSelectionChangeEventData,
   type TextStyle,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 
 type Props = {
   text: string;
   style?: StyleProp<TextStyle>;
   numberOfLines?: number;
+  inline?: boolean;
   onSelect: (word: string) => void;
   onClear?: () => void;
   registerSelectionClearer?: (clear: () => void) => () => void;
@@ -24,22 +25,25 @@ type Props = {
 
 const LONG_PRESS_MS = 380;
 
-/** Android / web: системное выделение через TextInput. */
+/** Android / web: выделение только после зажима (+ haptic). */
 export function SelectableChatText({
   text,
   style,
   numberOfLines,
+  inline = false,
   onSelect,
   onClear,
   registerSelectionClearer,
 }: Props) {
   const inputRef = useRef<TextInput>(null);
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hapticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressArmedRef = useRef(false);
   const hadSelectionRef = useRef(false);
   const [height, setHeight] = useState<number | undefined>(undefined);
 
   const clearNativeSelection = useCallback(() => {
+    longPressArmedRef.current = false;
     hadSelectionRef.current = false;
     inputRef.current?.setNativeProps({ selection: { start: 0, end: 0 } });
     inputRef.current?.blur();
@@ -54,23 +58,29 @@ export function SelectableChatText({
   useEffect(
     () => () => {
       if (openTimerRef.current) clearTimeout(openTimerRef.current);
-      if (hapticTimerRef.current) clearTimeout(hapticTimerRef.current);
+      if (armTimerRef.current) clearTimeout(armTimerRef.current);
     },
     [],
   );
 
   const onTouchStart = useCallback(() => {
-    if (hapticTimerRef.current) clearTimeout(hapticTimerRef.current);
-    hapticTimerRef.current = setTimeout(() => {
-      hapticTimerRef.current = null;
+    longPressArmedRef.current = false;
+    if (armTimerRef.current) clearTimeout(armTimerRef.current);
+    armTimerRef.current = setTimeout(() => {
+      armTimerRef.current = null;
+      longPressArmedRef.current = true;
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }, LONG_PRESS_MS);
   }, []);
 
   const onTouchEnd = useCallback(() => {
-    if (hapticTimerRef.current) {
-      clearTimeout(hapticTimerRef.current);
-      hapticTimerRef.current = null;
+    if (armTimerRef.current) {
+      clearTimeout(armTimerRef.current);
+      armTimerRef.current = null;
+    }
+    // Короткий тап без зажима — сбросить системное выделение, если всплыло.
+    if (!longPressArmedRef.current && !hadSelectionRef.current) {
+      inputRef.current?.setNativeProps({ selection: { start: 0, end: 0 } });
     }
   }, []);
 
@@ -78,23 +88,36 @@ export function SelectableChatText({
     (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
       const { start, end } = e.nativeEvent.selection;
       if (end <= start) {
-        if (hadSelectionRef.current) {
+        if (!hadSelectionRef.current) return;
+        if (openTimerRef.current) clearTimeout(openTimerRef.current);
+        openTimerRef.current = setTimeout(() => {
+          openTimerRef.current = null;
+          if (!hadSelectionRef.current) return;
           hadSelectionRef.current = false;
+          longPressArmedRef.current = false;
           onClear?.();
-        }
-        inputRef.current?.blur();
+          inputRef.current?.blur();
+        }, 160);
         return;
       }
+
+      // Без зажима — игнорируем системное выделение (тап / двойной тап).
+      if (!longPressArmedRef.current && !hadSelectionRef.current) {
+        inputRef.current?.setNativeProps({ selection: { start: 0, end: 0 } });
+        return;
+      }
+
+      if (openTimerRef.current) clearTimeout(openTimerRef.current);
       const selected = text.slice(start, end).replace(/\s+/g, ' ').trim();
       if (!selected) {
         if (hadSelectionRef.current) {
           hadSelectionRef.current = false;
+          longPressArmedRef.current = false;
           onClear?.();
         }
         return;
       }
       hadSelectionRef.current = true;
-      if (openTimerRef.current) clearTimeout(openTimerRef.current);
       openTimerRef.current = setTimeout(() => onSelect(selected), 80);
     },
     [onClear, onSelect, text],
@@ -109,7 +132,11 @@ export function SelectableChatText({
   );
 
   return (
-    <View onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}>
+    <View
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
+      style={inline ? styles.inlineWrap : undefined}>
       <TextInput
         ref={inputRef}
         value={text}
@@ -134,6 +161,10 @@ export function SelectableChatText({
 }
 
 const styles = StyleSheet.create({
+  inlineWrap: {
+    alignSelf: 'flex-start',
+    flexShrink: 1,
+  },
   input: {
     paddingTop: 0,
     paddingBottom: 0,

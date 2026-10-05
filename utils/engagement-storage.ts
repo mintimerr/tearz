@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { normalizeLoadout, STARTER_COSMETIC_IDS } from '@/constants/tearz-cosmetics';
 import type { EngagementState } from '@/types/engagement';
 import { DEFAULT_ENGAGEMENT_STATE, EMPTY_DAILY_TASKS } from '@/types/engagement';
 import { USER_SUFFIX, userDataKey } from '@/utils/user-data-storage';
@@ -9,6 +10,15 @@ export async function loadEngagementState(userId: string): Promise<EngagementSta
     const raw = await AsyncStorage.getItem(userDataKey(userId, USER_SUFFIX.engagement));
     if (!raw) return { ...DEFAULT_ENGAGEMENT_STATE };
     const parsed = JSON.parse(raw) as Partial<EngagementState>;
+    const ownedCosmetics = Array.isArray(parsed.ownedCosmeticIds)
+      ? parsed.ownedCosmeticIds.filter((id): id is string => typeof id === 'string')
+      : [];
+    // Миграция: старым юзерам со starter pack выдаём бесплатные слоты.
+    const withStarterCosmetics =
+      parsed.starterPackClaimed === true
+        ? Array.from(new Set([...ownedCosmetics, ...STARTER_COSMETIC_IDS]))
+        : ownedCosmetics;
+
     return {
       ...DEFAULT_ENGAGEMENT_STATE,
       ...parsed,
@@ -25,6 +35,8 @@ export async function loadEngagementState(userId: string): Promise<EngagementSta
       ownedTearzIds: Array.isArray(parsed.ownedTearzIds)
         ? parsed.ownedTearzIds.filter((id): id is string => typeof id === 'string')
         : [],
+      ownedCosmeticIds: withStarterCosmetics,
+      tearzLoadout: normalizeLoadout(parsed.tearzLoadout),
       starterPackClaimed: parsed.starterPackClaimed === true,
       messageCoinsToday:
         typeof parsed.messageCoinsToday === 'number'

@@ -1,9 +1,9 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { Image, type ImageSource } from 'expo-image';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Keyboard,
   Modal,
@@ -31,10 +31,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GameBackButton } from '@/components/game/game-back-button';
 import { GameTeacherChatsButton } from '@/components/game/game-teacher-chats-button';
+import { CabinetAttractIdle } from '@/components/game/cabinet-attract-idle';
+import { TearzSpotlight } from '@/components/onboarding/tearz-spotlight';
 import { GAME_THEME } from '@/constants/game-theme';
 import { TeacherAttachGallery } from '@/components/teacher/teacher-attach-gallery';
-import { TeacherChatsSheet } from '@/components/teacher/teacher-chats-sheet';
-import { TearzLessonTransit } from '@/components/teacher/tearz-flight-loading';
 import { getTerminalTheme, type TerminalThemeConfig } from '@/constants/terminal-theme';
 import { Fonts } from '@/constants/theme';
 import {
@@ -44,6 +44,7 @@ import {
 } from '@/constants/terminal-locations';
 import { useEngagement } from '@/contexts/engagement-context';
 import { useTranslation } from '@/contexts/locale-context';
+import type { CompanionChatApiLanguage } from '@/types/companion-chat-api';
 import { inferTeacherLessonLanguage } from '@/utils/teacher-lesson-language';
 import {
   ExclusionTextInput,
@@ -54,6 +55,16 @@ import {
 const SCENE_ASPECT = 1024 / 1536;
 const ZOOM_MS = 600;
 const ZOOM_EASING = Easing.bezier(0.22, 1, 0.36, 1);
+
+function ArcadeLessonTransitHost(props: {
+  question: string;
+  imageUri?: string;
+  language: CompanionChatApiLanguage;
+  onClose: () => void;
+}) {
+  const { TearzLessonTransit } = require('@/components/teacher/tearz-flight-loading') as typeof import('@/components/teacher/tearz-flight-loading');
+  return <TearzLessonTransit {...props} />;
+}
 
 type FocusableInputRef = TextInput | ExclusionTextInputRef;
 
@@ -444,6 +455,8 @@ function CrtScanlines() {
  * даблтап / тап в пустоту → отдалить. На экране — подсказка + предложения.
  */
 export function ArcadeCabinetScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
   const params = useLocalSearchParams<{ location?: string }>();
   const location = getTerminalLocation((params.location as TerminalLocationId) || 'shanghai_metro_bund');
   const theme = getTerminalTheme(location.theme);
@@ -486,12 +499,12 @@ export function ArcadeCabinetScreen() {
   const lessonChatOpenRef = useRef(false);
   const prevZoomedRef = useRef(false);
   const crtGlassRef = useRef<View>(null);
+  const chatsRef = useRef<View>(null);
 
   const [query, setQuery] = useState('');
   const [zoomed, setZoomed] = useState(false);
   /** idle → кино-переход (небо → диалог) */
   const [gate, setGate] = useState<'idle' | 'transit'>('idle');
-  const [chatsOpen, setChatsOpen] = useState(false);
   const [seed, setSeed] = useState('');
   const [seedImageUri, setSeedImageUri] = useState<string | undefined>();
   const [pendingPhoto, setPendingPhoto] = useState<{ uri: string; name?: string } | null>(null);
@@ -743,24 +756,6 @@ export function ArcadeCabinetScreen() {
       dismissKeyboardRef.current = false;
     }, 320);
   };
-
-  const blockCrtForLessonChat = useCallback(() => {
-    lessonChatOpenRef.current = true;
-    dismissKeyboardRef.current = true;
-    setFocused(false);
-    setAttachMenuOpen(false);
-    inputRef.current?.blur();
-    Keyboard.dismiss();
-    setKeyboardH(0);
-    setZoomed(false);
-  }, []);
-
-  const unblockCrtAfterLessonChat = useCallback(() => {
-    lessonChatOpenRef.current = false;
-    setTimeout(() => {
-      dismissKeyboardRef.current = false;
-    }, 480);
-  }, []);
 
   /** Тап в пустоту (не по CRT) — закрыть вложения, клавиатуру или отдалить. */
   const onBlankTap = () => {
@@ -1175,7 +1170,19 @@ export function ArcadeCabinetScreen() {
       {gate !== 'transit' ? (
         <View style={styles.chrome} pointerEvents="box-none">
           <GameBackButton tone={chromeTone} />
-          <GameTeacherChatsButton tone={chromeTone} onPress={() => setChatsOpen(true)} />
+          <GameTeacherChatsButton
+            ref={chatsRef}
+            tone={chromeTone}
+            onPress={() => {
+              router.push({
+                pathname: '/arcade-chats',
+                params: {
+                  language: location.lessonLanguage ?? 'english',
+                  location: location.id,
+                },
+              } as Href);
+            }}
+          />
         </View>
       ) : null}
 
@@ -1205,17 +1212,19 @@ export function ArcadeCabinetScreen() {
         </View>
       ) : null}
 
-      <TeacherChatsSheet
-        visible={chatsOpen}
-        onClose={() => setChatsOpen(false)}
-        lessonLanguage={location.lessonLanguage ?? 'english'}
-        onLessonOpen={blockCrtForLessonChat}
-        onLessonClose={unblockCrtAfterLessonChat}
+      <TearzSpotlight
+        tipId="coachArcade8"
+        targetRef={crtGlassRef}
+        line={t('onboarding.spotArcade')}
+        followLine={t('onboarding.spotArcadeChats')}
+        followRef={chatsRef}
+        enabled={gate === 'idle' && !zoomed}
+        pad={4}
       />
 
       {gate === 'transit' && (seed || seedImageUri) ? (
         <View style={styles.transitLayer} pointerEvents="auto">
-          <TearzLessonTransit
+          <ArcadeLessonTransitHost
             question={seed}
             imageUri={seedImageUri}
             language={inferTeacherLessonLanguage(seed || 'photo', location.lessonLanguage ?? 'english')}
@@ -1302,20 +1311,13 @@ function TerminalFace({
   const cursorStyle = useAnimatedStyle(() => ({ opacity: blink.value }));
   const hintStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
   const callbox = theme.id === 'callbox';
+  const askRef = useRef<View>(null);
 
-  // До зума — только короткая приманка; полный UI после заполнения экрана
+  // До зума — attract: Tearz в плаще/шляпе прыгает по крышам (grad-cape ref)
   if (!active) {
     return (
       <View style={styles.terminalIdle}>
-        <Animated.Text
-          style={[
-            styles.idleHint,
-            callbox && styles.idleHintCallbox,
-            { color: theme.hot },
-            hintStyle,
-          ]}>
-          {t('terminal.idleTap')}
-        </Animated.Text>
+        <CabinetAttractIdle hintColor={theme.hot} />
       </View>
     );
   }
@@ -1398,6 +1400,7 @@ function TerminalFace({
   };
 
   return (
+    <>
     <View
       style={[
         styles.terminal,
@@ -1509,6 +1512,8 @@ function TerminalFace({
       </View>
 
       <View
+        ref={askRef}
+        collapsable={false}
         style={[
           styles.inputLayer,
           styles.inputLayerDock,
@@ -1634,6 +1639,7 @@ function TerminalFace({
         ) : null}
       </View>
     </View>
+    </>
   );
 }
 
@@ -2043,8 +2049,9 @@ const styles = StyleSheet.create({
   },
   terminalIdle: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+    backgroundColor: '#000',
   },
   idleHint: {
     fontSize: 9,

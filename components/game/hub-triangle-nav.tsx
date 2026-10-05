@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { SpotlightAnchor } from '@/components/onboarding/tearz-spotlight';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useTranslation } from '@/contexts/locale-context';
 
@@ -31,28 +31,27 @@ export function HubTriangleNav({ onPress }: Props) {
 
   return (
     <View style={styles.root} pointerEvents="box-none">
-      <Pressable
-        onPress={() => {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          onPress('start');
-        }}
-        style={({ pressed }) => [styles.start, pressed && styles.btnPressed]}
-        accessibilityRole="button"
-        accessibilityLabel={t('hub.start')}
-        hitSlop={8}>
-        <View style={styles.startFace} pointerEvents="none">
-          <Ionicons name="play" size={44} color={INK} style={styles.playIcon} />
-        </View>
-      </Pressable>
+      <SpotlightAnchor
+        tipId="coachHub9"
+        line={t('onboarding.spotHub')}
+        round>
+        <Pressable
+          onPress={() => onPress('start')}
+          style={({ pressed }) => [styles.start, pressed && styles.btnPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t('hub.start')}
+          hitSlop={8}>
+          <View style={styles.startFace} pointerEvents="none">
+            <Ionicons name="play" size={44} color={INK} style={styles.playIcon} />
+          </View>
+        </Pressable>
+      </SpotlightAnchor>
 
       <View style={styles.modes} pointerEvents="box-none">
         {modes.map((m) => (
           <Pressable
             key={m.id}
-            onPress={() => {
-              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onPress(m.id);
-            }}
+            onPress={() => onPress(m.id)}
             style={({ pressed }) => [styles.mode, pressed && styles.btnPressed]}
             accessibilityRole="button"
             accessibilityLabel={m.a11y}

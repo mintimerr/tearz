@@ -421,24 +421,36 @@ final class ExclusionTextView: ExpoView, UITextViewDelegate {
   }
 }
 
-/// Read-only UITextView: зажатие выделяет слово и шлёт onSelectionChange (плашка перевода).
-/// Подсветка своя (золотая плашка) — системные handles у non-editable часто невидимы.
+/// Read-only UITextView: только зажатие выделяет слово → onSelectionChange (+ haptic).
+/// Тап сбрасывает выделение; подсветка держится, пока явно не снимут.
 final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecognizerDelegate {
   private let textView = UITextView()
-  private let highlightView = UIView()
+  private let highlightContainer = UIView()
+  private var highlightPills: [UIView] = []
   private var fontSize: CGFloat = 16
   private var lineHeight: CGFloat = 24
   private var fontWeightValue: Double = 600
   private var textColorValue = UIColor(red: 0.10, green: 0.10, blue: 0.10, alpha: 1)
   private var maxLines = 0
   private var lastEmittedHeight: CGFloat = -1
+  private var lastEmittedWidth: CGFloat = -1
   private var lastSelection = NSRange(location: 0, length: 0)
   private var highlightRange = NSRange(location: NSNotFound, length: 0)
-  private let haptic = UIImpactFeedbackGenerator(style: .medium)
+  /// Пока true — системный сброс selectedRange не убивает подсветку (как в Notes).
+  private var selectionPinned = false
+  /// Выделение разрешено только после нашего long-press (не системный тап/двойной тап).
+  private var selectionFromLongPress = false
+  private var isRestoringSelection = false
+  private var lastSelectionChangeAt: CFAbsoluteTime = 0
+  /// После драга ручек — короткое окно, где тап/пустой range не сбрасывают выделение.
+  private var suppressClearUntil: CFAbsoluteTime = 0
+  private var emptySelectionWorkItem: DispatchWorkItem?
+  private let hapticSelect = UIImpactFeedbackGenerator(style: .medium)
+  private let hapticStretch = UIImpactFeedbackGenerator(style: .medium)
 
-  /// Системный синий выделения iOS (как в Notes / Messages).
-  private let selectionBlue = UIColor(red: 0.04, green: 0.52, blue: 1.0, alpha: 1)
-  private let handleScale: CGFloat = 0.92
+  /// Системный синий выделения iOS (Notes / Messages / Look Up).
+  private let selectionBlue = UIColor(red: 0.0, green: 0.478, blue: 1.0, alpha: 1)
+  private let handleScale: CGFloat = 0.88
 
   let onSelectionChange = EventDispatcher()
   let onContentSize = EventDispatcher()
@@ -470,17 +482,14 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
     textView.translatesAutoresizingMaskIntoConstraints = true
     applyTypography()
 
-    highlightView.isUserInteractionEnabled = false
-    highlightView.isHidden = true
-    highlightView.backgroundColor = selectionBlue.withAlphaComponent(0.22)
-    highlightView.layer.cornerRadius = 5
-    highlightView.layer.borderWidth = 0
-    highlightView.clipsToBounds = true
-    textView.insertSubview(highlightView, at: 0)
+    highlightContainer.isUserInteractionEnabled = false
+    highlightContainer.isHidden = true
+    highlightContainer.backgroundColor = .clear
+    textView.insertSubview(highlightContainer, at: 0)
 
     let hold = UILongPressGestureRecognizer(target: self, action: #selector(held))
     hold.minimumPressDuration = 0.38
-    hold.allowableMovement = 12
+    hold.allowableMovement = 14
     hold.cancelsTouchesInView = true
     hold.delaysTouchesBegan = false
     hold.delegate = self
@@ -492,24 +501,48 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
     textView.addGestureRecognizer(tap)
 
     addSubview(textView)
-    haptic.prepare()
+    hapticSelect.prepare()
+    hapticStretch.prepare()
+    DispatchQueue.main.async { [weak self] in
+      self?.disableSystemTapToSelect()
+    }
+  }
+
+  /// Системный тап/двойной тап UITextView не должен выделять слова — только наш long-press.
+  private func disableSystemTapToSelect() {
+    for gr in textView.gestureRecognizers ?? [] {
+      let name = NSStringFromClass(type(of: gr))
+      if let tap = gr as? UITapGestureRecognizer {
+        // Наши tap/hold оставляем; системные UIText*TapRecognizer гасим.
+        if name.contains("UIText") || name.contains("UITapAndAHalf") {
+          tap.isEnabled = false
+        }
+      }
+      if name.contains("UITextTap") || name.contains("UITextImmediate") {
+        gr.isEnabled = false
+      }
+    }
   }
 
   override func layoutSubviews() {
     super.layoutSubviews()
     textView.frame = bounds
     emitContentSize()
-    layoutHighlight()
+    layoutHighlight(animated: false)
     polishHandles()
   }
 
   func setText(_ text: String) {
     if textView.text == text {
       emitContentSize()
-      layoutHighlight()
+      layoutHighlight(animated: false)
       return
     }
+    selectionPinned = false
+    selectionFromLongPress = false
     clearHighlight()
+    lastEmittedHeight = -1
+    lastEmittedWidth = -1
     textView.text = text
     applyTypography()
     emitContentSize()
@@ -537,8 +570,9 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
 
   func setSelectionColor(_ color: UIColor) {
     textView.tintColor = color
-    highlightView.backgroundColor = color.withAlphaComponent(0.22)
-    highlightView.layer.borderWidth = 0
+    for pill in highlightPills {
+      pill.backgroundColor = color.withAlphaComponent(0.20)
+    }
   }
 
   func setNumberOfLines(_ lines: Int) {
@@ -549,7 +583,94 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
   }
 
   func textViewDidChangeSelection(_ textView: UITextView) {
+    if isRestoringSelection { return }
     let range = textView.selectedRange
+    lastSelectionChangeAt = CFAbsoluteTimeGetCurrent()
+
+    // Handle drag / focus glitches briefly report empty — keep pinned highlight.
+    if range.length == 0 {
+      emptySelectionWorkItem?.cancel()
+      // Пока выделение «закреплено» — никогда не сбрасываем из-за пустого range
+      // (отпускание ручки часто даёт length=0 на кадр).
+      if selectionPinned, highlightRange.location != NSNotFound, highlightRange.length > 0 {
+        suppressClearUntil = CFAbsoluteTimeGetCurrent() + 1.25
+        let work = DispatchWorkItem { [weak self] in
+          guard let self else { return }
+          if self.textView.selectedRange.length > 0 {
+            self.emitSelection(self.textView.selectedRange)
+            return
+          }
+          if self.selectionPinned {
+            self.restorePinnedSelection()
+          }
+        }
+        emptySelectionWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: work)
+        return
+      }
+      let work = DispatchWorkItem { [weak self] in
+        guard let self else { return }
+        if self.textView.selectedRange.length > 0 {
+          self.emitSelection(self.textView.selectedRange)
+          return
+        }
+        if self.selectionPinned {
+          self.restorePinnedSelection()
+          return
+        }
+        self.lastSelection = NSRange(location: 0, length: 0)
+        self.clearHighlight()
+        self.onSelectionChange([
+          "text": "",
+          "start": 0,
+          "end": 0,
+        ])
+      }
+      emptySelectionWorkItem = work
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: work)
+      return
+    }
+
+    // Системный тап/двойной тап — отклонить, пока не было long-press.
+    if !selectionPinned, !selectionFromLongPress {
+      isRestoringSelection = true
+      textView.selectedRange = NSRange(location: 0, length: 0)
+      isRestoringSelection = false
+      return
+    }
+
+    emptySelectionWorkItem?.cancel()
+    emptySelectionWorkItem = nil
+    selectionPinned = true
+    // Любое изменение длины при пине = драг ручки / расширение — не давать тапу снести.
+    if lastSelection.length != range.length || lastSelection.location != range.location {
+      suppressClearUntil = CFAbsoluteTimeGetCurrent() + 1.25
+    }
+    emitSelection(range)
+
+    DispatchQueue.main.async { [weak self] in
+      self?.layoutHighlight(animated: false)
+      self?.polishHandles()
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+      self?.layoutHighlight(animated: false)
+      self?.polishHandles()
+    }
+  }
+
+  private func restorePinnedSelection() {
+    guard highlightRange.location != NSNotFound, highlightRange.length > 0 else { return }
+    isRestoringSelection = true
+    if !textView.isFirstResponder {
+      _ = textView.becomeFirstResponder()
+    }
+    textView.selectedRange = highlightRange
+    isRestoringSelection = false
+    layoutHighlight(animated: false)
+    polishHandles()
+  }
+
+  private func emitSelection(_ range: NSRange) {
     lastSelection = range
     let ns = (textView.text ?? "") as NSString
     var selected = ""
@@ -558,7 +679,7 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
         .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
         .trimmingCharacters(in: .whitespacesAndNewlines)
       highlightRange = range
-      layoutHighlight()
+      layoutHighlight(animated: true)
     } else {
       clearHighlight()
     }
@@ -567,14 +688,6 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
       "start": range.location,
       "end": range.location + range.length,
     ])
-    DispatchQueue.main.async { [weak self] in
-      self?.layoutHighlight()
-      self?.polishHandles()
-    }
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-      self?.layoutHighlight()
-      self?.polishHandles()
-    }
   }
 
   func textView(
@@ -593,42 +706,91 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
 
   @objc private func held(_ gesture: UILongPressGestureRecognizer) {
     guard gesture.state == .began else { return }
-    onInteract([:])
     let point = gesture.location(in: textView)
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
-      self.haptic.impactOccurred()
-      self.haptic.prepare()
-      self.selectWord(at: point)
+      self.selectionFromLongPress = true
+      self.hapticSelect.impactOccurred(intensity: 1.0)
+      self.hapticSelect.prepare()
+      self.selectWord(at: point, animated: true)
     }
   }
 
   @objc private func tapped(_ gesture: UITapGestureRecognizer) {
     guard gesture.state == .ended else { return }
     let point = gesture.location(in: textView)
-    // Тап по уже выделенному слову оставляем; мимо — снимаем подсветку и плашку.
-    if highlightRange.location != NSNotFound,
-       !highlightView.isHidden,
-       highlightView.frame.insetBy(dx: -6, dy: -4).contains(point) {
+    let now = CFAbsoluteTimeGetCurrent()
+    let hasSelection =
+      selectionPinned
+      || textView.selectedRange.length > 0
+      || (highlightRange.location != NSNotFound && highlightRange.length > 0)
+
+    // После растягивания ручек / свежего selection — тап от отпускания пальца игнорируем.
+    if hasSelection, now < suppressClearUntil || now - lastSelectionChangeAt < 1.0 {
       return
     }
-    onInteract([:])
-    clearSelection()
+
+    if hasSelection {
+      // Ручки и зона вокруг выделения — не сбрасывать (даже если не попали в глиф).
+      if selectionProtectionRect().insetBy(dx: -72, dy: -48).contains(point) {
+        return
+      }
+    }
+
+    // Тап никогда не выделяет слово — только сбрасывает (новый выбор = снова зажать).
+    if hasSelection {
+      onInteract([:])
+      clearSelection()
+    }
+  }
+
+  /// Bounding box of current selection (+ room for grabber handles).
+  private func selectionProtectionRect() -> CGRect {
+    let range: NSRange
+    if textView.selectedRange.length > 0 {
+      range = textView.selectedRange
+    } else if highlightRange.location != NSNotFound, highlightRange.length > 0 {
+      range = highlightRange
+    } else {
+      return .null
+    }
+    textView.layoutManager.ensureLayout(for: textView.textContainer)
+    let glyphRange = textView.layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+    var union = CGRect.null
+    textView.layoutManager.enumerateEnclosingRects(
+      forGlyphRange: glyphRange,
+      withinSelectedGlyphRange: glyphRange,
+      in: textView.textContainer
+    ) { rect, _ in
+      union = union.isNull ? rect : union.union(rect)
+    }
+    if union.isNull { return highlightContainer.frame }
+    let inset = textView.textContainerInset
+    var frame = union
+    frame.origin.x += inset.left
+    frame.origin.y += inset.top
+    return frame
   }
 
   /// Снять подсветку и явно сообщить JS (selectedRange=0 часто не триггерит delegate повторно).
   func clearSelection() {
+    emptySelectionWorkItem?.cancel()
+    emptySelectionWorkItem = nil
+    selectionPinned = false
+    selectionFromLongPress = false
+    suppressClearUntil = 0
     clearHighlight()
     lastSelection = NSRange(location: 0, length: 0)
+    isRestoringSelection = true
     if textView.selectedRange.length > 0 {
       textView.selectedRange = NSRange(location: 0, length: 0)
-    } else {
-      onSelectionChange([
-        "text": "",
-        "start": 0,
-        "end": 0,
-      ])
     }
+    isRestoringSelection = false
+    onSelectionChange([
+      "text": "",
+      "start": 0,
+      "end": 0,
+    ])
     if textView.isFirstResponder {
       textView.resignFirstResponder()
     }
@@ -638,19 +800,41 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
     _ gestureRecognizer: UIGestureRecognizer,
     shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
   ) -> Bool {
-    false
+    // Let system selection / loupe / handle pans coexist with our tap.
+    let name = NSStringFromClass(type(of: otherGestureRecognizer))
+    if name.contains("Selection")
+      || name.contains("Loupe")
+      || name.contains("Grabber")
+      || name.contains("Handle")
+      || name.contains("UIText") {
+      return true
+    }
+    return false
+  }
+
+  func gestureRecognizer(
+    _ gestureRecognizer: UIGestureRecognizer,
+    shouldReceive touch: UITouch
+  ) -> Bool {
+    // Never treat handle / loupe touches as "tap outside → clear".
+    guard gestureRecognizer is UITapGestureRecognizer else { return true }
+    var cur: UIView? = touch.view
+    while let view = cur {
+      if isHandleName(NSStringFromClass(type(of: view))) { return false }
+      cur = view.superview
+    }
+    return true
   }
 
   func gestureRecognizer(
     _ gestureRecognizer: UIGestureRecognizer,
     shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer
   ) -> Bool {
-    otherGestureRecognizer is UIPanGestureRecognizer
+    false
   }
 
-  /// Выделяет слово / CJK-символ под пальцем — иначе haptic есть, а selection не появляется.
-  private func selectWord(at point: CGPoint) {
-    guard let raw = textView.text, !raw.isEmpty else { return }
+  private func wordRangeContaining(point: CGPoint) -> NSRange? {
+    guard let raw = textView.text, !raw.isEmpty else { return nil }
     let ns = raw as NSString
     var location = point
     location.x -= textView.textContainerInset.left
@@ -664,28 +848,65 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
       in: textView.textContainer,
       fractionOfDistanceBetweenInsertionPoints: &fraction
     )
-    guard ns.length > 0 else { return }
+    guard ns.length > 0 else { return nil }
     let index = min(max(0, idx), ns.length - 1)
-    let range = wordRange(around: index, in: ns)
-    guard range.length > 0, NSMaxRange(range) <= ns.length else { return }
 
-    // Без first responder системная подсветка часто не рисуется — держим свою + selection.
+    // Если тап мимо глифа (пустое поле справа от строки) — не выделять.
+    let glyphIndex = textView.layoutManager.glyphIndex(
+      for: location,
+      in: textView.textContainer,
+      fractionOfDistanceThroughGlyph: &fraction
+    )
+    let glyphRect = textView.layoutManager.boundingRect(
+      forGlyphRange: NSRange(location: glyphIndex, length: 1),
+      in: textView.textContainer
+    )
+    if !glyphRect.insetBy(dx: -6, dy: -4).contains(location) {
+      return nil
+    }
+
+    let range = wordRange(around: index, in: ns)
+    guard range.length > 0, NSMaxRange(range) <= ns.length else { return nil }
+    return range
+  }
+
+  /// Выделяет слово / CJK-символ под пальцем.
+  private func selectWord(at point: CGPoint, animated: Bool) {
+    guard let range = wordRangeContaining(point: point) else { return }
+    applySelection(range, animated: animated)
+  }
+
+  private func applySelection(_ range: NSRange, animated: Bool) {
+    selectionFromLongPress = true
+    selectionPinned = true
+    emptySelectionWorkItem?.cancel()
+    emptySelectionWorkItem = nil
+    suppressClearUntil = CFAbsoluteTimeGetCurrent() + 1.0
     _ = textView.becomeFirstResponder()
     highlightRange = range
+    isRestoringSelection = true
     textView.selectedRange = range
-    layoutHighlight()
+    isRestoringSelection = false
+    lastSelectionChangeAt = CFAbsoluteTimeGetCurrent()
+    emitSelection(range)
+    layoutHighlight(animated: animated)
     polishHandles()
+    DispatchQueue.main.async { [weak self] in
+      self?.layoutHighlight(animated: false)
+      self?.polishHandles()
+    }
   }
 
   private func clearHighlight() {
     highlightRange = NSRange(location: NSNotFound, length: 0)
-    highlightView.isHidden = true
-    highlightView.frame = .zero
+    highlightContainer.isHidden = true
+    highlightPills.forEach { $0.removeFromSuperview() }
+    highlightPills.removeAll()
   }
 
-  private func layoutHighlight() {
+  private func layoutHighlight(animated: Bool = false) {
     guard highlightRange.location != NSNotFound, highlightRange.length > 0 else {
-      highlightView.isHidden = true
+      highlightContainer.isHidden = true
       return
     }
     let nsLen = ((textView.text ?? "") as NSString).length
@@ -696,30 +917,69 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
 
     textView.layoutManager.ensureLayout(for: textView.textContainer)
     let glyphRange = textView.layoutManager.glyphRange(forCharacterRange: highlightRange, actualCharacterRange: nil)
-    var union = CGRect.null
+    var rects: [CGRect] = []
     textView.layoutManager.enumerateEnclosingRects(
       forGlyphRange: glyphRange,
       withinSelectedGlyphRange: glyphRange,
       in: textView.textContainer
     ) { rect, _ in
-      union = union.isNull ? rect : union.union(rect)
+      if rect.width > 0.5, rect.height > 0.5 {
+        rects.append(rect)
+      }
     }
-    guard !union.isNull, union.width > 0, union.height > 0 else {
-      highlightView.isHidden = true
+    guard !rects.isEmpty else {
+      highlightContainer.isHidden = true
       return
     }
 
     let inset = textView.textContainerInset
-    var frame = union.insetBy(dx: -3, dy: -2)
-    frame.origin.x += inset.left
-    frame.origin.y += inset.top
-    // Не даём плашке уехать за края строки.
-    frame.origin.x = max(0, frame.origin.x)
-    frame.size.width = min(frame.width, textView.bounds.width - frame.origin.x)
+    let padX: CGFloat = 3.5
+    let padY: CGFloat = 1.5
 
-    highlightView.frame = frame
-    highlightView.isHidden = false
-    textView.sendSubviewToBack(highlightView)
+    while highlightPills.count < rects.count {
+      let pill = UIView()
+      pill.isUserInteractionEnabled = false
+      pill.backgroundColor = selectionBlue.withAlphaComponent(0.20)
+      pill.clipsToBounds = true
+      highlightContainer.addSubview(pill)
+      highlightPills.append(pill)
+    }
+    while highlightPills.count > rects.count {
+      highlightPills.removeLast().removeFromSuperview()
+    }
+
+    highlightContainer.isHidden = false
+    textView.sendSubviewToBack(highlightContainer)
+
+    for (i, raw) in rects.enumerated() {
+      var frame = raw.insetBy(dx: -padX, dy: -padY)
+      frame.origin.x += inset.left
+      frame.origin.y += inset.top
+      frame.origin.x = max(-1, frame.origin.x)
+      frame.size.width = min(frame.width, textView.bounds.width - frame.origin.x + 2)
+      let radius = min(6, max(4, frame.height * 0.28))
+      let pill = highlightPills[i]
+      pill.layer.cornerRadius = radius
+      if animated, pill.frame.isEmpty || pill.alpha < 0.5 {
+        pill.frame = frame
+        pill.alpha = 0
+        pill.transform = CGAffineTransform(scaleX: 0.92, y: 0.92)
+        UIView.animate(
+          withDuration: 0.18,
+          delay: 0,
+          usingSpringWithDamping: 0.86,
+          initialSpringVelocity: 0.4,
+          options: [.allowUserInteraction, .beginFromCurrentState]
+        ) {
+          pill.alpha = 1
+          pill.transform = .identity
+        }
+      } else {
+        pill.frame = frame
+        pill.alpha = 1
+        pill.transform = .identity
+      }
+    }
   }
 
   private func wordRange(around index: Int, in ns: NSString) -> NSRange {
@@ -791,34 +1051,68 @@ final class SelectableChatTextView: ExpoView, UITextViewDelegate, UIGestureRecog
   private func applyTypography() {
     let weight = weightToUIFontWeight(fontWeightValue)
     let font = UIFont.systemFont(ofSize: fontSize, weight: weight)
+    // Строка не может быть ниже самого шрифта — иначе CJK (и жирный кегль)
+    // обрезается сверху и снизу: maximumLineHeight меньше em-box.
+    let box = max(lineHeight, ceil(font.lineHeight))
     let paragraph = NSMutableParagraphStyle()
-    paragraph.minimumLineHeight = lineHeight
-    paragraph.maximumLineHeight = lineHeight
+    paragraph.minimumLineHeight = box
+    paragraph.maximumLineHeight = box
     paragraph.lineBreakMode = maxLines > 0 ? .byTruncatingTail : .byWordWrapping
-    textView.font = font
-    textView.textColor = textColorValue
-    textView.typingAttributes = [
+    let baseline = (box - font.lineHeight) / 2
+    let attrs: [NSAttributedString.Key: Any] = [
       .font: font,
       .foregroundColor: textColorValue,
       .paragraphStyle: paragraph,
+      .baselineOffset: baseline,
     ]
+    textView.font = font
+    textView.textColor = textColorValue
+    textView.typingAttributes = attrs
     if let current = textView.text, !current.isEmpty {
-      textView.attributedText = NSAttributedString(string: current, attributes: [
-        .font: font,
-        .foregroundColor: textColorValue,
-        .paragraphStyle: paragraph,
-      ])
+      let pinned = selectionPinned ? highlightRange : NSRange(location: NSNotFound, length: 0)
+      textView.attributedText = NSAttributedString(string: current, attributes: attrs)
+      if pinned.location != NSNotFound, pinned.length > 0, NSMaxRange(pinned) <= (current as NSString).length {
+        isRestoringSelection = true
+        textView.selectedRange = pinned
+        highlightRange = pinned
+        isRestoringSelection = false
+      }
     }
-    layoutHighlight()
+    layoutHighlight(animated: false)
   }
 
   private func emitContentSize() {
-    let width = bounds.width > 8 ? bounds.width : UIScreen.main.bounds.width - 48
-    textView.frame.size.width = width
-    let fitted = textView.sizeThatFits(CGSize(width: width, height: CGFloat.greatestFiniteMagnitude))
-    let height = ceil(fitted.height)
-    if abs(height - lastEmittedHeight) < 0.5 { return }
+    // Не меряем по «схлопнутой» ширине пузыря (типичный баг CJK: 1 иероглиф в столбик).
+    // Берём нормальный max пузыря, пока layout ещё не стабилен.
+    let screenW = UIScreen.main.bounds.width
+    let bubbleMax = max(160, floor(screenW * 0.82) - 48)
+    let constraintWidth: CGFloat
+    if bounds.width > 48 {
+      constraintWidth = bounds.width
+    } else {
+      constraintWidth = bubbleMax
+    }
+
+    textView.frame.size.width = constraintWidth
+    textView.textContainer.size = CGSize(width: constraintWidth, height: .greatestFiniteMagnitude)
+    textView.layoutManager.ensureLayout(for: textView.textContainer)
+
+    let used = textView.layoutManager.usedRect(for: textView.textContainer)
+    let inset = textView.textContainerInset
+    // usedRect даёт реальную ширину строки (короткие фразы не растягиваются на max).
+    var width = ceil(used.width + inset.left + inset.right + 1)
+    if width < 8 || used.height < 1 {
+      let fitted = textView.sizeThatFits(CGSize(width: constraintWidth, height: .greatestFiniteMagnitude))
+      width = ceil(min(constraintWidth, max(fitted.width, 8)))
+    }
+    width = min(constraintWidth, max(width, 8))
+    let height = ceil(max(used.height + inset.top + inset.bottom, lineHeight))
+
+    if abs(height - lastEmittedHeight) < 0.5, abs(width - lastEmittedWidth) < 0.5 {
+      return
+    }
     lastEmittedHeight = height
+    lastEmittedWidth = width
     onContentSize(["width": Double(width), "height": Double(height)])
   }
 

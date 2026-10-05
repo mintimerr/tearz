@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo, useCallback, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { APP_THEME } from '@/constants/theme';
 
 import { TeacherLessonRow } from '@/components/teacher/teacher-lesson-row';
 
-const SWIPE_BTN_WIDTH = 72;
+const ACTION_SIZE = 40;
 
 type Props = {
   title: string;
@@ -36,27 +36,37 @@ export const TeacherLessonSwipeItem = memo(function TeacherLessonSwipeItem({
 
   const renderRightActions = useCallback(
     () => (
-      <View style={styles.swipeActions}>
-        <TouchableOpacity
-          style={[styles.swipeBtn, styles.swipeRename]}
-          activeOpacity={0.85}
+      <View style={styles.actions}>
+        <Pressable
           onPress={() => {
             swipeRef.current?.close();
             onRename();
           }}
+          style={({ pressed }) => [styles.actionHit, pressed && styles.actionPressed]}
+          accessibilityRole="button"
           accessibilityLabel={renameLabel}>
-          <Ionicons name="pencil-outline" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.swipeBtn, styles.swipeDel]}
-          activeOpacity={0.85}
+          <View style={[styles.actionOrb, styles.actionRename]}>
+            <Ionicons name="pencil" size={16} color="#FFFFFF" />
+          </View>
+          <Text style={styles.actionLabel} numberOfLines={1}>
+            {renameLabel}
+          </Text>
+        </Pressable>
+        <Pressable
           onPress={() => {
             swipeRef.current?.close();
             onDelete();
           }}
+          style={({ pressed }) => [styles.actionHit, pressed && styles.actionPressed]}
+          accessibilityRole="button"
           accessibilityLabel={deleteLabel}>
-          <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+          <View style={[styles.actionOrb, styles.actionDelete]}>
+            <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+          </View>
+          <Text style={styles.actionLabel} numberOfLines={1}>
+            {deleteLabel}
+          </Text>
+        </Pressable>
       </View>
     ),
     [deleteLabel, onDelete, onRename, renameLabel],
@@ -66,13 +76,13 @@ export const TeacherLessonSwipeItem = memo(function TeacherLessonSwipeItem({
     <Swipeable
       ref={swipeRef}
       overshootRight={false}
-      friction={1.5}
-      rightThreshold={40}
+      friction={1.65}
+      rightThreshold={36}
       dragOffsetFromLeftEdge={16}
       dragOffsetFromRightEdge={16}
       renderRightActions={renderRightActions}
-      containerStyle={styles.swipeContainer}
-      childrenContainerStyle={styles.swipeChild}>
+      containerStyle={styles.container}
+      childrenContainerStyle={styles.child}>
       <TeacherLessonRow
         title={title}
         meta={meta}
@@ -85,24 +95,55 @@ export const TeacherLessonSwipeItem = memo(function TeacherLessonSwipeItem({
 });
 
 const styles = StyleSheet.create({
-  swipeContainer: {
+  container: {
+    backgroundColor: APP_THEME.color.bg,
+    overflow: 'hidden',
+  },
+  child: {
     backgroundColor: APP_THEME.color.bg,
   },
-  swipeChild: {
-    backgroundColor: APP_THEME.color.bg,
-  },
-  swipeActions: {
+  actions: {
     flexDirection: 'row',
-  },
-  swipeBtn: {
-    width: SWIPE_BTN_WIDTH,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingLeft: 8,
+    paddingRight: 6,
+    gap: 6,
   },
-  swipeRename: {
-    backgroundColor: APP_THEME.color.elevatedSoft,
+  actionHit: {
+    width: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
   },
-  swipeDel: {
-    backgroundColor: APP_THEME.color.danger,
+  actionPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.96 }],
+  },
+  actionOrb: {
+    width: ACTION_SIZE,
+    height: ACTION_SIZE,
+    borderRadius: ACTION_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0B1430',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  actionRename: {
+    backgroundColor: '#4C8DFF',
+  },
+  actionDelete: {
+    backgroundColor: '#FF453A',
+  },
+  actionLabel: {
+    maxWidth: 54,
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    color: 'rgba(26,26,26,0.5)',
+    textAlign: 'center',
   },
 });

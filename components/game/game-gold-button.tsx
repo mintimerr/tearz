@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Pressable } from 'react-native-gesture-handler';
@@ -12,6 +12,7 @@ type Props = {
   onPressIn?: () => void;
   disabled?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  tone?: 'gold' | 'sky';
   haptic?: 'light' | 'medium';
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
@@ -31,11 +32,13 @@ export function GameGoldButton({
   onPressIn,
   disabled,
   size = 'md',
+  tone = 'gold',
   haptic = 'medium',
   accessibilityLabel,
   style,
 }: Props) {
   const s = SIZES[size];
+  const faceColor = tone === 'sky' ? GAME_THEME.color.sky : GAME_THEME.color.gold;
 
   return (
     <Pressable
@@ -59,6 +62,7 @@ export function GameGoldButton({
           paddingVertical: s.padV,
           borderWidth: s.border,
           borderBottomWidth: pressed ? s.border : s.lip,
+          backgroundColor: faceColor,
         },
         pressed && styles.btnPressed,
         disabled && styles.disabled,
@@ -80,7 +84,6 @@ export function GameGoldButton({
 
 const styles = StyleSheet.create({
   btn: {
-    backgroundColor: GAME_THEME.color.gold,
     borderColor: GAME_THEME.color.ink,
     borderBottomColor: GAME_THEME.color.goldLip,
     borderRadius: GAME_THEME.radius.button,

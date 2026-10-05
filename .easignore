@@ -1,0 +1,27 @@
+# Keep Android upload small + never ship signing secrets
+.git
+.cursor
+node_modules
+ios
+android
+.expo
+dist
+web-build
+credentials
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+*.cer
+.env
+.env*.local
+server/.env
+landing/*.apk
+*.apk
+*.aab
+tmp-*.png
+server/public
+landing

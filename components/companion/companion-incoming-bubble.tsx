@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { CHAT_MSG } from '@/constants/chat-message';
 import { GAME_THEME } from '@/constants/game-theme';
@@ -10,50 +10,31 @@ type Props = {
   compact?: boolean;
 };
 
-/** Входящее сообщение — белая панель с ink-обводкой. */
+/** Входящее сообщение собеседника — спокойный пузырь без тяжёлой тени. */
 export function CompanionIncomingBubble({ children, style, compact }: Props) {
   return (
-    <View style={[styles.shell, style]}>
-      <View style={[styles.body, compact && styles.bodyCompact]}>
-        {children}
-      </View>
+    <View style={[styles.shell, compact && styles.shellCompact, style]}>
+      {children}
     </View>
   );
 }
 
-const RADIUS = 16;
+const RADIUS = 18;
 
 const styles = StyleSheet.create({
   shell: {
+    alignSelf: 'flex-start',
     maxWidth: CHAT_MSG.bubble.maxWidth,
     borderRadius: RADIUS,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
-    borderBottomWidth: 4,
-    borderBottomColor: GAME_THEME.color.ink,
+    borderWidth: 1.5,
+    borderColor: 'rgba(26,26,26,0.88)',
     backgroundColor: GAME_THEME.color.paper,
-    ...Platform.select({
-      ios: {
-        shadowColor: GAME_THEME.color.ink,
-        shadowOpacity: 0.22,
-        shadowRadius: 0,
-        shadowOffset: { width: 0, height: 3 },
-      },
-      android: {
-        elevation: 3,
-      },
-      default: {},
-    }),
-  },
-  body: {
-    borderRadius: RADIUS - 2,
-    overflow: 'hidden',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     gap: 2,
   },
-  bodyCompact: {
+  shellCompact: {
     paddingVertical: 9,
-    paddingHorizontal: 13,
+    paddingHorizontal: 12,
   },
 });

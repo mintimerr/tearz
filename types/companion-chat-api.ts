@@ -2,6 +2,8 @@
  * Контракт HTTP `/api/chat` (собеседник).
  * Расширяйте при добавлении voice mode (например, поле audio/mime).
  */
+import type { CompactLearnerContext } from '@/types/learner-model';
+
 export type CompanionChatApiLanguage =
   | 'english'
   | 'chinese'
@@ -59,8 +61,13 @@ export type TeacherChatRequestBody = {
   uiLanguage?: 'ru' | 'en' | 'zh';
   /** Тема урока из приложения */
   lessonTopic?: string;
-  /** CEFR из placement test (A1–C2) — сервер использует как prior */
+  /**
+   * @deprecated Prefer learnerContext.overallLevel.
+   * CEFR из placement (A1–C2) — kept for older clients.
+   */
   learnerLevel?: string;
+  /** Compact derived learner model for teaching difficulty / goal. */
+  learnerContext?: CompactLearnerContext;
   imageBase64?: string;
   imageMimeType?: string;
 };
@@ -76,6 +83,9 @@ export type TeacherExerciseRequestBody = {
   language?: CompanionChatApiLanguage;
   uiLanguage?: 'ru' | 'en' | 'zh';
   lessonTopic?: string;
+  /** Starting CEFR for exercise difficulty (from verified placement). */
+  learnerLevel?: string;
+  learnerContext?: CompactLearnerContext;
 };
 
 export type TeacherExerciseSuccessBody = {
@@ -245,6 +255,9 @@ export type TeacherExerciseSetRequestBody = {
   avoidExerciseTexts?: string[];
   /** Недавние ошибки ученика — приоритет при генерации заданий. */
   recentMistakes?: TeacherDrillMistakeSummary[];
+  /** Starting CEFR from verified placement. */
+  learnerLevel?: string;
+  learnerContext?: CompactLearnerContext;
 };
 
 export type TeacherDrillFollowUpRequestBody = {

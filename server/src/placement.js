@@ -11,6 +11,19 @@ import {
   stripPinyin,
   updateAbility,
 } from './placement-adaptive.js';
+import {
+  finalizeFromCanonicalHistory,
+  shadowLegacyLevel,
+} from './placement-assessment-bridge.js';
+import { orchestratorNextTarget } from './placement-orchestrator-target.js';
+import { intakeRemoteAiItem, generatedItemFromPlacementDraft } from '../../shared/assessment/dist/placement/ai-intake.js';
+import { DEFAULT_PLACEMENT_BETA_FLAGS } from '../../shared/assessment/dist/placement/beta-flags.js';
+
+/**
+ * @deprecated LLM placement "brain" prompts — retained for question generation +
+ * optional shadow debug. Final CEFR is set by Assessment Engine (see bridge).
+ * Rollback: set PLACEMENT_USE_LEGACY_LLM_CEFR=1 to restore old finalize path.
+ */
 
 const SECTIONS = ['grammar', 'comprehension', 'phrases', 'structure'];
 
@@ -78,9 +91,11 @@ function normalizePlacementQuestion(raw, fallbackDifficulty, lang) {
     : [];
   let correctChoice =
     typeof raw.correctChoice === 'string' ? raw.correctChoice.trim().slice(0, 160) : '';
-  const difficulty = Number.isFinite(Number(raw.difficulty))
-    ? clamp(Number(raw.difficulty), 0, 100)
-    : fallbackDifficulty;
+  const reported = Number(raw.difficulty);
+  const ceiling = clamp(Number(fallbackDifficulty), 0, 100);
+  const difficulty = Number.isFinite(reported)
+    ? clamp(Math.min(reported, ceiling), 0, 100)
+    : ceiling;
   const section = SECTIONS.includes(raw.section) ? raw.section : 'grammar';
 
   if (lang === 'chinese') {
@@ -204,7 +219,7 @@ export function registerPlacementRoutes(app, deps) {
           .filter((h) => h && typeof h === 'object')
           .map((h) => ({
             section: typeof h.section === 'string' ? h.section : 'vocabulary',
-            difficulty: Number(h.difficulty) || 12,
+            difficulty: Number.isFinite(Number(h.difficulty)) ? Number(h.difficulty) : 8,
             correct: Boolean(h.correct),
             prompt: typeof h.prompt === 'string' ? h.prompt.slice(0, 200) : '',
             questionId: typeof h.questionId === 'string' ? h.questionId.slice(0, 32) : undefined,
@@ -212,7 +227,7 @@ export function registerPlacementRoutes(app, deps) {
               ? h.choices.filter((c) => typeof c === 'string').map((c) => c.slice(0, 160)).slice(0, 4)
               : undefined,
           }))
-          .slice(0, 12)
+          .slice(0, PLACEMENT_TOTAL)
       : [];
 
     const seenIds = Array.isArray(req.body?.seenQuestionIds)
@@ -280,7 +295,91 @@ export function registerPlacementRoutes(app, deps) {
         ability = updateAbility(ability, lastDifficulty, correct, history);
         questionIndex = history.length;
 
+        const canonicalResponses = Array.isArray(req.body?.canonicalResponses)
+          ? req.body.canonicalResponses
+          : [];
+        const assessmentSessionId =
+          typeof req.body?.assessmentSessionId === 'string'
+            ? req.body.assessmentSessionId
+            : typeof req.body?.sessionId === 'string'
+              ? req.body.sessionId
+              : undefined;
+        const clientResultHint = req.body?.clientResult ?? null;
+
+        // Ability for API = assessment posterior from canonical history when available.
+        if (process.env.PLACEMENT_USE_LEGACY_LLM_CEFR !== '1' && canonicalResponses.length > 0) {
+          const nextHint = orchestratorNextTarget({
+            canonicalResponses,
+            language: lang,
+            assessmentSessionId,
+          });
+          ability = nextHint.ability;
+        }
+
         if (questionIndex >= PLACEMENT_TOTAL) {
+          const useLegacyLlmCefr = process.env.PLACEMENT_USE_LEGACY_LLM_CEFR === '1';
+
+          if (!useLegacyLlmCefr) {
+            // Server SoT: recompute from canonical frozen history. Ignore client level/theta.
+            const finalized = finalizeFromCanonicalHistory({
+              language: lang,
+              assessmentSessionId,
+              canonicalResponses,
+              clientResult: clientResultHint,
+              analyticsSink: (ev) => {
+                if (process.env.PLACEMENT_SHADOW_DEBUG === '1') {
+                  console.log('[placement analytics]', ev.name, ev);
+                }
+              },
+            });
+            if (!finalized.ok) {
+              return res.status(400).json({
+                error: 'Cannot finalize without canonical response history',
+                code: finalized.error,
+              });
+            }
+            const legacyShadow = shadowLegacyLevel(
+              ability,
+              history,
+              conservativePlacementLevel,
+            );
+            if (process.env.PLACEMENT_SHADOW_DEBUG === '1') {
+              console.log('[placement shadow]', {
+                legacyLevel: legacyShadow,
+                newLevel: finalized.result.level,
+                theta: finalized.result.theta,
+                confidence: finalized.result.confidence,
+                mismatch: finalized.mismatch,
+              });
+            }
+            return res.json({
+              done: true,
+              ability: finalized.ability,
+              correct,
+              assessmentSessionId: assessmentSessionId ?? finalized.record?.assessmentSessionId,
+              clientServerMismatch: finalized.mismatch ?? null,
+              result: {
+                level: finalized.result.level,
+                score: finalized.result.score,
+                summary: finalized.result.summary,
+                strengths: finalized.result.strengths,
+                gaps: finalized.result.gaps,
+                hskLevel: finalized.result.hskLevel,
+                statisticalEstimate: finalized.result.statisticalEstimate,
+                theta: finalized.result.theta,
+                thetaCredibleInterval: finalized.result.thetaCredibleInterval,
+                confidence: finalized.result.confidence,
+                confidenceLabel: finalized.result.confidenceLabel,
+                levelProbabilities: finalized.result.levelProbabilities,
+                skillProfile: finalized.result.skillProfile ?? finalized.record?.skillProfile,
+                verification: finalized.result.verification,
+                assessmentSessionId: finalized.record?.assessmentSessionId,
+                ...finalized.versions,
+              },
+            });
+          }
+
+          // DEPRECATED rollback path — LLM brain may suggest level but was already capped.
           const parsed = await callOpenAiJson({
             apiKey,
             model: PLACEMENT_SCORE_MODEL,
@@ -289,11 +388,12 @@ export function registerPlacementRoutes(app, deps) {
             maxTokens: 600,
             temperature: 0.2,
           });
+          // Even in rollback, algorithm level is authoritative floor/cap.
+          const algorithmLevel = conservativePlacementLevel(ability, history);
           const level =
             typeof parsed.level === 'string' && /^A1|A2|B1|B2|C1|C2$/i.test(parsed.level)
               ? parsed.level.toUpperCase()
-              : conservativePlacementLevel(ability, history);
-          const algorithmLevel = conservativePlacementLevel(ability, history);
+              : algorithmLevel;
           const levelRank = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
           const finalLevel =
             (levelRank[level] || 0) > (levelRank[algorithmLevel] || 0) ? algorithmLevel : level;
@@ -326,8 +426,33 @@ export function registerPlacementRoutes(app, deps) {
       }
 
       const section = SECTIONS[questionIndex % SECTIONS.length];
-      const probe = computeNextProbe(ability, history, questionIndex);
-      const targetDifficulty = probe.targetDifficulty;
+      // Production: orchestrator chooses CEFR target from canonical posterior; LLM generates content.
+      // Rollback: PLACEMENT_USE_LEGACY_LLM_CEFR=1 restores computeNextProbe.
+      let probe;
+      let targetDifficulty;
+      const canonicalForSelect = Array.isArray(req.body?.canonicalResponses)
+        ? req.body.canonicalResponses
+        : [];
+      if (process.env.PLACEMENT_USE_LEGACY_LLM_CEFR === '1') {
+        probe = computeNextProbe(ability, history, questionIndex);
+        targetDifficulty = probe.targetDifficulty;
+      } else {
+        const next = orchestratorNextTarget({
+          canonicalResponses: canonicalForSelect,
+          language: lang,
+          assessmentSessionId: req.body?.assessmentSessionId,
+        });
+        ability = next.ability;
+        targetDifficulty = next.targetDifficulty ?? FIRST_TASK_DIFFICULTY;
+        probe = {
+          targetDifficulty,
+          targetBankDifficulty: Math.max(1, Math.min(25, Math.round((targetDifficulty / 100) * 24 + 1))),
+          mode: 'explore',
+          phase: questionIndex < 5 ? 'explore' : questionIndex < 10 ? 'narrow' : 'confirm',
+          orchestratorTargetLevel: next.targetLevel,
+          orchestratorSkill: next.skill,
+        };
+      }
       const model = placementModelForDifficulty(targetDifficulty);
 
       let question = null;
@@ -356,7 +481,43 @@ export function registerPlacementRoutes(app, deps) {
           temperature: 0.35 + attempt * 0.07,
         });
         const candidate = normalizePlacementQuestion(parsed, targetDifficulty, lang);
-        if (!candidate) continue;
+        if (!candidate) {
+          // Fail closed: malformed / weak AI JSON → retry; never score silently.
+          continue;
+        }
+        // Beta Quality Gate: AI item must pass intake; otherwise not selectable for scoring.
+        // Prefer approved-bank fallback on client when all attempts fail (502).
+        const gate = intakeRemoteAiItem({
+          item: generatedItemFromPlacementDraft({
+            id: candidate.id,
+            prompt: candidate.prompt,
+            choices: candidate.choices,
+            correctChoice: candidate.correctChoice,
+            instruction: candidate.instruction,
+            language: lang,
+            targetLevel: probe.orchestratorTargetLevel || 'B1',
+            skill:
+              section === 'comprehension'
+                ? 'reading'
+                : section === 'phrases'
+                  ? 'functional'
+                  : 'grammar',
+            kind: candidate.kind,
+          }),
+          flags: DEFAULT_PLACEMENT_BETA_FLAGS,
+        });
+        if (!gate.ok) {
+          // Fail closed — do not use this AI item as scoring content.
+          continue;
+        }
+        // Beta default never_score: mark generated items unscored even if gate PASS.
+        if (!gate.isScored) {
+          candidate._isScored = false;
+          candidate._evidenceWeight = 0;
+        } else {
+          candidate._isScored = true;
+          candidate._evidenceWeight = gate.evidenceWeight;
+        }
         const seenAll = new Set([
           ...history.map((h) => normalizeSeenKey(h.prompt)),
           ...seenPrompts.map((p) => normalizeSeenKey(p)),

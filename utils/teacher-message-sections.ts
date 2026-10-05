@@ -7,10 +7,26 @@ export type TeacherBodyLine =
   | { kind: 'para'; text: string }
   | { kind: 'bullet'; text: string }
   | { kind: 'phrase'; text: string }
-  | { kind: 'dialogue'; speaker: string; text: string };
+  | { kind: 'dialogue'; speaker: string; text: string }
+  | { kind: 'vocab'; word: string; gloss: string };
 
-const BULLET_RE = /^[-–—•*·]\s+/;
+const BULLET_RE = /^[-–—•*·▪]\s+/;
 const DIALOGUE_RE = /^([\p{L}\p{M}]{1,16})\s*[:：]\s*(.+)$/u;
+
+/** «слово — перевод» / «word - gloss». */
+export function splitVocabPair(line: string): { word: string; gloss: string } | null {
+  const t = line.trim();
+  if (!t) return null;
+  const dash = t.match(/^(.+?)\s*[—–→]\s*(.+)$/) ?? t.match(/^(.+?)\s+-\s+(.+)$/);
+  if (!dash) return null;
+  const word = dash[1].trim();
+  let gloss = dash[2].trim();
+  if (!word || !gloss) return null;
+  // отрезаем хвост после точки с запятой в длинных gloss
+  const semi = gloss.split(/[;；]/)[0]?.trim();
+  if (semi) gloss = semi;
+  return { word, gloss };
+}
 
 /** Убирает markdown-артефакты, которые модель иногда добавляет вопреки инструкции. */
 export function cleanTeacherInline(s: string): string {
@@ -60,12 +76,22 @@ export function parseTeacherBlockLines(
       }
     }
 
-    if (bulletMatch) {
+    if (opts.vocabulary) {
+      const pair = splitVocabPair(unbulleted);
+      if (pair) {
+        out.push({ kind: 'vocab', word: pair.word, gloss: pair.gloss });
+        continue;
+      }
       out.push({ kind: 'bullet', text: unbulleted });
       continue;
     }
 
-    if (opts.vocabulary) {
+    if (bulletMatch) {
+      const pair = splitVocabPair(unbulleted);
+      if (pair) {
+        out.push({ kind: 'vocab', word: pair.word, gloss: pair.gloss });
+        continue;
+      }
       out.push({ kind: 'bullet', text: unbulleted });
       continue;
     }
@@ -136,6 +162,13 @@ function parseLenientBlocks(trimmed: string): TeacherMessageBlock[] | null {
   const blocks: TeacherMessageBlock[] = [];
   let title: string | null = null;
   let bodyLines: string[] = [];
+  let leadLines: string[] = [];
+
+  const flushLead = () => {
+    const body = leadLines.join('\n').trim();
+    leadLines = [];
+    if (body) blocks.push({ title: '', body });
+  };
 
   const flush = () => {
     if (!title) return;
@@ -149,6 +182,7 @@ function parseLenientBlocks(trimmed: string): TeacherMessageBlock[] | null {
     const titleMatch = line.match(TITLE_LINE);
 
     if (titleMatch && isValidSectionTitle(titleMatch[1].trim())) {
+      if (!title) flushLead();
       flush();
       title = titleMatch[1].trim();
       const inline = titleMatch[2].trim();
@@ -159,10 +193,14 @@ function parseLenientBlocks(trimmed: string): TeacherMessageBlock[] | null {
     if (title) {
       if (line.trim() === '' && bodyLines.length === 0) continue;
       bodyLines.push(rawLine);
+    } else if (line.trim()) {
+      leadLines.push(rawLine);
     }
   }
 
   flush();
+  // если секций нет — lead станет единственным блоком (plain)
+  if (blocks.length === 0) flushLead();
   return blocks.length > 0 ? blocks : null;
 }
 

@@ -19,6 +19,7 @@ import { GameGoldButton } from '@/components/game/game-gold-button';
 import { GameListRow } from '@/components/game/game-list-row';
 import { GameWindowShell } from '@/components/game/game-window-shell';
 import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
+import { SpotlightAnchor } from '@/components/onboarding/tearz-spotlight';
 import { teacherLessonColor } from '@/components/teacher/teacher-tokens';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useCompanionChats, type CompanionChatRow } from '@/contexts/companion-chats-context';
@@ -68,7 +69,7 @@ function GameFilterChip({
 export function DialogsWindowScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { chats, companionChatsHydrated, removeChat, toggleFavorite, isFavorite, addChat } =
+  const { chats, companionChatsHydrated, removeChat, toggleFavorite, isFavorite, addChats } =
     useCompanionChats();
   const { lessons, removeRecentLesson } = useTeacherJourney();
   const [filter, setFilter] = useState<FilterId>('all');
@@ -77,24 +78,26 @@ export function DialogsWindowScreen() {
 
   /** Уроки учителя раньше скрывались из диалогов — подтягиваем их в общий список. */
   useEffect(() => {
-    if (!companionChatsHydrated) return;
-    for (const lesson of lessons) {
-      const created = new Date(lesson.createdAt || Date.now());
-      const time = `${String(created.getHours()).padStart(2, '0')}:${String(created.getMinutes()).padStart(2, '0')}`;
-      addChat({
-        id: lesson.id,
-        name: 'Преподаватель',
-        preview: lesson.title || 'Урок',
-        time,
-        unread: 0,
-        online: true,
-        letter: 'T',
-        color: teacherLessonColor(lesson.id),
-        presence: 'урок',
-        profileMetaLine: lesson.title || undefined,
-      });
-    }
-  }, [addChat, companionChatsHydrated, lessons]);
+    if (!companionChatsHydrated || lessons.length === 0) return;
+    addChats(
+      lessons.map((lesson) => {
+        const created = new Date(lesson.createdAt || Date.now());
+        const time = `${String(created.getHours()).padStart(2, '0')}:${String(created.getMinutes()).padStart(2, '0')}`;
+        return {
+          id: lesson.id,
+          name: 'Преподаватель',
+          preview: lesson.title || 'Урок',
+          time,
+          unread: 0,
+          online: true,
+          letter: 'T',
+          color: teacherLessonColor(lesson.id),
+          presence: 'урок',
+          profileMetaLine: lesson.title || undefined,
+        };
+      }),
+    );
+  }, [addChats, companionChatsHydrated, lessons]);
 
   const filters = useMemo(
     () => [
@@ -104,14 +107,15 @@ export function DialogsWindowScreen() {
     [t],
   );
 
+  const dialogs = useMemo(
+    () => chats.filter((c) => !(c.id.startsWith('tl-') || c.presence === 'урок')),
+    [chats],
+  );
+  const hasDialogs = dialogs.length > 0;
+
   const rows = useMemo(
-    () =>
-      chats.filter((c) => {
-        if (c.id.startsWith('tl-') || c.presence === 'урок') return false;
-        if (filter === 'favorites') return isFavorite(c.id);
-        return true;
-      }),
-    [chats, filter, isFavorite],
+    () => (filter === 'favorites' ? dialogs.filter((c) => isFavorite(c.id)) : dialogs),
+    [dialogs, filter, isFavorite],
   );
 
   const openFind = useCallback(() => setFindSheetOpen(true), []);
@@ -267,20 +271,27 @@ export function DialogsWindowScreen() {
         </View>
       );
     }
+    if (hasDialogs) return null;
     return (
       <View style={styles.emptyWrap}>
         <Image source={TEARZ_MARIO.talk} style={styles.emptyMascot} contentFit="contain" />
         <Text style={styles.emptyTitle}>{t('companion.emptyTitle')}</Text>
         <Text style={styles.empty}>{t('companion.emptySub')}</Text>
-        <GameGoldButton
-          label={t('companion.newChat')}
-          onPress={openFind}
-          size="md"
-          style={styles.emptyCta}
-        />
+        <SpotlightAnchor
+          tipId="coachDialogs5"
+          pose={TEARZ_MARIO.coachRead}
+          line={t('onboarding.spotDialogs')}
+          style={styles.spotAnchor}>
+          <GameGoldButton
+            label={t('companion.newChat')}
+            onPress={openFind}
+            size="md"
+            style={styles.emptyCta}
+          />
+        </SpotlightAnchor>
       </View>
     );
-  }, [companionChatsHydrated, openFind, t]);
+  }, [companionChatsHydrated, hasDialogs, openFind, t]);
 
   return (
     <>
@@ -288,14 +299,16 @@ export function DialogsWindowScreen() {
         title={t('tabs.companion')}
         contentPadding={14}
         right={
-          <Pressable
-            onPress={openFind}
-            hitSlop={8}
-            style={({ pressed }) => [styles.headerBtn, pressed && styles.headerBtnPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={t('companion.newChat')}>
-            <Ionicons name="add" size={22} color={GAME_THEME.color.ink} />
-          </Pressable>
+          hasDialogs ? (
+            <Pressable
+              onPress={openFind}
+              hitSlop={8}
+              style={({ pressed }) => [styles.headerBtn, pressed && styles.headerBtnPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('companion.newChat')}>
+              <Ionicons name="add" size={22} color={GAME_THEME.color.ink} />
+            </Pressable>
+          ) : null
         }>
         <View style={styles.body}>
           <FlatList
@@ -316,14 +329,6 @@ export function DialogsWindowScreen() {
             windowSize={8}
             removeClippedSubviews={Platform.OS === 'android'}
           />
-          {rows.length > 0 ? (
-            <GameGoldButton
-              label={t('companion.newChat')}
-              onPress={openFind}
-              size="md"
-              style={styles.newChatBtn}
-            />
-          ) : null}
         </View>
       </GameWindowShell>
 
@@ -359,9 +364,8 @@ const styles = StyleSheet.create({
   listEmptyGrow: {
     flexGrow: 1,
   },
-  newChatBtn: {
+  spotAnchor: {
     alignSelf: 'stretch',
-    marginTop: 10,
   },
   listHeader: {
     gap: 12,

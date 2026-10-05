@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
@@ -9,6 +9,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type ReactNode,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -46,6 +47,8 @@ type Props = {
   onClose: () => void;
   /** Открыть форму добавления слова в эту папку. */
   onAddWord?: () => void;
+  /** Форма поверх колоды. Отдельный Modal на iOS не встаёт поверх этого окна. */
+  overlay?: ReactNode;
 };
 
 const SWIPE_THRESHOLD = 72;
@@ -72,6 +75,7 @@ export function VocabStudyModal({
   folderName,
   onClose,
   onAddWord,
+  overlay,
 }: Props) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -418,13 +422,14 @@ export function VocabStudyModal({
       animationType="none"
       presentationStyle="overFullScreen"
       onRequestClose={requestClose}>
+      <View style={styles.modalHost}>
       <Animated.View
         style={[
           styles.root,
           screenFadeStyle,
           { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 },
         ]}
-        pointerEvents={isClosing ? 'none' : 'auto'}>
+        pointerEvents={isClosing || overlay ? 'none' : 'auto'}>
         <View style={styles.sheet}>
           <View style={styles.titleBar}>
             <Pressable
@@ -596,15 +601,24 @@ export function VocabStudyModal({
           )}
         </View>
       </Animated.View>
+      {overlay ? <View style={styles.overlayHost}>{overlay}</View> : null}
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalHost: {
+    flex: 1,
+  },
   root: {
     flex: 1,
     backgroundColor: GAME_THEME.color.sky,
     overflow: 'hidden',
+  },
+  overlayHost: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 30,
   },
   sheet: {
     flex: 1,

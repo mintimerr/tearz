@@ -28,17 +28,21 @@ type Props = {
   /** @deprecated kept for API compatibility */
   animKey?: string;
   numberOfLines?: number;
+  /** Inside a wrapping row (fill-in blanks) — don’t force full width. */
+  inline?: boolean;
 };
 
-export function LongPressWordText({ text, style, numberOfLines }: Props) {
-  const { openWord, closeSheet, clearWordSelections, registerSelectionClearer } = useWordAddSheet();
+export function LongPressWordText({ text, style, numberOfLines, inline }: Props) {
+  const { openWord, dismissSheetFromOutside, clearWordSelections, registerSelectionClearer } =
+    useWordAddSheet();
   return (
     <SelectableChatText
       text={text}
       style={[styles.base, style]}
       numberOfLines={numberOfLines}
-      onSelect={openWord}
-      onClear={() => closeSheet()}
+      inline={inline}
+      onSelect={(word) => openWord(word, { context: text })}
+      onClear={() => dismissSheetFromOutside()}
       registerSelectionClearer={registerSelectionClearer}
       onInteract={clearWordSelections}
     />

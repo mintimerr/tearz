@@ -5,6 +5,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@tearz/assessment": [
+        "./shared/assessment/src/index.ts"
+      ],
+      "@tearz/assessment/*": [
+        "./shared/assessment/src/*"
       ]
     }
   },

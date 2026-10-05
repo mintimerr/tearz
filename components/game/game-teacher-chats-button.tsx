@@ -1,4 +1,5 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
+import { forwardRef } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,12 +12,16 @@ type Props = {
 };
 
 /** Кружок с тремя полосками — история диалогов с преподом (как в ChatGPT). */
-export function GameTeacherChatsButton({ onPress, tone = 'dark', style }: Props) {
+export const GameTeacherChatsButton = forwardRef<View, Props>(function GameTeacherChatsButton(
+  { onPress, tone = 'dark', style },
+  ref,
+) {
   const insets = useSafeAreaInsets();
   const light = tone === 'light';
 
   return (
     <Pressable
+      ref={ref}
       onPress={() => {
         void Haptics.selectionAsync();
         onPress();
@@ -38,7 +43,7 @@ export function GameTeacherChatsButton({ onPress, tone = 'dark', style }: Props)
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   btn: {

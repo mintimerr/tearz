@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LongPressWordText } from '@/components/long-press-word-text';
+import { WordAddSheetHost } from '@/components/word-add-sheet';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useTranslation } from '@/contexts/locale-context';
 import type { TeacherVocabWordCard } from '@/types/companion-chat-api';
@@ -20,6 +21,7 @@ type Props = {
   onClose: () => void;
   words: TeacherVocabWordCard[] | null;
   loading: boolean;
+  upgrading?: boolean;
   error: string | null;
   onRetry: () => void;
 };
@@ -52,6 +54,7 @@ export function TeacherExamplesSheet({
   onClose,
   words,
   loading,
+  upgrading,
   error,
   onRetry,
 }: Props) {
@@ -62,6 +65,7 @@ export function TeacherExamplesSheet({
 
   const richWords = words ?? [];
   const hasRich = richWords.length > 0;
+  const showBlockingLoader = loading && !hasRich;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -81,7 +85,9 @@ export function TeacherExamplesSheet({
             </Pressable>
           </View>
 
-          {!loading && hasRich ? (
+          {!showBlockingLoader && hasRich && upgrading ? (
+            <Text style={styles.hint}>{t('teacher.examples.upgradingHint')}</Text>
+          ) : !showBlockingLoader && hasRich ? (
             <Text style={styles.hint}>{t('teacher.examples.sheetHint')}</Text>
           ) : null}
 
@@ -90,14 +96,14 @@ export function TeacherExamplesSheet({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
-            {loading ? (
+            {showBlockingLoader ? (
               <View style={styles.loadingCard}>
                 <ActivityIndicator size="small" color={GAME_THEME.color.ink} />
                 <Text style={styles.loadingText}>{t('teacher.examples.loading')}</Text>
               </View>
             ) : null}
 
-            {error && !loading ? (
+            {error && !hasRich && !showBlockingLoader ? (
               <View style={styles.errorCard}>
                 <Text style={styles.errorText}>{error}</Text>
                 <Pressable
@@ -114,13 +120,20 @@ export function TeacherExamplesSheet({
                 ))
               : null}
 
-            {!loading && !hasRich && !error ? (
+            {!showBlockingLoader && !hasRich && !error ? (
               <View style={styles.emptyCard}>
                 <Ionicons name="chatbubbles-outline" size={28} color="rgba(26,26,26,0.35)" />
                 <Text style={styles.emptyText}>{t('teacher.examples.emptyBody')}</Text>
               </View>
             ) : null}
           </ScrollView>
+        </View>
+
+        {/* Host inside examples Modal — board host sits under this overlay and never shows. */}
+        <View
+          style={[styles.wordSheetHost, { paddingBottom: Math.max(insets.bottom, 10) }]}
+          pointerEvents="box-none">
+          <WordAddSheetHost />
         </View>
       </View>
     </Modal>
@@ -145,6 +158,12 @@ const styles = StyleSheet.create({
     borderColor: GAME_THEME.color.ink,
     borderBottomWidth: 0,
     overflow: 'hidden',
+  },
+  wordSheetHost: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    zIndex: 2000,
+    elevation: 2000,
   },
   handle: {
     alignSelf: 'center',

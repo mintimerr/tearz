@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TeacherBoardChat } from '@/components/teacher/teacher-board-chat';
+import { TeacherDrillSessionOverlay } from '@/components/teacher/teacher-drill-session';
 import type { TeacherComposerAttachment } from '@/components/teacher/teacher-home-composer';
 import { GAME_THEME } from '@/constants/game-theme';
 import { warmCompanionApi } from '@/services/companion-chat-ai';
@@ -55,6 +56,8 @@ export function TeacherLessonWindow({
           gameChrome
         />
       </View>
+      {/* Внутри Modal урока: корневой drill Modal оказывается под ним и «залипает». */}
+      <TeacherDrillSessionOverlay mode="embedded" />
     </View>
   );
 }
@@ -63,6 +66,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: GAME_THEME.color.cream,
+    position: 'relative',
   },
   statusFill: {
     width: '100%',

@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GameGoldButton } from '@/components/game/game-gold-button';
+import { CoinAmount, CoinText } from '@/components/game/tearz-drop';
 import { GAME_THEME } from '@/constants/game-theme';
 import { DRILL_TASK_COUNT } from '@/constants/teacher-drill';
 import { useEngagement } from '@/contexts/engagement-context';
@@ -111,10 +112,10 @@ export function TeacherFullWorkoutPaywall({ visible, feature, onClose, onUnlocke
             </View>
 
             <View style={styles.priceCard}>
-              <Text style={styles.price}>{PLUS_DAY_COIN_COST} ◉</Text>
+              <CoinAmount value={PLUS_DAY_COIN_COST} textStyle={styles.price} size={22} />
               <Text style={styles.priceHint}>{t('plus.dayUnlock')}</Text>
               <View style={styles.priceDivider} />
-              <Text style={styles.priceNote}>{t('plus.coinsBalance', { count: coins })}</Text>
+              <CoinText style={styles.priceNote} text={t('plus.coinsBalance', { count: coins })} />
             </View>
 
             <View style={styles.perksCard}>
@@ -126,17 +127,21 @@ export function TeacherFullWorkoutPaywall({ visible, feature, onClose, onUnlocke
             <Text style={styles.footnote}>{t('plus.earnHint')}</Text>
 
             <GameGoldButton
-              label={
-                canAfford
-                  ? t('plus.buyDay', { cost: PLUS_DAY_COIN_COST })
-                  : t('plus.needCoins', { cost: PLUS_DAY_COIN_COST })
-              }
               onPress={handleCoinsDay}
               size="lg"
               disabled={!canAfford}
               accessibilityLabel={t('plus.buyDayA11y', { cost: PLUS_DAY_COIN_COST })}
-              style={styles.cta}
-            />
+              style={styles.cta}>
+              <CoinText
+                dropSize={16}
+                style={styles.ctaLabel}
+                text={
+                  canAfford
+                    ? t('plus.buyDay', { cost: PLUS_DAY_COIN_COST })
+                    : t('plus.needCoins', { cost: PLUS_DAY_COIN_COST })
+                }
+              />
+            </GameGoldButton>
 
             <Pressable onPress={handleClose} hitSlop={12} style={styles.dismissBtn}>
               <Text style={styles.dismissText}>{t('plus.dismiss')}</Text>
@@ -332,6 +337,11 @@ const styles = StyleSheet.create({
   },
   cta: {
     alignSelf: 'stretch',
+  },
+  ctaLabel: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: GAME_THEME.color.ink,
   },
   dismissBtn: {
     alignItems: 'center',

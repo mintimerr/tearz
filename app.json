@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tearzmobile",
-    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
@@ -48,9 +47,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 260,
           "resizeMode": "contain",
-          "backgroundColor": "#0B1430",
+          "backgroundColor": "#091124",
           "dark": {
-            "backgroundColor": "#0B1430"
+            "backgroundColor": "#091124"
           }
         }
       ],

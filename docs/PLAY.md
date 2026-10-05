@@ -3,6 +3,7 @@
 Подготовка к Play **рядом** с iOS/TestFlight. iOS-флоу не меняется.
 
 > Полный dual-store чеклист: [PUBLIC_RELEASE.md](./PUBLIC_RELEASE.md)  
+> RuStore (РФ): [RUSTORE.md](./RUSTORE.md) → `npm run finish:rustore`  
 > TestFlight: [TESTFLIGHT.md](./TESTFLIGHT.md)
 
 ## Почему Play проще для старта

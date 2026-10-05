@@ -48,23 +48,18 @@ export function coinsOnlyRewardCopy(
     },
   };
   const loc = lang === 'en' || lang === 'zh' ? lang : 'ru';
-  const subtitle =
-    lang === 'en'
-      ? `+${coins} coins`
-      : lang === 'zh'
-        ? `+${coins} 金币`
-        : `+${coins} монет`;
+  const subtitle = `+${coins} ◉`;
   return { xp: 0, coins, streak, title: titles[kind][loc], subtitle };
 }
 
 export function starterRewardCopy(lang: NativeLanguage, coins: number, streak: number): XpRewardPayload {
   if (lang === 'en') {
-    return { xp: 0, coins, streak, title: 'Starter pack', subtitle: `+${coins} coins · Tearz unlocked` };
+    return { xp: 0, coins, streak, title: 'Starter pack', subtitle: `+${coins} ◉ · Tearz unlocked` };
   }
   if (lang === 'zh') {
-    return { xp: 0, coins, streak, title: '新手礼包', subtitle: `+${coins} 金币 · Tearz 已解锁` };
+    return { xp: 0, coins, streak, title: '新手礼包', subtitle: `+${coins} ◉ · Tearz 已解锁` };
   }
-  return { xp: 0, coins, streak, title: 'Стартовый набор', subtitle: `+${coins} монет · Tearz открыт` };
+  return { xp: 0, coins, streak, title: 'Стартовый набор', subtitle: `+${coins} ◉ · Tearz открыт` };
 }
 
 export const STREAK_MILESTONES = [3, 7, 30] as const;

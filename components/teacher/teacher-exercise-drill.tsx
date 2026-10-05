@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as Haptics from '@/utils/safe-haptics';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -29,8 +29,10 @@ import { useKeyboardInset } from '@/hooks/use-keyboard-inset';
 import { TEARZ_MARIO } from '@/components/game/tearz-mario-source';
 import { setActiveStudyLanguage } from '@/utils/active-study-language';
 import { GAME_THEME } from '@/constants/game-theme';
-import { TearzThinking } from '@/components/teacher/tearz-thinking';
+import { TearzThinking, tearzDrillPoseIndex } from '@/components/teacher/tearz-thinking';
+import { isGuestAccount, useAuth } from '@/contexts/auth-context';
 import { useTranslation } from '@/contexts/locale-context';
+import { recordGuestTrainingDone } from '@/utils/guest-training-quota';
 import { useCompanionVoiceRecorder } from '@/hooks/use-companion-voice-recorder';
 import { postCompanionVoiceTranscribe } from '@/services/companion-voice-transcribe';
 import { teacherUiLanguageFromLocale } from '@/utils/teacher-ui-language';
@@ -51,7 +53,7 @@ import {
   isChoiceExerciseKind,
   isFormExerciseKind,
 } from '@/utils/teacher-exercise-kinds';
-import { WordDragProvider } from '@/components/teacher/teacher-word-drag';
+import { WordDragProvider, useWordDragScrollLock } from '@/components/teacher/teacher-word-drag';
 import {
   buildExerciseCheckPayload,
   emptyExerciseAnswerState,
@@ -62,6 +64,32 @@ import {
 const CHOICE_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
 
 const AnimatedExpoImage = Animated.createAnimatedComponent(ExpoImage);
+
+function DrillTaskScroll({
+  scrollRef,
+  style,
+  contentContainerStyle,
+  children,
+}: {
+  scrollRef: RefObject<ScrollView | null>;
+  style?: object;
+  contentContainerStyle?: object;
+  children: ReactNode;
+}) {
+  const dragging = useWordDragScrollLock();
+  return (
+    <ScrollView
+      ref={scrollRef}
+      style={style}
+      contentContainerStyle={contentContainerStyle}
+      scrollEnabled={!dragging}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      showsVerticalScrollIndicator={false}>
+      {children}
+    </ScrollView>
+  );
+}
 
 /** Анимированный Mario Tearz. */
 function AnimatedMarioTearz({ source, size }: { source: ImageSource; size: number }) {
@@ -200,26 +228,42 @@ function DrillVoiceAnswer({
   const { t } = useTranslation();
   const voice = useCompanionVoiceRecorder();
   const recording = voice.isRecording;
+  const busyRef = useRef(false);
 
   const finishRecording = useCallback(async () => {
-    const next = await voice.stopRecording();
-    if (next) {
-      onCapture(next);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      const next = await voice.stopRecording();
+      if (next) {
+        onCapture(next);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+    } finally {
+      busyRef.current = false;
     }
   }, [onCapture, voice]);
 
   const startRecording = useCallback(async () => {
-    if (disabled || capture) return;
-    const ok = await voice.startRecording(() => {
-      void finishRecording();
-    });
-    if (ok) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [capture, disabled, finishRecording, voice]);
+    if (disabled || capture || busyRef.current || recording) return;
+    busyRef.current = true;
+    try {
+      const ok = await voice.startRecording(() => {
+        void finishRecording();
+      });
+      if (ok) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      else void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } finally {
+      busyRef.current = false;
+    }
+  }, [capture, disabled, finishRecording, recording, voice]);
 
-  const handlePressOut = useCallback(() => {
+  const handleMicPress = useCallback(() => {
     if (recording) void finishRecording();
-  }, [finishRecording, recording]);
+    else void startRecording();
+  }, [finishRecording, recording, startRecording]);
 
   const handleRetake = useCallback(() => {
     void voice.cancelRecording();
@@ -255,8 +299,7 @@ function DrillVoiceAnswer({
   return (
     <View style={styles.voicePanel}>
       <Pressable
-        onPressIn={() => void startRecording()}
-        onPressOut={handlePressOut}
+        onPress={handleMicPress}
         disabled={disabled}
         style={({ pressed }) => [
           styles.voiceMicOuter,
@@ -264,16 +307,32 @@ function DrillVoiceAnswer({
           pressed && styles.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel={t('teacher.drill.voiceHoldA11y')}>
+        accessibilityLabel={
+          recording ? t('teacher.drill.voiceStopA11y') : t('teacher.drill.voiceTapA11y')
+        }>
         <View style={[styles.voiceMicBtn, recording && styles.voiceMicBtnActive]}>
-          <Ionicons name="mic" size={26} color={recording ? GAME_THEME.color.cream : GAME_THEME.color.ink} />
+          <Ionicons
+            name={recording ? 'stop' : 'mic'}
+            size={26}
+            color={recording ? GAME_THEME.color.cream : GAME_THEME.color.ink}
+          />
         </View>
       </Pressable>
       <Text style={styles.voiceHint}>
         {recording
           ? t('teacher.drill.voiceRecording', { time: formatRecordMs(voice.durationMs) })
-          : t('teacher.drill.voiceHold')}
+          : t('teacher.drill.voiceTap')}
       </Text>
+      {recording ? (
+        <Pressable
+          onPress={() => void voice.cancelRecording()}
+          hitSlop={10}
+          style={({ pressed }) => [styles.voiceCancelBtn, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t('teacher.drill.voiceCancelA11y')}>
+          <Text style={styles.voiceCancelText}>{t('teacher.drill.voiceCancel')}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -357,6 +416,7 @@ export function TeacherExerciseDrill({
   onCheck,
 }: Props) {
   const { t, locale } = useTranslation();
+  const { user } = useAuth();
   const uiLanguage = teacherUiLanguageFromLocale(locale);
   const insets = useSafeAreaInsets();
   const bottomInset = Math.max(insets.bottom, 10);
@@ -372,6 +432,7 @@ export function TeacherExerciseDrill({
   const [followUp, setFollowUp] = useState<TeacherDrillFollowUp | null>(null);
   const [followUpLoading, setFollowUpLoading] = useState(false);
   const mistakesRecordedRef = useRef(false);
+  const guestCountedRef = useRef(false);
   const [finished, setFinished] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const blankRefs = useRef<Record<string, TextInput | null>>({});
@@ -396,13 +457,22 @@ export function TeacherExerciseDrill({
     current?.kind === 'free_text' ||
     current?.kind === 'fill_partial_word';
 
+  const scrollInputIntoView = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
+
   useEffect(() => {
     if (!keyboardOpen || !keyboardScrollKind) return;
-    const timer = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 90);
+    const timer = setTimeout(scrollInputIntoView, 90);
     return () => clearTimeout(timer);
-  }, [keyboardOpen, keyboardScrollKind, index]);
+  }, [keyboardOpen, keyboardScrollKind, index, scrollInputIntoView]);
+
+  useEffect(() => {
+    if (!keyboardOpen || !keyboardScrollKind) return;
+    scrollInputIntoView();
+  }, [answerState.freeText, keyboardOpen, keyboardScrollKind, scrollInputIntoView]);
 
   const resetCardState = useCallback(() => {
     setAnswerState(emptyExerciseAnswerState());
@@ -420,6 +490,7 @@ export function TeacherExerciseDrill({
     setFollowUp(null);
     setFollowUpLoading(false);
     mistakesRecordedRef.current = false;
+    guestCountedRef.current = false;
     setFinished(false);
   }, [resetCardState]);
 
@@ -432,6 +503,7 @@ export function TeacherExerciseDrill({
     setFollowUp(null);
     setFollowUpLoading(false);
     mistakesRecordedRef.current = false;
+    guestCountedRef.current = false;
     setFinished(false);
   }, [open, resetCardState, sessionKey]);
 
@@ -561,12 +633,16 @@ export function TeacherExerciseDrill({
     Keyboard.dismiss();
     const next = index + 1;
     if (next >= total) {
+      if (!guestCountedRef.current && isGuestAccount(user)) {
+        guestCountedRef.current = true;
+        void recordGuestTrainingDone();
+      }
       setFinished(true);
       return;
     }
     resetCardState();
     setIndex(next);
-  }, [index, resetCardState, result, total]);
+  }, [index, resetCardState, result, total, user]);
 
   const handleClose = useCallback(() => {
     // На экране итогов ждём рекомендацию — иначе уводят до выбора.
@@ -800,20 +876,21 @@ export function TeacherExerciseDrill({
             </View>
           </>
         ) : current ? (
-          <ScrollView
-            ref={scrollRef}
+          <DrillTaskScroll
+            scrollRef={scrollRef}
             style={styles.scroll}
             contentContainerStyle={[
               styles.scrollContent,
               keyboardOpen && keyboardScrollKind ? styles.scrollContentKeyboard : null,
-            ]}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}>
+            ]}>
             <View style={styles.stage}>
-              {!result ? (
+              {!result && !(keyboardOpen && keyboardScrollKind) ? (
                 <View style={styles.coach}>
-                  <TearzThinking size={96} />
+                  <TearzThinking
+                    size={132}
+                    still
+                    poseIndex={tearzDrillPoseIndex(sessionKey, index)}
+                  />
                 </View>
               ) : null}
               <View key={`${sessionKey}-${index}`} style={styles.card}>
@@ -836,7 +913,10 @@ export function TeacherExerciseDrill({
                 </View>
 
                 {current.instruction && !isFormExerciseKind(current.kind) ? (
-                  <LongPressWordText text={current.instruction} style={styles.instruction} />
+                  <View style={styles.instructionWell}>
+                    <View style={styles.instructionAccent} />
+                    <LongPressWordText text={current.instruction} style={styles.instruction} />
+                  </View>
                 ) : null}
 
                 {!result ? (
@@ -848,6 +928,7 @@ export function TeacherExerciseDrill({
                     blankRefs={blankRefs}
                     onFocusBlank={focusBlank}
                     activeBlankId={activeBlankId}
+                    onInputGrow={keyboardScrollKind ? scrollInputIntoView : undefined}
                     VoiceBlock={DrillVoiceAnswer}
                     voiceCapture={answerState.voiceCapture ?? null}
                     onVoiceCapture={(next) => {
@@ -879,7 +960,7 @@ export function TeacherExerciseDrill({
                 ) : null}
               </View>
             </View>
-          </ScrollView>
+          </DrillTaskScroll>
         ) : null}
 
         {!finished && result ? (
@@ -1023,7 +1104,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   scrollContentKeyboard: {
-    paddingBottom: 28,
+    paddingBottom: 48,
   },
   stage: {
     flexGrow: 1,
@@ -1046,6 +1127,8 @@ const styles = StyleSheet.create({
   typeBadge: drillShellStyles.typeBadge,
   typeBadgeText: drillShellStyles.typeBadgeText,
   cardStep: drillShellStyles.cardStep,
+  instructionWell: drillShellStyles.instructionWell,
+  instructionAccent: drillShellStyles.instructionAccent,
   instruction: drillShellStyles.instruction,
   section: drillShellStyles.section,
   sectionLabel: drillShellStyles.sectionLabel,
@@ -1189,6 +1272,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: 'rgba(26,26,26,0.5)',
+    textAlign: 'center',
+  },
+  voiceCancelBtn: {
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  voiceCancelText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(26,26,26,0.45)',
     textAlign: 'center',
   },
   voiceReadyRow: {

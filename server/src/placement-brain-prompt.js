@@ -1,3 +1,10 @@
+/**
+ * @deprecated LEGACY LLM placement "brain" prompts.
+ * Final CEFR / ability updates are owned by @tearz/assessment (Assessment Engine v1.1).
+ * These prompts remain only for question-generation content guidance and optional
+ * PLACEMENT_USE_LEGACY_LLM_CEFR=1 rollback. Do not use for production scoring.
+ */
+
 /** Краткий контекст диагностического «мозга» Tearz для промптов генерации и оценки. */
 
 export const PLACEMENT_BRAIN_SUMMARY = `You are part of Tearz adaptive placement — a 15-item diagnostic test with NO prior user data.
@@ -6,7 +13,8 @@ Goal: find the difficulty BOUNDARY where the learner goes from stable correct an
 Internal ability 0–100 (hidden). CEFR bands:
 0–16 A1 | 17–33 A2 | 34–50 B1 | 51–67 B2 | 68–84 C1 | 85–100 C2.
 
-Cold start ability≈30 (neutral A2 hypothesis — NOT B1/C1). First item difficulty≈30.
+Cold start: the learner has NO record and NO experience. ability≈8 (low A1). First item difficulty≈8.
+Do not open at A2. Climb only after correct answers.
 Tasks 1–5 EXPLORATION (find range). Tasks 6–10 NARROW. Tasks 11–15 CONFIRM near the estimate.
 
 SCORING PRINCIPLES (engine + final judge):
@@ -21,7 +29,7 @@ SCORING PRINCIPLES (engine + final judge):
 ITEM INTEGRITY (critical for generation):
 - The linguistic demand of the stem MUST match the requested CEFR band.
 - NEVER write A1/A2 grammar (geht/fahren, basic present, obvious paraphrase) and stamp it as B2/C1.
-- If you cannot invent a true high-band item, stay honest and write a mid-band item — the engine will adjust — but do NOT fake difficulty.
+- If you cannot invent a true high-band item, write an easier stem and set difficulty to that easier demand. Never label an A1 stem as B2.
 
 Never show ability, confidence, CEFR labels, or difficulty numbers to the learner during the test.`;
 
@@ -100,7 +108,7 @@ export function probeGuidance(probe) {
   const { mode, phase, targetDifficulty } = probe;
   const band = cefrBandFrom100(targetDifficulty);
   if (mode === 'baseline') {
-    return `BASELINE item #1: difficulty≈${targetDifficulty}/100 (${band}). Honest ${band} content only — calibrate direction.`;
+    return `BASELINE item #1: difficulty≈${targetDifficulty}/100 (${band}). Zero-experience learner. Honest ${band} content only.`;
   }
   if (mode === 'probe_up') {
     return `PROBE UP (${phase}): test CEILING near ${targetDifficulty}/100 (${band}). Content MUST be true ${band} demand.`;

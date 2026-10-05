@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prestart": "npm run build --prefix ../shared/assessment",
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "npm run build --prefix ../shared/assessment && node --watch src/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -86,7 +86,9 @@ type CompanionChatsContextValue = {
   /** false до окончания загрузки из AsyncStorage — не показывать чат с устаревшим тредом */
   companionChatsHydrated: boolean;
   addChat: (row: CompanionChatRow) => void;
+  addChats: (rows: CompanionChatRow[]) => void;
   removeChat: (id: string) => void;
+  renameChat: (id: string, title: string) => void;
   toggleFavorite: (id: string) => void;
   isFavorite: (id: string) => boolean;
   getCompanionThread: (id: string) => CompanionThreadMsg[] | undefined;
@@ -194,6 +196,21 @@ export function CompanionChatsProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
+  const addChats = useCallback((rows: CompanionChatRow[]) => {
+    if (rows.length === 0) return;
+    setChats((prev) => {
+      const seen = new Set(prev.map((c) => c.id));
+      const fresh: CompanionChatRow[] = [];
+      for (const row of rows) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        fresh.push(row);
+      }
+      if (fresh.length === 0) return prev;
+      return [...fresh, ...prev];
+    });
+  }, []);
+
   const getCompanionThread = useCallback(
     (id: string) => {
       const t = threadsByChatId[id];
@@ -230,6 +247,22 @@ export function CompanionChatsProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
+  const renameChat = useCallback((id: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    setChats((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              name: trimmed,
+              profileMetaLine: trimmed,
+            }
+          : c,
+      ),
+    );
+  }, []);
+
   const toggleFavorite = useCallback((id: string) => {
     setFavoriteIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }, []);
@@ -245,7 +278,9 @@ export function CompanionChatsProvider({ children }: { children: React.ReactNode
       favoriteIds,
       companionChatsHydrated,
       addChat,
+      addChats,
       removeChat,
+      renameChat,
       toggleFavorite,
       isFavorite,
       getCompanionThread,
@@ -256,7 +291,9 @@ export function CompanionChatsProvider({ children }: { children: React.ReactNode
       favoriteIds,
       companionChatsHydrated,
       addChat,
+      addChats,
       removeChat,
+      renameChat,
       toggleFavorite,
       isFavorite,
       getCompanionThread,

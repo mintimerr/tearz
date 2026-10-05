@@ -16,6 +16,7 @@ type Props = {
   right?: ReactNode;
   backdrop?: 'sky' | 'void';
   contentPadding?: number;
+  titleDivider?: boolean;
   style?: StyleProp<ViewStyle>;
   panelStyle?: StyleProp<ViewStyle>;
 };
@@ -34,6 +35,7 @@ export function GameWindowShell({
   right,
   backdrop = 'void',
   contentPadding = 14,
+  titleDivider = true,
   style,
   panelStyle,
 }: Props) {
@@ -48,7 +50,7 @@ export function GameWindowShell({
       <View style={[styles.statusFill, { height: insets.top, backgroundColor: GAME_THEME.color.gold }]} />
 
       <View style={[styles.panel, panelStyle]}>
-        <View style={styles.titleBar}>
+        <View style={[styles.titleBar, !titleDivider && styles.titleBarPlain]}>
           <View style={styles.side}>
             {showBack ? (
               <GameBackButton
@@ -104,6 +106,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: GAME_THEME.color.ink,
     backgroundColor: GAME_THEME.color.gold,
+  },
+  titleBarPlain: {
+    borderBottomWidth: 0,
   },
   side: {
     width: SIDE,

@@ -1,7 +1,7 @@
 import type { AppLocale } from '@/constants/i18n/translations';
 import { variantsFromMyMemory, type MyMemoryResponse } from '@/utils/translation-variants';
 
-export type TranslateSource = 'en' | 'zh' | 'ru';
+export type TranslateSource = 'en' | 'zh' | 'ru' | 'fr' | 'de';
 
 const CACHE_LIMIT = 256;
 const translationCache = new Map<string, string>();
@@ -9,6 +9,8 @@ const translationCache = new Map<string, string>();
 function langToMyMemory(lang: TranslateSource | AppLocale): string {
   if (lang === 'zh') return 'zh-CN';
   if (lang === 'ru') return 'ru';
+  if (lang === 'fr') return 'fr';
+  if (lang === 'de') return 'de';
   return 'en';
 }
 

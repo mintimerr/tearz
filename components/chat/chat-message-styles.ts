@@ -1,79 +1,64 @@
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { CHAT_MSG } from '@/constants/chat-message';
 import { GAME_THEME } from '@/constants/game-theme';
 import { APP_THEME } from '@/constants/theme';
 
 const outgoingShell = {
+  alignSelf: 'flex-end' as const,
   maxWidth: CHAT_MSG.bubble.maxWidth,
-  paddingVertical: CHAT_MSG.bubble.padV + 2,
+  paddingVertical: CHAT_MSG.bubble.padV + 1,
   paddingHorizontal: CHAT_MSG.bubble.padH,
-  borderRadius: 16,
+  borderRadius: 18,
   backgroundColor: GAME_THEME.color.paperWarm,
-  borderWidth: 2,
-  borderColor: GAME_THEME.color.ink,
-  borderBottomWidth: 4,
-  borderBottomColor: GAME_THEME.color.ink,
-  ...Platform.select({
-    ios: {
-      shadowColor: GAME_THEME.color.ink,
-      shadowOpacity: 0.2,
-      shadowRadius: 0,
-      shadowOffset: { width: 0, height: 3 },
-    },
-    android: {
-      elevation: 3,
-    },
-    default: {},
-  }),
+  borderWidth: 1.5,
+  borderColor: 'rgba(26,26,26,0.88)',
 };
 
 const incomingSubtleShell = {
   maxWidth: CHAT_MSG.bubble.maxWidth,
   paddingVertical: CHAT_MSG.bubble.padV,
   paddingHorizontal: CHAT_MSG.bubble.padH,
-  borderRadius: 16,
+  borderRadius: 18,
   backgroundColor: GAME_THEME.color.paper,
-  borderWidth: 2,
-  borderColor: GAME_THEME.color.ink,
-  borderBottomWidth: 4,
-  borderBottomColor: GAME_THEME.color.ink,
+  borderWidth: 1.5,
+  borderColor: 'rgba(26,26,26,0.88)',
 };
 
 /** Companion chat message styles */
 export const companionMessageStyles = StyleSheet.create({
   threadContent: {
-    paddingHorizontal: 18,
-    paddingBottom: 20,
-    gap: CHAT_MSG.threadGap,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
+    gap: 16,
   },
   threadTapDismiss: {
     flexGrow: 1,
     width: '100%',
+    gap: 16,
   },
   dateWrap: {
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 8,
   },
   dateChip: {
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: APP_THEME.radius.pill,
-    backgroundColor: GAME_THEME.color.cream,
-    borderWidth: 2,
-    borderColor: GAME_THEME.color.ink,
+    backgroundColor: 'rgba(26,26,26,0.06)',
   },
   dateChipText: {
     ...CHAT_MSG.meta,
-    fontWeight: '800',
-    letterSpacing: 0.6,
+    fontWeight: '700',
+    letterSpacing: 0.4,
     textTransform: 'uppercase',
-    color: 'rgba(26,26,26,0.55)',
+    color: 'rgba(26,26,26,0.45)',
   },
   incomingWrap: {
     alignSelf: 'stretch',
     alignItems: 'flex-start',
-    paddingRight: 36,
+    paddingRight: 40,
   },
   incomingPlain: {
     maxWidth: CHAT_MSG.bubble.plainMaxWidth,
@@ -84,13 +69,13 @@ export const companionMessageStyles = StyleSheet.create({
   incomingText: {
     ...CHAT_MSG.body,
     color: GAME_THEME.color.ink,
-    letterSpacing: -0.38,
+    letterSpacing: -0.2,
   },
   bubbleTimeIn: {
     ...CHAT_MSG.meta,
-    marginTop: 7,
+    marginTop: 6,
     marginLeft: 1,
-    color: 'rgba(26,26,26,0.45)',
+    color: 'rgba(26,26,26,0.4)',
   },
   outgoingWrap: {
     alignSelf: 'stretch',
@@ -108,20 +93,20 @@ export const companionMessageStyles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 5,
     marginTop: 6,
-    marginRight: 2,
+    marginRight: 1,
   },
   bubbleTimeOut: {
     ...CHAT_MSG.meta,
-    color: 'rgba(26,26,26,0.45)',
+    color: 'rgba(26,26,26,0.4)',
   },
   readMark: {
     fontSize: 11,
     fontWeight: '600',
-    color: 'rgba(26,26,26,0.35)',
+    color: 'rgba(26,26,26,0.32)',
     letterSpacing: -0.5,
   },
   readMarkRead: {
-    color: GAME_THEME.color.ink,
+    color: GAME_THEME.color.sky,
   },
   imageMsgBody: {
     gap: 6,
@@ -140,7 +125,7 @@ export const companionMessageStyles = StyleSheet.create({
     marginTop: 8,
     ...CHAT_MSG.meta,
     fontStyle: 'normal',
-    color: 'rgba(26,26,26,0.55)',
+    color: 'rgba(26,26,26,0.5)',
   },
   typingRow: {
     flexDirection: 'row',

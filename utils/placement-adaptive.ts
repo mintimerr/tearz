@@ -1,8 +1,11 @@
 /** Computer-adaptive placement logic — Tearz diagnostic brain (0–100 scale). */
 
+import { isTrivialParaphraseChoice } from '@/utils/placement-seen';
+
 export const PLACEMENT_TOTAL = 15;
-export const START_ABILITY = 50;
-export const FIRST_TASK_DIFFICULTY = 50;
+/** Новый пользователь без опыта: низкий A1, не середина A2. */
+export const START_ABILITY = 8;
+export const FIRST_TASK_DIFFICULTY = 8;
 
 export type PlacementProbeMode =
   | 'baseline'
@@ -33,9 +36,13 @@ export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-/** Bank scale 1–25 → internal 0–100. Values already ≤100 pass through. */
+/** Bank scale 1–25 → internal 0–100. Call once, when a local template is published. */
+export function bankToScale100(bank: number): number {
+  return clamp(Math.round(((bank - 1) / 24) * 100), 0, 100);
+}
+
+/** Difficulty already on the 0–100 scale. Do not reinterpret 1–25 as the old bank. */
 export function difficultyToScale100(d: number): number {
-  if (d <= 25) return clamp(Math.round(((d - 1) / 24) * 100), 0, 100);
   return clamp(Math.round(d), 0, 100);
 }
 
@@ -95,7 +102,7 @@ function phaseForTask(taskNumber: number): PlacementPhase {
 
 /**
  * Обновление estimated_ability после ответа.
- * difficulty — 0–100 или 1–25 (нормализуется автоматически).
+ * difficulty — уже шкала 0–100.
  */
 export function updateAbility(
   ability: number,
@@ -109,13 +116,18 @@ export function updateAbility(
 
   let change: number;
   if (correct) {
-    if (delta >= 10 && delta <= 20) change = 7;
-    else if (delta > 20) change = 8;
-    else if (delta < -10) change = 1.5;
-    else if (delta < -5) change = 2;
-    else change = 4;
-    if (successStreak >= 2) change += 1;
-    if (successStreak >= 3) change += 2;
+    if (delta > 20) change = 5;
+    else if (delta >= 10) change = 4;
+    else if (delta < -15) change = 0;
+    else if (delta < -5) change = 1;
+    else change = 3;
+    // First items: a correct answer above the estimate is real evidence, move toward it.
+    if (history.length <= 5 && delta >= 8) change = Math.max(change, 8);
+    // Streak bonus only when the item is at/above ability — not for trivial wins.
+    if (delta >= -5) {
+      if (successStreak >= 2) change += 1;
+      if (successStreak >= 3) change += 1;
+    }
   } else {
     if (delta <= -10 && delta >= -20) change = -8;
     else if (delta < -20) change = -3;
@@ -126,6 +138,40 @@ export function updateAbility(
   }
 
   return clamp(Math.round(ability + change), 0, 100);
+}
+
+/**
+ * Cap CEFR by evidence: C1/C2 need real high-band correct answers.
+ * Prevents local easy templates stamped as “hard” from printing C1.
+ */
+export function conservativePlacementLevel(
+  ability: number,
+  history: { difficulty: number; correct: boolean }[],
+): string {
+  let level = abilityToLevel(ability);
+  const hardCorrect = history.filter(
+    (h) => h.correct && difficultyToScale100(h.difficulty) >= 68,
+  ).length;
+  const upperMidCorrect = history.filter(
+    (h) => h.correct && difficultyToScale100(h.difficulty) >= 51,
+  ).length;
+  const midCorrect = history.filter(
+    (h) => h.correct && difficultyToScale100(h.difficulty) >= 34,
+  ).length;
+
+  const rank: Record<string, number> = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  const setMax = (max: string) => {
+    if ((rank[level] ?? 0) > (rank[max] ?? 0)) level = max;
+  };
+
+  if (hardCorrect < 3) setMax('C1');
+  if (hardCorrect < 2) setMax('B2');
+  if (upperMidCorrect < 2 && hardCorrect < 1) setMax('B1');
+  if (midCorrect < 2 && upperMidCorrect < 1) setMax('A2');
+  if (history.filter((h) => h.correct).length === 0) setMax('A1');
+  else if (history.filter((h) => h.correct).length < 3) setMax('A2');
+
+  return level;
 }
 
 /** @deprecated use scale100ToBank */
@@ -158,21 +204,25 @@ export function computeNextProbe(
   let explorationAdjustment = 0;
   if (alternating) {
     explorationAdjustment = taskNumber % 2 === 0 ? 2 : -2;
+  } else if (successStreak >= 3 && phase === 'explore') {
+    explorationAdjustment = 16;
+  } else if (successStreak >= 2 && phase === 'explore') {
+    explorationAdjustment = 12;
   } else if (successStreak >= 3) {
-    explorationAdjustment = 10;
-  } else if (successStreak >= 2) {
     explorationAdjustment = 6;
+  } else if (successStreak >= 2) {
+    explorationAdjustment = 4;
   } else if (failureStreak >= 3) {
     explorationAdjustment = -10;
   } else if (failureStreak >= 2) {
     explorationAdjustment = -6;
   } else if (last.correct) {
-    explorationAdjustment = 5;
+    explorationAdjustment = 3;
   } else {
     explorationAdjustment = -5;
   }
 
-  const maxStep = phase === 'explore' ? 12 : phase === 'narrow' ? 7 : 5;
+  const maxStep = phase === 'explore' ? 18 : phase === 'narrow' ? 6 : 4;
   explorationAdjustment = clamp(explorationAdjustment, -maxStep, maxStep);
 
   let next = clamp(Math.round(ability + explorationAdjustment), 0, 100);
@@ -255,6 +305,7 @@ export function isWeakPlacementQuestion(prompt: string, choices: string[], kind:
   if (kind === 'choose_translation' && promptWords.length <= 2 && prompt.length < 24) return true;
 
   if (kind === 'multiple_choice' || kind === 'choose_translation') {
+    if (trimmed.some((c) => isTrivialParaphraseChoice(prompt, c))) return true;
     if (hasOneStandoutParaphrase(trimmed)) return true;
     if (hasThrowawayDistractors(trimmed, kind)) return true;
     if (hasLoneNegationTrap(trimmed, kind)) return true;
@@ -264,19 +315,41 @@ export function isWeakPlacementQuestion(prompt: string, choices: string[], kind:
   return false;
 }
 
+export function ensureCorrectChoiceInList<T extends { choices: string[]; correctChoice: string }>(
+  q: T,
+): T {
+  const choices = q.choices.map((c) => c.trim()).filter(Boolean);
+  let correctChoice = q.correctChoice.trim();
+  if (!choices.includes(correctChoice)) {
+    // Prefer exact case-insensitive match already in list.
+    const match = choices.find((c) => c.toLowerCase() === correctChoice.toLowerCase());
+    if (match) {
+      correctChoice = match;
+    } else if (choices.length > 0) {
+      // Corrupt item — force first choice to be the keyed answer.
+      choices[0] = correctChoice || choices[0];
+      correctChoice = choices[0];
+    }
+  }
+  while (choices.length < 4) choices.push(`${correctChoice}…`);
+  return { ...q, choices: choices.slice(0, 4), correctChoice };
+}
+
 export function shuffleChoices<T extends { choices: string[]; correctChoice: string }>(q: T): T {
-  const tagged = q.choices.map((choice) => ({
+  const fixed = ensureCorrectChoiceInList(q);
+  const tagged = fixed.choices.map((choice) => ({
     choice,
-    correct: choice === q.correctChoice,
+    correct: choice === fixed.correctChoice,
   }));
   for (let i = tagged.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [tagged[i], tagged[j]] = [tagged[j], tagged[i]];
   }
+  const correct = tagged.find((t) => t.correct)?.choice ?? fixed.correctChoice;
   return {
-    ...q,
+    ...fixed,
     choices: tagged.map((t) => t.choice),
-    correctChoice: tagged.find((t) => t.correct)?.choice ?? q.correctChoice,
+    correctChoice: correct,
   };
 }
 

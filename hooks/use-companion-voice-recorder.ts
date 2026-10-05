@@ -7,7 +7,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 
 const MIN_MS = 450;
@@ -53,6 +53,9 @@ export function useCompanionVoiceRecorder() {
   const state = useAudioRecorderState(recorder, 100);
   const maxTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onMaxDuration = useRef<(() => void) | null>(null);
+  const startedAtRef = useRef<number | null>(null);
+  const startingRef = useRef(false);
+  const [wallClockMs, setWallClockMs] = useState(0);
 
   const clearMaxTimer = useCallback(() => {
     if (maxTimer.current) {
@@ -72,53 +75,129 @@ export function useCompanionVoiceRecorder() {
     return true;
   }, []);
 
-  const startRecording = useCallback(
-    async (onAutoStop?: () => void) => {
-      const ok = await ensureMicPermission();
-      if (!ok) return false;
-      onMaxDuration.current = onAutoStop ?? null;
+  useEffect(() => {
+    if (!state.isRecording) {
+      setWallClockMs(0);
+      return;
+    }
+    const tick = () => {
+      if (startedAtRef.current == null) return;
+      setWallClockMs(Math.min(MAX_MS, Date.now() - startedAtRef.current));
+    };
+    tick();
+    const id = setInterval(tick, 200);
+    return () => clearInterval(id);
+  }, [state.isRecording]);
+
+  const restorePlaybackMode = useCallback(async () => {
+    try {
       await setAudioModeAsync({
-        allowsRecording: true,
+        allowsRecording: false,
         playsInSilentMode: true,
       });
-      await recorder.prepareToRecordAsync();
-      recorder.record();
-      clearMaxTimer();
-      maxTimer.current = setTimeout(() => {
-        onMaxDuration.current?.();
-      }, MAX_MS);
-      return true;
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const startRecording = useCallback(
+    async (onAutoStop?: () => void) => {
+      if (startingRef.current || recorder.getStatus().isRecording) return false;
+      startingRef.current = true;
+      try {
+        const ok = await ensureMicPermission();
+        if (!ok) return false;
+        onMaxDuration.current = onAutoStop ?? null;
+        await setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
+        });
+        await recorder.prepareToRecordAsync();
+        recorder.record();
+        startedAtRef.current = Date.now();
+        setWallClockMs(0);
+        clearMaxTimer();
+        maxTimer.current = setTimeout(() => {
+          onMaxDuration.current?.();
+        }, MAX_MS);
+        return true;
+      } catch (e) {
+        startedAtRef.current = null;
+        console.warn('[voice-recorder] start failed', e);
+        await restorePlaybackMode();
+        Alert.alert('Запись', 'Не удалось начать запись. Попробуй ещё раз.');
+        return false;
+      } finally {
+        startingRef.current = false;
+      }
     },
-    [clearMaxTimer, ensureMicPermission, recorder],
+    [clearMaxTimer, ensureMicPermission, recorder, restorePlaybackMode],
   );
+
+  const resolveDurationMs = useCallback((statusDuration: number) => {
+    const wall =
+      startedAtRef.current != null ? Math.max(0, Date.now() - startedAtRef.current) : 0;
+    const ms = Math.max(statusDuration || 0, wall);
+    return Math.min(ms, MAX_MS);
+  }, []);
 
   const stopRecording = useCallback(async (): Promise<{ uri: string; durationMs: number } | null> => {
     clearMaxTimer();
-    if (!recorder.getStatus().isRecording) return null;
-    await recorder.stop();
+    // Ждём, если start ещё в полёте (tap слишком быстрый).
+    for (let i = 0; i < 20 && startingRef.current; i += 1) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    const live = recorder.getStatus();
+    if (!live.isRecording) {
+      startedAtRef.current = null;
+      await restorePlaybackMode();
+      return null;
+    }
+    try {
+      await recorder.stop();
+    } catch (e) {
+      console.warn('[voice-recorder] stop failed', e);
+      startedAtRef.current = null;
+      await restorePlaybackMode();
+      return null;
+    }
     const status = recorder.getStatus();
     const uri = recorder.uri ?? status.url ?? null;
-    const durationMs = status.durationMillis;
+    const durationMs = resolveDurationMs(status.durationMillis);
+    startedAtRef.current = null;
+    await restorePlaybackMode();
     if (!uri || durationMs < MIN_MS) return null;
     const ready = await waitForRecordingFile(uri);
     if (!ready) return null;
-    return { uri, durationMs: Math.min(durationMs, MAX_MS) };
-  }, [clearMaxTimer, recorder]);
+    return { uri, durationMs };
+  }, [clearMaxTimer, recorder, resolveDurationMs, restorePlaybackMode]);
 
   const cancelRecording = useCallback(async () => {
     clearMaxTimer();
-    if (state.isRecording) {
+    for (let i = 0; i < 20 && startingRef.current; i += 1) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    startedAtRef.current = null;
+    setWallClockMs(0);
+    if (recorder.getStatus().isRecording || state.isRecording) {
       try {
         await recorder.stop();
       } catch {
         /* already stopped */
       }
     }
-  }, [clearMaxTimer, recorder, state.isRecording]);
+    await restorePlaybackMode();
+  }, [clearMaxTimer, recorder, restorePlaybackMode, state.isRecording]);
+
+  const nativeDuration = state.durationMillis || 0;
+  const durationMs = state.isRecording
+    ? Math.max(nativeDuration, wallClockMs)
+    : nativeDuration || wallClockMs;
 
   return {
     isRecording: state.isRecording,
-    durationMs: state.durationMillis,
+    isStarting: startingRef.current,
+    durationMs,
     metering: state.metering,
     startRecording,
     stopRecording,

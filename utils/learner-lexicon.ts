@@ -94,9 +94,17 @@ export function extractPairsFromTeacherText(text: string): LexiconPair[] {
   };
 
   const dashRe =
-    /([A-Za-zÀ-ÿ\u0400-\u04FF\u4e00-\u9fff][^:\n]{0,40}?)\s*[—–→\-]\s*([^\n]{2,48})/g;
+    // Only em/en dash or arrow — ASCII hyphen breaks Russian compounds (чьих-то).
+    /([A-Za-zÀ-ÿ\u0400-\u04FF\u4e00-\u9fff][^:\n]{0,40}?)\s*[—–→]\s*([^\n]{2,48})/g;
   let m: RegExpExecArray | null;
   while ((m = dashRe.exec(text)) !== null) {
+    push(m[1], m[2].split(/[.;]/)[0] ?? m[2]);
+  }
+
+  // Spaced ASCII hyphen as secondary separator ( "word - gloss" ), not inside tokens.
+  const spacedHyphenRe =
+    /([A-Za-zÀ-ÿ\u0400-\u04FF\u4e00-\u9fff][^:\n]{0,40}?)\s+-\s+([^\n]{2,48})/g;
+  while ((m = spacedHyphenRe.exec(text)) !== null) {
     push(m[1], m[2].split(/[.;]/)[0] ?? m[2]);
   }
 

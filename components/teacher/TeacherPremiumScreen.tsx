@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -22,7 +22,7 @@ import {
   View,
   type ListRenderItemInfo,
 } from 'react-native';
-import { FlatList } from 'react-native-gesture-handler';
+import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -114,7 +114,7 @@ export function TeacherPremiumScreen() {
   const { t, locale } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { chats, addChat, removeChat, saveCompanionThread, getCompanionThread } = useCompanionChats();
+  const { chats, addChat, removeChat, renameChat, saveCompanionThread, getCompanionThread } = useCompanionChats();
   const {
     ready,
     markLessonCreated,
@@ -559,6 +559,7 @@ export function TeacherPremiumScreen() {
     if (!title) return;
     registerUserStudyText(title);
     void renameRecentLesson(renameTarget.id, title);
+    renameChat(renameTarget.id, title);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     closeRenameModal(true);
   };
@@ -699,7 +700,7 @@ export function TeacherPremiumScreen() {
         onDismiss={() => {
           if (pendingLessonRef.current) revealPendingLesson();
         }}>
-        <View style={styles.chatsRoot}>
+        <GestureHandlerRootView style={styles.chatsRoot}>
           <Pressable style={styles.chatsBackdrop} onPress={closeChats} accessibilityLabel="Закрыть" />
           <View
             style={[
@@ -740,7 +741,7 @@ export function TeacherPremiumScreen() {
               </View>
             )}
           </View>
-        </View>
+        </GestureHandlerRootView>
       </Modal>
 
       {/* ── Переименование ──────────────────────────────────────────── */}

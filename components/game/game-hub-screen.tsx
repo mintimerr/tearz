@@ -1,7 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,7 +10,6 @@ import { HubTriangleNav } from '@/components/game/hub-triangle-nav';
 import { GAME_THEME } from '@/constants/game-theme';
 import { pickTerminalLocation } from '@/constants/terminal-locations';
 import { useEngagement } from '@/contexts/engagement-context';
-import { useTranslation } from '@/contexts/locale-context';
 
 const ROUTES: Record<'cards' | 'dialogs' | 'profile', Href> = {
   cards: '/cards',
@@ -23,7 +20,6 @@ const ROUTES: Record<'cards' | 'dialogs' | 'profile', Href> = {
 export function GameHubScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
   const { hydrated, claimStarterPack } = useEngagement();
 
   useEffect(() => {
@@ -63,18 +59,6 @@ export function GameHubScreen() {
 
         <View style={styles.bottomSpacer} pointerEvents="none" />
       </View>
-
-      <Pressable
-        onPress={() => {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          router.push('/play' as Href);
-        }}
-        style={[styles.playFab, { bottom: Math.max(insets.bottom, 12) + 14, right: 14 }]}
-        accessibilityRole="button"
-        accessibilityLabel={t('hub.asteroids')}
-        hitSlop={8}>
-        <Ionicons name="game-controller" size={22} color={GAME_THEME.color.ink} />
-      </Pressable>
     </View>
   );
 }
@@ -82,40 +66,21 @@ export function GameHubScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: GAME_THEME.color.sky,
+    backgroundColor: GAME_THEME.color.voidDeep,
   },
   foreground: {
-    flex: 1,
-    paddingHorizontal: 16,
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
   },
   topSpacer: {
-    flex: 1.15,
-    minHeight: 24,
-  },
-  bottomSpacer: {
-    flex: 0.85,
-    minHeight: 24,
+    height: 36,
   },
   centerCluster: {
     alignItems: 'center',
-    gap: 18,
-    zIndex: 20,
+    gap: 28,
   },
-  playFab: {
-    position: 'absolute',
-    zIndex: 30,
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: GAME_THEME.color.cream,
-    borderWidth: 2.5,
-    borderColor: GAME_THEME.color.ink,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 6,
+  bottomSpacer: {
+    height: 24,
   },
 });

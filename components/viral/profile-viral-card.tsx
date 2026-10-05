@@ -1,6 +1,7 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, View, type View as RNView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Alert, Pressable, StyleSheet, Text, View, type View as RNView } from 'react-native';
 
 import { AuthPrimaryButton } from '@/components/auth/auth-primary-button';
 import {
@@ -33,6 +34,7 @@ type Props = {
   shareErrorTitle: string;
   shareErrorMessage: string;
   shareDialogTitle: string;
+  asRow?: boolean;
   cardLabels: {
     level: string;
     lessons: string;
@@ -57,7 +59,6 @@ export function ProfileViralCard({
   avatarColor,
   shareProgressLabel,
   sectionTitle,
-  sectionLead,
   userId,
   shareMessage,
   shareInviteLine,
@@ -65,6 +66,7 @@ export function ProfileViralCard({
   shareErrorTitle,
   shareErrorMessage,
   shareDialogTitle,
+  asRow = false,
   cardLabels,
 }: Props) {
   const cardRef = useRef<RNView>(null);
@@ -128,10 +130,29 @@ export function ProfileViralCard({
     }
   }, [sharing, shareDialogTitle, shareErrorTitle, shareErrorMessage]);
 
+  if (asRow) {
+    return (
+      <View>
+        <Pressable
+          onPress={() => void onShareProgress()}
+          disabled={sharing}
+          accessibilityRole="button"
+          accessibilityLabel={shareProgressLabel}
+          style={({ pressed }) => [styles.asRow, pressed && styles.asRowPressed]}>
+          <Ionicons name="share-outline" size={18} color="rgba(26,26,26,0.38)" />
+          <Text style={styles.asRowLabel}>{sectionTitle}</Text>
+          <Ionicons name="chevron-forward" size={16} color="rgba(26,26,26,0.28)" />
+        </Pressable>
+        <View style={styles.captureHost} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <ProgressShareCard ref={cardRef} data={cardData} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.sectionLabel}>{sectionTitle}</Text>
-      <Text style={styles.sectionLead}>{sectionLead}</Text>
 
       <AuthPrimaryButton
         label={shareProgressLabel}
@@ -167,6 +188,23 @@ const styles = StyleSheet.create({
   },
   shareBtn: {
     marginTop: 0,
+  },
+  asRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 15,
+    paddingHorizontal: 16,
+  },
+  asRowPressed: {
+    backgroundColor: 'rgba(26,26,26,0.04)',
+  },
+  asRowLabel: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    color: '#1A1A1A',
   },
   captureHost: {
     position: 'absolute',

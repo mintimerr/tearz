@@ -1,4 +1,4 @@
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
@@ -12,6 +12,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GameBackButton } from '@/components/game/game-back-button';
+import { CoinAmount } from '@/components/game/tearz-drop';
 import { GameGoldButton } from '@/components/game/game-gold-button';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useEngagement } from '@/contexts/engagement-context';
@@ -164,7 +165,7 @@ export function LexiconAsteroidsScreen() {
         <View style={styles.stats}>
           <Text style={styles.stat}>♥ {lives}</Text>
           <Text style={styles.stat}>★ {score}</Text>
-          <Text style={styles.stat}>◉ {coins}</Text>
+          <CoinAmount value={coins} textStyle={styles.stat} size={16} />
         </View>
       </View>
 
@@ -201,7 +202,7 @@ export function LexiconAsteroidsScreen() {
         <View style={styles.over}>
           <Text style={styles.overTitle}>Сессия</Text>
           <Text style={styles.overScore}>{score} попаданий</Text>
-          <Text style={styles.overCoins}>+{sessionCoins} монет</Text>
+          <CoinAmount value={`+${sessionCoins}`} textStyle={styles.overCoins} size={20} />
           <GameGoldButton label="Ещё раз" onPress={restart} style={styles.again} />
         </View>
       )}

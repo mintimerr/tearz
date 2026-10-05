@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
@@ -94,7 +94,7 @@ function VerifyCodeScreenInner() {
         return;
       }
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/onboarding/placement');
+      router.replace('/');
     } catch {
       setError(t('common.errorGeneric'));
     } finally {

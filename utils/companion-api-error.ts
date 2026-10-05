@@ -6,11 +6,11 @@ export function parseCompanionApiJson(raw: string, status: number): unknown {
     return JSON.parse(trimmed);
   } catch {
     if (/cannot\s+(GET|POST|PUT|PATCH|DELETE)\s+\//i.test(trimmed)) {
-      throw new Error('Сервер обновляется — подожди минуту и нажми «Повторить».');
+      throw new Error('Сервер ещё поднимается. Попробуй ещё раз — или смотри офлайн-примеры.');
     }
     if (/<!doctype html/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) {
       if (status === 404) {
-        throw new Error('Эта функция ещё не доступна на сервере. Попробуй через минуту.');
+        throw new Error('Эта функция пока недоступна на сервере. Попробуй ещё раз чуть позже.');
       }
       if (status >= 500) {
         throw new Error('Сервер временно недоступен. Попробуй ещё раз.');

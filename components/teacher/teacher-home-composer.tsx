@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import {
   Alert,
@@ -230,7 +230,11 @@ export const TeacherHomeComposer = forwardRef<TeacherHomeComposerRef, Props>(fun
 
       {attachOpen ? (
         <View style={styles.attachPanel}>
-          <TeacherAttachGallery visible={attachOpen} onPhotoSelected={onGalleryPhoto} />
+          <TeacherAttachGallery
+            visible={attachOpen}
+            onClose={closeAttach}
+            onPhotoSelected={onGalleryPhoto}
+          />
           <Pressable
             onPress={() => void handleBrowseFiles()}
             style={({ pressed }) => [styles.attachFileBtn, pressed && styles.attachFileBtnPressed]}

@@ -15,53 +15,38 @@ import { TEARZ_MARIO, isHubNightNow } from '@/components/game/tearz-mario-source
 /** Крупный Tearz на хабе — читается как герой сцены */
 const SIZE = 196;
 const CITY_LOOP_MS = 48000;
-const CITY_ASPECT = 2560 / 863;
+/** День 2560×863, ночь 2560×1400 — своё соотношение, иначе fill тянет картинку. */
+const CITY_ASPECT_DAY = 2560 / 863;
+const CITY_ASPECT_NIGHT = 2560 / 1400;
 /** Задумчивый шаг с книгой — чуть медленнее Mario-run */
 const WALK_FPS = 7;
-
-type Phase = 'bookWalk';
-
-type ScriptStep = {
-  phase: Phase;
-  toX: number;
-  ms: number;
-  facing: 1 | -1;
-  /** Мгновенный перенос (выход справа → вход слева) */
-  warp?: boolean;
-};
-
-/**
- * Профиль вправо: непрерывная ходьба с книгой, без пауз у края.
- */
-const SCRIPT: ScriptStep[] = [
-  { phase: 'bookWalk', toX: -0.14, ms: 0, facing: 1, warp: true },
-  { phase: 'bookWalk', toX: 1.12, ms: 7200, facing: 1 },
-];
+/** Полный проход: за левый край → за правый край (~px/s). */
+const WALK_SPEED_PX = 52;
 
 /** Центр спрайта — ниже кнопок-навигации, на «земле» города */
 const GROUND_Y = 0.885;
 
 /**
  * Город-лента + Tearz: profile book-walk (прозрачный спрайт).
+ * Ходьба бесконечная: полностью уходит за правый край и так же выходит слева
+ * (wrap только когда спрайт целиком за экраном — без «телепорта»).
  */
 export function HubAttractStage() {
   const { width: W, height: H } = useWindowDimensions();
-  const stripW = useMemo(() => Math.max(W * 2.4, Math.ceil(H * CITY_ASPECT)), [H, W]);
   const [night, setNight] = useState(isHubNightNow);
+  const cityAspect = night ? CITY_ASPECT_NIGHT : CITY_ASPECT_DAY;
+  const stripW = useMemo(() => Math.max(W * 2.4, Math.ceil(H * cityAspect)), [H, W, cityAspect]);
   const cityBg = night ? TEARZ_MARIO.cityBgNight : TEARZ_MARIO.cityBgDay;
 
-  const [phase, setPhase] = useState<Phase>('bookWalk');
   const [frame, setFrame] = useState(0);
-  const [facing, setFacing] = useState<1 | -1>(1);
 
-  const x = useSharedValue(SCRIPT[0].toX * W - SIZE / 2);
+  /** left edge of sprite: -SIZE … W (оба конца полностью за кадром) */
+  const x = useSharedValue(-SIZE);
   const y = useSharedValue(GROUND_Y * H - SIZE / 2);
   const cityX = useSharedValue(0);
 
-  const stepRef = useRef(0);
-  const phaseStartRef = useRef(0);
-  const fromXRef = useRef(SCRIPT[0].toX);
   const walkTRef = useRef(0);
+  const posRef = useRef(-SIZE);
 
   useEffect(() => {
     const sync = () => setNight(isHubNightNow());
@@ -83,62 +68,31 @@ export function HubAttractStage() {
     let cancelled = false;
     let raf = 0;
     let last = performance.now();
-    stepRef.current = 0;
-    phaseStartRef.current = performance.now();
-    fromXRef.current = SCRIPT[0].toX;
-    setPhase(SCRIPT[0].phase);
-    setFacing(SCRIPT[0].facing);
-    x.value = SCRIPT[0].toX * W - SIZE / 2;
+
+    // Старт чуть за левым краем — сразу идёт внутрь экрана.
+    const startX = -SIZE;
+    const endX = W; // left edge = W → целиком за правым краем
+    const span = endX - startX; // W + SIZE
+    posRef.current = startX;
+    x.value = startX;
     y.value = GROUND_Y * H - SIZE / 2;
-
-    const applyStep = (stepIdx: number, now: number) => {
-      const step = SCRIPT[stepIdx];
-      stepRef.current = stepIdx;
-      phaseStartRef.current = now;
-      setPhase(step.phase);
-      setFacing(step.facing);
-      // не сбрасываем walkT — цикл шага не дёргается на wrap
-      if (step.warp) {
-        fromXRef.current = step.toX;
-        x.value = step.toX * W - SIZE / 2;
-        y.value = GROUND_Y * H - SIZE / 2;
-      }
-    };
-
-    applyStep(0, performance.now());
 
     const tick = (now: number) => {
       if (cancelled) return;
       const dt = Math.min(48, now - last);
       last = now;
 
-      let step = SCRIPT[stepRef.current];
+      let next = posRef.current + (WALK_SPEED_PX * dt) / 1000;
+      // Wrap только за кадром: прыжок endX → startX невидим.
+      while (next >= endX) next -= span;
+      posRef.current = next;
 
-      // warp / нулевая длительность — сразу к следующему шагу
-      while (step.warp || step.ms <= 0) {
-        fromXRef.current = step.toX;
-        applyStep((stepRef.current + 1) % SCRIPT.length, now);
-        step = SCRIPT[stepRef.current];
-      }
-
-      const elapsed = now - phaseStartRef.current;
-      const t = Math.min(1, elapsed / Math.max(1, step.ms));
-
-      const startX = fromXRef.current;
-      const endX = step.toX;
-      const curX = startX + (endX - startX) * t;
-
-      x.value = curX * W - SIZE / 2;
+      x.value = next;
       y.value = GROUND_Y * H - SIZE / 2;
 
       walkTRef.current += dt;
       const idx = Math.floor((walkTRef.current / 1000) * WALK_FPS) % 4;
       setFrame((prev) => (prev === idx ? prev : idx));
-
-      if (elapsed >= step.ms) {
-        fromXRef.current = step.toX;
-        applyStep((stepRef.current + 1) % SCRIPT.length, now);
-      }
 
       raf = requestAnimationFrame(tick);
     };
@@ -161,13 +115,25 @@ export function HubAttractStage() {
   return (
     <View style={[styles.root, night && styles.rootNight]} pointerEvents="none">
       <Animated.View style={[styles.cityTrack, { width: stripW * 2, height: H }, cityStyle]}>
-        <Image source={cityBg} style={{ width: stripW, height: H }} contentFit="cover" />
-        <Image source={cityBg} style={{ width: stripW, height: H }} contentFit="cover" />
+        <Image
+          source={cityBg}
+          style={{ width: stripW, height: H }}
+          contentFit="fill"
+          allowDownscaling={false}
+          pixelated
+        />
+        <Image
+          source={cityBg}
+          style={{ width: stripW, height: H }}
+          contentFit="fill"
+          allowDownscaling={false}
+          pixelated
+        />
       </Animated.View>
       <View style={[styles.veil, night && styles.veilNight]} />
 
       <Animated.View style={[styles.mascot, mascotStyle]}>
-        <TearzMarioSheetSprite sheet="bookWalk" frame={frame} size={SIZE} facing={facing} />
+        <TearzMarioSheetSprite sheet="bookWalk" frame={frame} size={SIZE} facing={1} />
       </Animated.View>
     </View>
   );

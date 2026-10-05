@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import * as Haptics from '@/utils/safe-haptics';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,6 +18,7 @@ import { FlatList, Swipeable } from 'react-native-gesture-handler';
 import { GameGoldButton } from '@/components/game/game-gold-button';
 import { GameListRow } from '@/components/game/game-list-row';
 import { GameWindowShell } from '@/components/game/game-window-shell';
+import { SpotlightAnchor } from '@/components/onboarding/tearz-spotlight';
 import { VocabStudyModal } from '@/components/vocabulary/vocab-study-modal';
 import { GAME_THEME } from '@/constants/game-theme';
 import { useCardSuggestion } from '@/hooks/use-card-suggestion';
@@ -57,6 +58,7 @@ export function CardsWindowScreen() {
   const [renameTarget, setRenameTarget] = useState<VocabFolderView | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [addOpen, setAddOpen] = useState(false);
+  const [addFolderId, setAddFolderId] = useState<string | null>(null);
   const [addWordDraft, setAddWordDraft] = useState('');
   const [sharingFolderId, setSharingFolderId] = useState<string | null>(null);
   const swipeRefs = useRef<Map<string, Swipeable | null>>(new Map());
@@ -68,7 +70,9 @@ export function CardsWindowScreen() {
 
   const openFolder = folders.find((f) => f.id === openFolderId) ?? null;
   const openMeta = openFolderId ? resolveFolderMeta(openFolderId, customFolders) : null;
-  const openLangPairId = openFolderId ? langPairIdFromBuiltinFolderId(openFolderId) : null;
+  const addFolder = folders.find((f) => f.id === addFolderId) ?? null;
+  const addMeta = addFolderId ? resolveFolderMeta(addFolderId, customFolders) : null;
+  const addLangPairId = addFolderId ? langPairIdFromBuiltinFolderId(addFolderId) : null;
 
   const openCards = useMemo(() => {
     if (!openFolderId) return [];
@@ -78,8 +82,8 @@ export function CardsWindowScreen() {
   const studyActive = openFolderId !== null && openCards.length > 0;
 
   const addFolderCards = useMemo(() => {
-    if (!openFolderId || openMeta?.isBuiltin) return [];
-    const folder = customFolders.find((f) => f.id === openFolderId);
+    if (!addFolderId || addMeta?.isBuiltin) return [];
+    const folder = customFolders.find((f) => f.id === addFolderId);
     return (
       folder?.cards.map((c) => ({
         front: c.front,
@@ -87,7 +91,7 @@ export function CardsWindowScreen() {
         pinyin: c.pinyin,
       })) ?? []
     );
-  }, [customFolders, openFolderId, openMeta?.isBuiltin]);
+  }, [addFolderId, addMeta?.isBuiltin, customFolders]);
 
   const {
     translation: addTranslationDraft,
@@ -113,14 +117,14 @@ export function CardsWindowScreen() {
         : null;
 
   const translateSourceForDraft = useCallback((): 'en' | 'zh' | 'ru' => {
-    if (openLangPairId === 'zh-ru') return 'zh';
+    if (addLangPairId === 'zh-ru') return 'zh';
     const w = addWordDraft.trim();
     if (!w) return 'en';
     const d = detectWordLang(w);
     if (d === 'zh') return 'zh';
     if (d === 'ru') return 'ru';
     return 'en';
-  }, [addWordDraft, openLangPairId]);
+  }, [addLangPairId, addWordDraft]);
 
   const openCreateFolder = useCallback(() => {
     setCreateName('');
@@ -141,15 +145,22 @@ export function CardsWindowScreen() {
     setOpenFolderId(id);
   }, [closeCreateFolder, createFolder, createName]);
 
-  const openAddCard = useCallback(() => {
-    resetAddSuggestion();
-    setAddWordDraft('');
-    setAddOpen(true);
-    void Haptics.selectionAsync();
-  }, [resetAddSuggestion]);
+  const openAddCard = useCallback(
+    (folderId?: string) => {
+      const id = folderId ?? openFolderId;
+      if (!id) return;
+      setAddFolderId(id);
+      resetAddSuggestion();
+      setAddWordDraft('');
+      setAddOpen(true);
+      void Haptics.selectionAsync();
+    },
+    [openFolderId, resetAddSuggestion],
+  );
 
   const closeAdd = useCallback(() => {
     setAddOpen(false);
+    setAddFolderId(null);
     resetAddSuggestion();
     setAddWordDraft('');
   }, [resetAddSuggestion]);
@@ -157,10 +168,10 @@ export function CardsWindowScreen() {
   const wordExists = useCallback(() => {
     const w = addWordDraft.trim();
     if (!w) return false;
-    if (openMeta?.isBuiltin) return hasWord(w);
-    if (openFolderId) return hasCardInFolder(openFolderId, w);
+    if (addMeta?.isBuiltin) return hasWord(w);
+    if (addFolderId) return hasCardInFolder(addFolderId, w);
     return false;
-  }, [addWordDraft, hasCardInFolder, hasWord, openFolderId, openMeta?.isBuiltin]);
+  }, [addFolderId, addMeta?.isBuiltin, addWordDraft, hasCardInFolder, hasWord]);
 
   const canAdd = addWordDraft.trim().length > 0 && addTranslationDraft.trim().length > 0 && !addLoading && !wordExists();
 
@@ -168,20 +179,20 @@ export function CardsWindowScreen() {
     const w = addWordDraft.trim();
     const tr = addTranslationDraft.trim();
     const py = addPinyinDraft.trim();
-    if (!w || !tr || !openFolderId) return;
+    if (!w || !tr || !addFolderId) return;
     if (wordExists()) return;
 
     const src = translateSourceForDraft();
     let ok = false;
 
-    if (openMeta?.isBuiltin) {
+    if (addMeta?.isBuiltin) {
       ok = addWord(w, {
         translation: tr,
         pinyin: src === 'zh' ? py || undefined : undefined,
         lang: detectWordLang(w),
       });
     } else {
-      ok = addCardToFolder(openFolderId, {
+      ok = addCardToFolder(addFolderId, {
         front: w,
         back: tr,
         pinyin: src === 'zh' ? py || undefined : undefined,
@@ -196,9 +207,9 @@ export function CardsWindowScreen() {
     addTranslationDraft,
     addWord,
     addWordDraft,
+    addFolderId,
+    addMeta?.isBuiltin,
     closeAdd,
-    openFolderId,
-    openMeta?.isBuiltin,
     translateSourceForDraft,
     wordExists,
   ]);
@@ -268,11 +279,8 @@ export function CardsWindowScreen() {
 
   const renderFolderRightActions = useCallback(
     (folder: VocabFolderView) => {
-      const startAddCard = () => {
-        setOpenFolderId(folder.id);
-        openAddCard();
-        swipeRefs.current.get(folder.id)?.close();
-      };
+      // Системные EN/中文 — без свайпа: «+» уже на плашке, удалять нельзя.
+      if (folder.isBuiltin) return null;
 
       const startRename = () => {
         setRenameTarget(folder);
@@ -280,29 +288,8 @@ export function CardsWindowScreen() {
         swipeRefs.current.get(folder.id)?.close();
       };
 
-      if (folder.isBuiltin) {
-        return (
-          <View style={styles.swipeActions}>
-            <TouchableOpacity
-              style={[styles.swipeBtn, styles.swipeAdd]}
-              activeOpacity={0.8}
-              onPress={startAddCard}
-              accessibilityLabel={t('vocabulary.addWord')}>
-              <Ionicons name="add" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        );
-      }
-
       return (
         <View style={styles.swipeActions}>
-          <TouchableOpacity
-            style={[styles.swipeBtn, styles.swipeAdd]}
-            activeOpacity={0.8}
-            onPress={startAddCard}
-            accessibilityLabel={t('vocabulary.addWord')}>
-            <Ionicons name="add" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.swipeBtn, styles.swipeRename]}
             activeOpacity={0.8}
@@ -320,7 +307,7 @@ export function CardsWindowScreen() {
         </View>
       );
     },
-    [confirmDeleteFolder, openAddCard, t],
+    [confirmDeleteFolder, t],
   );
 
   const renderFolderRow = useCallback(
@@ -331,12 +318,15 @@ export function CardsWindowScreen() {
             if (el) swipeRefs.current.set(folder.id, el);
             else swipeRefs.current.delete(folder.id);
           }}
+          enabled={!folder.isBuiltin}
           overshootRight={false}
           friction={2}
           rightThreshold={40}
           activeOffsetX={[-12, 12]}
           failOffsetY={[-8, 8]}
-          renderRightActions={() => renderFolderRightActions(folder)}>
+          renderRightActions={
+            folder.isBuiltin ? undefined : () => renderFolderRightActions(folder)
+          }>
           <GameListRow
             title={folder.name}
             subtitle={folder.subtitle}
@@ -356,8 +346,7 @@ export function CardsWindowScreen() {
                   style={({ pressed }) => [styles.shareBtn, pressed && styles.shareBtnPressed]}
                   hitSlop={8}
                   onPress={() => {
-                    setOpenFolderId(folder.id);
-                    openAddCard();
+                    openAddCard(folder.id);
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={t('vocabulary.addWord')}>
@@ -382,10 +371,11 @@ export function CardsWindowScreen() {
             }
             onPress={() => {
               void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setOpenFolderId(folder.id);
               if (folder.cardCount === 0) {
-                openAddCard();
+                openAddCard(folder.id);
+                return;
               }
+              setOpenFolderId(folder.id);
             }}
           />
         </Swipeable>
@@ -397,6 +387,70 @@ export function CardsWindowScreen() {
   const frontLabel =
     openMeta?.langPair?.frontLang ?? openFolder?.name ?? t('vocabulary.myWords');
   const backLabel = openMeta?.langPair?.backLang ?? t('vocabulary.translation');
+
+  const addCardSheet = (
+    <Pressable style={styles.modalDim} onPress={closeAdd}>
+      <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
+        <Text style={styles.modalTitle}>{t('vocabulary.addTitle')}</Text>
+        <Text style={styles.modalSub}>{addFolder?.name ?? t('vocabulary.cards')}</Text>
+
+        <TextInput
+          value={addWordDraft}
+          onChangeText={setAddWordDraft}
+          placeholder={
+            addLangPairId === 'zh-ru' ? t('vocabulary.placeholderZh') : t('vocabulary.placeholderOther')
+          }
+          placeholderTextColor="rgba(26,26,26,0.35)"
+          style={styles.modalInput}
+          autoCorrect={false}
+          autoCapitalize="none"
+        />
+
+        <View style={styles.addRow}>
+          <Text style={styles.addLabel}>{t('vocabulary.translation')}</Text>
+          {addLoading ? <ActivityIndicator size="small" color={GAME_THEME.color.ink} /> : null}
+        </View>
+        <TextInput
+          value={addTranslationDraft}
+          onChangeText={setAddTranslationDraft}
+          placeholder={t('vocabulary.autoTranslation')}
+          placeholderTextColor="rgba(26,26,26,0.35)"
+          style={styles.modalInput}
+        />
+
+        {addLangPairId === 'zh-ru' ||
+        (addWordDraft.trim().length > 0 && translateSourceForDraft() === 'zh') ? (
+          <>
+            <Text style={styles.addLabelBelow}>{t('vocabulary.pinyin')}</Text>
+            <TextInput
+              value={addPinyinDraft}
+              onChangeText={setAddPinyinDraft}
+              placeholder={t('vocabulary.autoTranslation')}
+              placeholderTextColor="rgba(26,26,26,0.35)"
+              style={styles.modalInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </>
+        ) : null}
+
+        {addErr ? <Text style={styles.addErr}>{addErr}</Text> : null}
+        {wordExists() ? <Text style={styles.addErr}>{t('vocabulary.wordExists')}</Text> : null}
+
+        <View style={styles.modalActions}>
+          <Pressable style={styles.modalGhost} onPress={closeAdd}>
+            <Text style={styles.modalGhostText}>{t('common.cancel')}</Text>
+          </Pressable>
+          <GameGoldButton
+            label={t('vocabulary.addShort')}
+            onPress={submitAddCard}
+            disabled={!canAdd}
+            size="sm"
+          />
+        </View>
+      </Pressable>
+    </Pressable>
+  );
 
   return (
     <>
@@ -427,12 +481,17 @@ export function CardsWindowScreen() {
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
             />
-            <GameGoldButton
-              label={t('vocabulary.newFolder')}
-              onPress={openCreateFolder}
-              size="md"
-              style={styles.newFolderBtn}
-            />
+            <SpotlightAnchor
+              tipId="coachCards2"
+              line={t('onboarding.spotCards')}
+              style={styles.spotAnchor}>
+              <GameGoldButton
+                label={t('vocabulary.newFolder')}
+                onPress={openCreateFolder}
+                size="md"
+                style={styles.newFolderBtn}
+              />
+            </SpotlightAnchor>
           </View>
         )}
       </GameWindowShell>
@@ -445,6 +504,7 @@ export function CardsWindowScreen() {
           backLabel={backLabel}
           onClose={() => setOpenFolderId(null)}
           onAddWord={openAddCard}
+          overlay={addOpen ? addCardSheet : null}
         />
       ) : null}
 
@@ -476,72 +536,8 @@ export function CardsWindowScreen() {
         </Pressable>
       </Modal>
 
-      <Modal visible={addOpen} transparent animationType="fade" onRequestClose={closeAdd}>
-        <Pressable style={styles.modalDim} onPress={closeAdd}>
-          <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>{t('vocabulary.addTitle')}</Text>
-            <Text style={styles.modalSub}>
-              {openFolder?.name ?? t('vocabulary.cards')}
-            </Text>
-
-            <TextInput
-              value={addWordDraft}
-              onChangeText={setAddWordDraft}
-              placeholder={
-                openLangPairId === 'zh-ru'
-                  ? t('vocabulary.placeholderZh')
-                  : t('vocabulary.placeholderOther')
-              }
-              placeholderTextColor="rgba(26,26,26,0.35)"
-              style={styles.modalInput}
-              autoCorrect={false}
-              autoCapitalize="none"
-            />
-
-            <View style={styles.addRow}>
-              <Text style={styles.addLabel}>{t('vocabulary.translation')}</Text>
-              {addLoading ? <ActivityIndicator size="small" color={GAME_THEME.color.ink} /> : null}
-            </View>
-            <TextInput
-              value={addTranslationDraft}
-              onChangeText={setAddTranslationDraft}
-              placeholder={t('vocabulary.autoTranslation')}
-              placeholderTextColor="rgba(26,26,26,0.35)"
-              style={styles.modalInput}
-            />
-
-            {openLangPairId === 'zh-ru' ||
-            (addWordDraft.trim().length > 0 && translateSourceForDraft() === 'zh') ? (
-              <>
-                <Text style={styles.addLabelBelow}>{t('vocabulary.pinyin')}</Text>
-                <TextInput
-                  value={addPinyinDraft}
-                  onChangeText={setAddPinyinDraft}
-                  placeholder={t('vocabulary.autoTranslation')}
-                  placeholderTextColor="rgba(26,26,26,0.35)"
-                  style={styles.modalInput}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </>
-            ) : null}
-
-            {addErr ? <Text style={styles.addErr}>{addErr}</Text> : null}
-            {wordExists() ? <Text style={styles.addErr}>{t('vocabulary.wordExists')}</Text> : null}
-
-            <View style={styles.modalActions}>
-              <Pressable style={styles.modalGhost} onPress={closeAdd}>
-                <Text style={styles.modalGhostText}>{t('common.cancel')}</Text>
-              </Pressable>
-              <GameGoldButton
-                label={t('vocabulary.addShort')}
-                onPress={submitAddCard}
-                disabled={!canAdd}
-                size="sm"
-              />
-            </View>
-          </Pressable>
-        </Pressable>
+      <Modal visible={addOpen && !studyActive} transparent animationType="fade" onRequestClose={closeAdd}>
+        {addOpen && !studyActive ? addCardSheet : null}
       </Modal>
 
       <Modal visible={renameTarget !== null} transparent animationType="fade" onRequestClose={() => setRenameTarget(null)}>
@@ -642,24 +638,42 @@ const styles = StyleSheet.create({
   },
   swipeActions: {
     flexDirection: 'row',
+    alignItems: 'stretch',
+    marginBottom: 10,
+    overflow: 'hidden',
+    borderRadius: 6,
+    // Подложка на случай субпиксельной щели между кнопками
+    backgroundColor: GAME_THEME.color.danger,
   },
   swipeBtn: {
     width: SWIPE_BTN_WIDTH,
+    minHeight: 64,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  swipeAdd: {
-    backgroundColor: GAME_THEME.color.gold,
+    borderTopWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: GAME_THEME.color.ink,
   },
   swipeRename: {
     backgroundColor: GAME_THEME.color.phosphor,
+    borderLeftWidth: 2,
+    borderRightWidth: 0,
+    borderTopLeftRadius: 6,
+    borderBottomLeftRadius: 6,
   },
   swipeDel: {
     backgroundColor: GAME_THEME.color.danger,
+    borderLeftWidth: 0,
+    borderRightWidth: 2,
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+  spotAnchor: {
+    alignSelf: 'stretch',
+    marginTop: 4,
   },
   newFolderBtn: {
     alignSelf: 'stretch',
-    marginTop: 4,
   },
   modalDim: {
     flex: 1,

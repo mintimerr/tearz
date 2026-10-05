@@ -58,6 +58,15 @@ export type EngagementState = {
   plusExpiresAt: number | null;
   /** Собранные id Tearz из каталога. */
   ownedTearzIds: string[];
+  /** Купленные косметики (цвета / шляпы / аксы). */
+  ownedCosmeticIds: string[];
+  /** Экипировка Tearz в профиле. */
+  tearzLoadout: {
+    skinId: string;
+    colorId: string | null;
+    hatId: string | null;
+    accessoryId: string | null;
+  };
   /** Стартовый Newbie + монеты уже выданы. */
   starterPackClaimed: boolean;
   notificationPermission: NotificationPermissionStatus;
@@ -90,6 +99,13 @@ export const DEFAULT_ENGAGEMENT_STATE: EngagementState = {
   coins: 0,
   plusExpiresAt: null,
   ownedTearzIds: [],
+  ownedCosmeticIds: [],
+  tearzLoadout: {
+    skinId: 'newbie',
+    colorId: 'color-classic',
+    hatId: null,
+    accessoryId: null,
+  },
   starterPackClaimed: false,
   notificationPermission: 'undetermined',
   permissionPromptShown: false,
