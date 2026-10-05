@@ -3231,8 +3231,8 @@ Output ONLY valid JSON (no markdown, no code fences) with exactly these keys:
 ${bioRule},
 "letter": string, exactly one character — first letter of name (Latin or Cyrillic or 汉字 as appropriate),
 "color": string, background hex for avatar like #2F3A48 (muted, not neon),
-"persona": string, 5-10 sentences IN ENGLISH: describe this person for staying in character when texting — job, daily life, how they actually write (short vs long, slang; **emoji almost never**, **few exclamation marks** — calm typing unless they’re briefly excited). Opinions, small quirks. They are **monolingual in ${langLabel}** for messaging: they do not fluently use other languages and do not switch to Russian/English/Chinese outside ${langLabel} to help. They are NOT a teacher, tutor, language coach, or "helpful practice partner" — just a normal person. In conversation they **share their own stuff unprompted** (day, mood, plans, complaints) and do **not** default to only asking the other person questions. Never mention AI. The model must reply only as this person would text,
-"openingLine": string, first mobile-chat message to the learner in the PRACTICE LANGUAGE (${langLabel}), warm and short (max 220 characters). Prefer calm punctuation — **at most one** “!” in the whole line if any; **no emoji** unless one fits a specific beat,
+"persona": string, 5-10 sentences IN ENGLISH: describe this person for staying in character when texting — job, daily life, how they actually write (short vs long, slang; **emoji almost never**, **few exclamation marks** — calm typing unless they’re briefly excited). Opinions, small quirks, what they complain about. They are **monolingual in ${langLabel}** for messaging: they do not fluently use other languages and do not switch to Russian/English/Chinese outside ${langLabel} to help. They are NOT a teacher, tutor, language coach, or "helpful practice partner" — just a normal slightly messy human. In conversation they **share their own stuff unprompted** (day, mood, plans, complaints) and do **not** default to only asking the other person questions. Avoid sounding like ChatGPT (no mirrored praise, no essay answers, no constant wrap-up questions). Never mention AI. The model must reply only as this person would text,
+"openingLine": string, first mobile-chat message to the learner in the PRACTICE LANGUAGE (${langLabel}), short and texty (max 180 characters). Sound like a real first DM — not a host, not “welcome to practice”. Calm punctuation; **at most one** “!” if any; **no emoji** unless one fits a specific beat,
 
 Make this generation feel specific and different from generic textbook personas.`;
 }
@@ -4561,7 +4561,7 @@ app.post('/api/chat', async (req, res) => {
     systemContent +=
       '\n\nYOUR FIXED IDENTITY FOR THIS THREAD — stay consistent, never contradict this background, never break character as this person:\n' +
       companionPersona.trim().slice(0, 6000) +
-      '\n\nEvery message must read as this exact person typing on their phone — same voice, education level, and attitude as above. Not a generic native speaker, not a coach, not customer support.';
+      '\n\nEvery message must read as this exact person texting on their phone — same voice, education, mood, and messiness as above. Not a generic native speaker, not a coach, not customer support, not ChatGPT-polite. Prefer uneven short texts with concrete life scraps over polished “helpful” paragraphs.';
   }
   if (typeof companionDisplayName === 'string' && companionDisplayName.trim()) {
     systemContent +=
@@ -4573,6 +4573,9 @@ app.post('/api/chat', async (req, res) => {
     systemContent +=
       '\n\nPHOTOS: When the user sends a photo, you can see it. React like a real person in a chat — comment on what is actually in the image (people, place, food, meme, screenshot, text, etc.). If there is readable text, quote it accurately; do not invent or swap with earlier chat. Do not say you cannot see photos.';
   }
+
+  systemContent +=
+    '\n\nOUTPUT SHAPE: Plain chat text only. No markdown. Prefer 1–3 short lines. Do not always end with a question.';
 
   const userContent = buildVisionUserContent({
     message,
@@ -4598,8 +4601,11 @@ app.post('/api/chat', async (req, res) => {
       body: JSON.stringify({
         model: COMPANION_MODEL,
         messages,
-        temperature: 0.9,
-        max_tokens: 1400,
+        temperature: 1.05,
+        top_p: 0.92,
+        presence_penalty: 0.55,
+        frequency_penalty: 0.35,
+        max_tokens: 420,
       }),
     });
 

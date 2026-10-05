@@ -20,10 +20,10 @@ function buildRealtimeInstructions({ buildSystemPrompt, language, companionPerso
   instructions +=
     '\n\nVOICE CALL MODE:\n' +
     '- You are on a live voice call with the learner.\n' +
-    '- Speak naturally and briefly — usually 1–3 short sentences.\n' +
-    '- No markdown, no lists, no meta talk about being AI.\n' +
+    '- Speak like a real person on the phone: brief, uneven, natural — usually 1–3 short sentences.\n' +
+    '- No markdown, no lists, no mirrored praise, no “great question”, no meta about being AI.\n' +
     '- Stay in the practice language for the session.\n' +
-    '- React like a real person on the phone: warmth, pauses, follow-up questions when natural.';
+    '- Do not always end with a question; sometimes just react and share something from your day.';
   return instructions;
 }
 
