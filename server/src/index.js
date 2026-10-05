@@ -3118,7 +3118,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.5', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v4-blank-context', vocabExamples: 'v1', drillFollowUp: 'personalized-v1', learnerModel: 'v1' });
+  res.json({ ok: true, service: 'tearz-chat-api', version: '1.2.6', drillPlanner: 'ai-bank-v4', drillSet: 'batch-v4-blank-context', vocabExamples: 'v1', drillFollowUp: 'personalized-v1', learnerModel: 'v1' });
 });
 
 /** Privacy / Terms for App Store / TestFlight (also under server/public for Render). */
