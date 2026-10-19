@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prestart": "npm install --prefix ../shared/assessment --include=dev && npm run build --prefix ../shared/assessment",
+    "prestart": "npm install --prefix ../shared/assessment --include=dev --silent; npm run build --prefix ../shared/assessment || echo '[chat-api] assessment tsc failed — using committed dist if present'",
     "start": "node src/index.js",
     "dev": "npm run build --prefix ../shared/assessment && node --watch src/index.js"
   },
