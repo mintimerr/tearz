@@ -3883,11 +3883,53 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
       topicHint || teacherExplanation.slice(0, 120),
     );
 
+    // word_to_image without real art is dropped — refill so the set stays at 10.
+    for (let round = 0; round < 3 && exercises.length < DRILL_TASK_COUNT; round += 1) {
+      const need = Math.min(3, DRILL_TASK_COUNT - exercises.length);
+      const haveKinds = exercises.map((ex) => ex.kind).filter(Boolean);
+      const refillKinds = pickExerciseKindsRequestAwareFallback({
+        userRequest,
+        explanation: teacherExplanation,
+        seed: `${seed}:img-refill:${round + 1}`,
+        count: need,
+        excludeKinds: [...excludeKinds, 'word_to_image', ...haveKinds],
+      });
+      if (!refillKinds.length) break;
+
+      const { exercises: added } = await generateTeacherExerciseBatch(apiKey, {
+        systemContent,
+        history,
+        userContent: buildExerciseBatchUserContent({
+          userRequest,
+          teacherExplanation,
+          seed: `${seed}:img-refill:${round + 1}`,
+          variationBlock,
+          avoidBlock,
+          mistakesBlock,
+          drillFocus,
+          kinds: refillKinds,
+          startIndex: exercises.length + 1,
+        }),
+        expectedKinds: refillKinds,
+        temperature: 0.85,
+        maxAttempts: 2,
+      });
+      if (!added.length) break;
+      exercises = [...exercises, ...added].slice(0, DRILL_TASK_COUNT);
+      exercises = stripIncompleteWordToImage(exercises);
+    }
+
+    if (exercises.length < DRILL_TASK_COUNT) {
+      exercises = padExerciseSetFromLesson(exercises, {
+        explanation: [teacherExplanation, userRequest, lessonTopic].filter(Boolean).join('\n'),
+      });
+    }
+
     const nextTopic = normalizeNextTopicFromModel(parsed);
 
     return res.json({
-      exercises,
-      selectedKinds: exercises.map((ex) => ex.kind).filter(Boolean),
+      exercises: exercises.slice(0, DRILL_TASK_COUNT),
+      selectedKinds: exercises.map((ex) => ex.kind).filter(Boolean).slice(0, DRILL_TASK_COUNT),
       ...(selectedKindsResult.archetype ? { drillArchetype: selectedKindsResult.archetype } : {}),
       ...(drillFocus ? { drillFocus } : {}),
       ...(nextTopic ? { nextTopic } : {}),
