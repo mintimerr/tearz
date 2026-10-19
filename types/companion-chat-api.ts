@@ -68,6 +68,16 @@ export type TeacherChatRequestBody = {
   learnerLevel?: string;
   /** Compact derived learner model for teaching difficulty / goal. */
   learnerContext?: CompactLearnerContext;
+  /**
+   * Optional Curriculum Director focus block (P7 / Teacher handoff).
+   * When present, Teacher teaches this target instead of inventing a LEVEL PATH micro-step.
+   */
+  curriculumFocusPrompt?: string;
+  /**
+   * TEACHING_REQUIRED = system-initiated curriculum turn (must deliver mini-lesson).
+   * TEACHING_OPTIONAL = normal conversational reply (may stay aligned without forcing a lecture).
+   */
+  teachingTurn?: 'required' | 'optional';
   imageBase64?: string;
   imageMimeType?: string;
 };
@@ -253,6 +263,8 @@ export type TeacherExerciseSetRequestBody = {
   generationAttempt?: number;
   /** Тексты прошлых заданий — модель не должна их повторять. */
   avoidExerciseTexts?: string[];
+  /** Виды заданий, которые клиент не умеет/не хочет показывать (например word_to_image). */
+  excludeKinds?: TeacherExerciseKind[];
   /** Недавние ошибки ученика — приоритет при генерации заданий. */
   recentMistakes?: TeacherDrillMistakeSummary[];
   /** Starting CEFR from verified placement. */

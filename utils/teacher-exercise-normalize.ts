@@ -230,6 +230,14 @@ function coerceWordToImageItem(item: TeacherExerciseItem): TeacherExerciseItem |
     return null;
   }
 
+  // Gray placeholders are worse than skipping the task — require real image URLs.
+  const withImages = imageSlots.filter(
+    (s) => typeof s.imageUrl === 'string' && s.imageUrl.trim().length > 32,
+  );
+  if (withImages.length < 2 || withImages.length !== imageSlots.length) {
+    return null;
+  }
+
   const bank = mergeWordBank(imageSlots, wordBank);
   return {
     ...item,

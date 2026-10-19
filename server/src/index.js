@@ -1593,6 +1593,23 @@ async function generateExerciseImageDataUrl(apiKey, correctWord, label, lessonTo
   }
 }
 
+function wordToImageHasRealImages(ex) {
+  const slots = Array.isArray(ex?.imageSlots) ? ex.imageSlots : [];
+  if (slots.length < 2) return false;
+  return slots.every(
+    (s) => typeof s?.imageUrl === 'string' && s.imageUrl.trim().length > 32,
+  );
+}
+
+/** Drop word_to_image tasks with gray placeholders — keep only fully illustrated ones. */
+function stripIncompleteWordToImage(exercises) {
+  if (!Array.isArray(exercises)) return exercises;
+  return exercises.filter((ex) => {
+    if (ex?.kind !== 'word_to_image') return true;
+    return wordToImageHasRealImages(ex);
+  });
+}
+
 /** Подменяет imageUrl в word_to_image на сгенерированные по correctWord/label. */
 async function enrichExerciseSetImages(apiKey, exercises, lessonTopic) {
   if (!Array.isArray(exercises) || exercises.length === 0) return exercises;
@@ -1608,7 +1625,7 @@ async function enrichExerciseSetImages(apiKey, exercises, lessonTopic) {
       jobs.push({ slot, word: slot.correctWord.trim() });
     }
   }
-  if (jobs.length === 0) return exercises;
+  if (jobs.length === 0) return stripIncompleteWordToImage(exercises);
 
   const concurrency = Math.min(3, jobs.length);
   let cursor = 0;
@@ -1626,7 +1643,7 @@ async function enrichExerciseSetImages(apiKey, exercises, lessonTopic) {
     }
   }
   await Promise.all(Array.from({ length: concurrency }, () => worker()));
-  return exercises;
+  return stripIncompleteWordToImage(exercises);
 }
 
 function trimStrList(raw, maxItems, maxLen) {
@@ -3757,6 +3774,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     lastUserMessage,
     generationAttempt,
     avoidExerciseTexts,
+    excludeKinds: excludeKindsRaw,
     uiLanguage,
     recentMistakes,
     learnerLevel,
@@ -3765,6 +3783,12 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
   if (typeof explanation !== 'string' || !explanation.trim()) {
     return res.status(400).json({ error: 'explanation must be a non-empty string' });
   }
+  const excludeKinds = Array.isArray(excludeKindsRaw)
+    ? excludeKindsRaw
+        .filter((k) => typeof k === 'string' && ALLOWED_EXERCISE_KINDS.has(k.trim()))
+        .map((k) => k.trim())
+        .slice(0, 24)
+    : [];
   const teacherExplanation = explanation.trim().slice(0, 9000);
   const ui = normalizeUiLanguage(uiLanguage);
   const userRequest =
@@ -3824,6 +3848,7 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
     attempt,
     count: DRILL_TASK_COUNT,
     recentMistakes: mistakeList,
+    avoidKinds: excludeKinds,
   });
   const selectedKinds = selectedKindsResult.kinds;
   const drillFocus = selectedKindsResult.focus || '';
@@ -3849,16 +3874,20 @@ app.post('/api/teacher-exercise-set', async (req, res) => {
       return res.status(502).json({ error: genResult.error || 'Exercise set too short' });
     }
 
-    const { exercises, parsed } = genResult;
+    let { exercises, parsed } = genResult;
 
     const topicHint = typeof lessonTopic === 'string' ? lessonTopic : '';
-    await enrichExerciseSetImages(apiKey, exercises, topicHint || teacherExplanation.slice(0, 120));
+    exercises = await enrichExerciseSetImages(
+      apiKey,
+      exercises,
+      topicHint || teacherExplanation.slice(0, 120),
+    );
 
     const nextTopic = normalizeNextTopicFromModel(parsed);
 
     return res.json({
       exercises,
-      selectedKinds,
+      selectedKinds: exercises.map((ex) => ex.kind).filter(Boolean),
       ...(selectedKindsResult.archetype ? { drillArchetype: selectedKindsResult.archetype } : {}),
       ...(drillFocus ? { drillFocus } : {}),
       ...(nextTopic ? { nextTopic } : {}),

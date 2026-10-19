@@ -26,6 +26,8 @@ import { normalizeTeacherVocabExamples } from '@/utils/teacher-vocab-examples-no
 import { buildLocalDrillFollowUp, normalizeLearnerRepeatPrompt } from '@/utils/teacher-drill-followup';
 import { defaultOpeningForLang, defaultStatusBio } from '@/utils/companion-ai-fallback-profile';
 
+import { Platform } from 'react-native';
+
 import { companionApiErrorFromJson, parseCompanionApiJson } from '@/utils/companion-api-error';
 import { postCompanionApiJson, warmCompanionApi } from '@/utils/companion-api-fetch';
 
@@ -160,11 +162,21 @@ function normalizeDrillFollowUp(
   };
 }
 
-/** POST /api/teacher-exercise-set — 5 заданий по объяснению преподавателя */
+/** POST /api/teacher-exercise-set — задания по объяснению преподавателя */
 export async function postTeacherExerciseSet(
   body: TeacherExerciseSetRequestBody,
 ): Promise<TeacherExerciseSetSuccessBody> {
-  const res = await postCompanionChatJson('/api/teacher-exercise-set', body);
+  // Android: word→picture tasks are unreliable (drag/tap to images); never request them.
+  const excludeKinds = Array.from(
+    new Set([
+      ...(body.excludeKinds ?? []),
+      ...(Platform.OS === 'android' ? (['word_to_image'] as const) : []),
+    ]),
+  );
+  const res = await postCompanionChatJson('/api/teacher-exercise-set', {
+    ...body,
+    ...(excludeKinds.length ? { excludeKinds } : {}),
+  });
   const raw = await res.text();
   let json: unknown;
   try {
@@ -183,7 +195,18 @@ export async function postTeacherExerciseSet(
     }
     throw new Error(err.error || `Ошибка сервера (${res.status})`);
   }
-  const exercises = normalizeTeacherExerciseSet(json);
+  let exercises = normalizeTeacherExerciseSet(json);
+  // Keep word_to_image only when every slot has a real image (no gray placeholders).
+  // Android: never show these — image drag/tap is unreliable.
+  exercises = exercises.filter((ex) => {
+    if (ex.kind !== 'word_to_image') return true;
+    if (Platform.OS === 'android') return false;
+    const slots = ex.imageSlots ?? [];
+    return (
+      slots.length >= 2 &&
+      slots.every((s) => typeof s.imageUrl === 'string' && s.imageUrl.trim().length > 32)
+    );
+  });
   if (exercises.length < 3) {
     throw new Error('Сервер вернул слишком мало заданий');
   }
