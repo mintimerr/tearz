@@ -563,7 +563,15 @@ function normalizeTeacherVocabExamples(parsed) {
   return out;
 }
 
-function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', learnerLevel, learnerContext) {
+function buildTeacherSystemPrompt(
+  language,
+  lessonTopic,
+  uiLanguage = 'ru',
+  learnerLevel,
+  learnerContext,
+  curriculumFocusPrompt,
+  teachingTurn,
+) {
   const m = uiLangMeta(uiLanguage);
   let prompt =
     `=== REPLY LANGUAGE (ABSOLUTE #1) ===\n` +
@@ -606,7 +614,23 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', lear
     `(e.g. Spanish words while the previous lesson was Chinese, or English while German), teach THAT language now. ` +
     `Do NOT refuse. Do NOT keep teaching the previous session language. Do NOT say you only teach the previous session language. ` +
     `Briefly acknowledge the switch in one short line, then teach in the newly requested L2.`;
-  if (typeof lessonTopic === 'string' && lessonTopic.trim()) {
+  if (typeof curriculumFocusPrompt === 'string' && curriculumFocusPrompt.trim()) {
+    const mode =
+      teachingTurn === 'optional'
+        ? 'TEACHING_OPTIONAL'
+        : 'TEACHING_REQUIRED';
+    prompt +=
+      '\n\n' +
+      curriculumFocusPrompt.trim().slice(0, 4500) +
+      `\nSERVER TURN CONTRACT: ${mode}.` +
+      (mode === 'TEACHING_REQUIRED'
+        ? '\nThis is a system-initiated curriculum turn: deliver a FULL mini-lesson on the PRIMARY focus NOW ' +
+          '(explanation + usage + 2–5 L2 examples + relevant contrast/boundary). ' +
+          'Do NOT only announce the topic. Do NOT ask the learner to choose. Do NOT invent drills in chat. ' +
+          'Practice buttons train what you teach in THIS reply. Do NOT reveal internal curriculum ids.'
+        : '\nConversational turn: answer the learner; stay aligned with the primary focus when relevant; ' +
+          'do not force a full lecture into every reply. Do NOT reveal internal curriculum ids.');
+  } else if (typeof lessonTopic === 'string' && lessonTopic.trim()) {
     const topic = lessonTopic.trim().slice(0, 240).replace(/"/g, "'");
     prompt +=
       '\n\nCURRENT LESSON TOPIC (from the app): "' +
@@ -617,9 +641,9 @@ function buildTeacherSystemPrompt(language, lessonTopic, uiLanguage = 'ru', lear
         '\n\nLEVEL PATH MODE (this chat):\n' +
         '- YOU lead the curriculum ladder toward the goal level in the topic title.\n' +
         '- Do NOT ask the learner to choose a menu (grammar / vocabulary / conversation / style / fluency).\n' +
-        '- Each turn: give one concrete micro-step (short explanation + a clear task), then wait for their attempt.\n' +
-        '- After feedback, immediately propose the next step yourself.\n' +
-        '- Stay on a coherent sequence (structure → wording → practice → freer use), not random topics.';
+        '- Each curriculum step: teach ONE micro-step fully (explanation + examples), then point to Practice buttons — do NOT invent homework in chat.\n' +
+        '- After Practice feedback, continue the coherent sequence yourself.\n' +
+        '- Stay on structure → wording → practice → freer use, not random topics.';
     }
   }
   const learnerBlock = formatLearnerContextForAI(learnerContext, learnerLevel);
@@ -1206,6 +1230,39 @@ function orderKindsForArchetype(kinds, archetype) {
   return [...kinds].sort((a, b) => rank(a) - rank(b));
 }
 
+const PRODUCTION_KINDS = new Set(['voice_recording', 'write_sentences', 'build_from_meaning']);
+
+/**
+ * Keep rough recognition→production shape, but shuffle within bands by seed
+ * so the same lesson does not always open with the identical kind ladder.
+ */
+function diversifyKindOrder(kinds, seed, archetype) {
+  const unique = [];
+  for (const k of kinds) {
+    if (typeof k === 'string' && !unique.includes(k)) unique.push(k);
+  }
+  if (unique.length <= 1) return unique;
+
+  const slots = DRILL_ARCHETYPE_SLOTS[archetype];
+  const ranked = slots
+    ? [...unique].sort((a, b) => {
+        const ia = slots.indexOf(a);
+        const ib = slots.indexOf(b);
+        const ra = ia >= 0 ? ia : 100 + (EXERCISE_BANK.find((x) => x.kind === a)?.difficulty ?? 99);
+        const rb = ib >= 0 ? ib : 100 + (EXERCISE_BANK.find((x) => x.kind === b)?.difficulty ?? 99);
+        return ra - rb;
+      })
+    : sortKindsByDifficulty(unique);
+
+  const production = ranked.filter((k) => PRODUCTION_KINDS.has(k));
+  const rest = ranked.filter((k) => !PRODUCTION_KINDS.has(k));
+  const salt = hashExerciseSeed(`${seed || 'vary'}|${archetype || 'mixed'}`);
+  const early = shuffleSeeded(rest.slice(0, Math.ceil(rest.length / 2)), salt + 11);
+  const mid = shuffleSeeded(rest.slice(Math.ceil(rest.length / 2)), salt + 29);
+  const late = shuffleSeeded(production, salt + 47);
+  return [...early, ...mid, ...late];
+}
+
 function buildArchetypePlannerHint(archetype) {
   const slots = DRILL_ARCHETYPE_SLOTS[archetype];
   if (!slots) {
@@ -1322,10 +1379,8 @@ function pickExerciseKindsRequestAwareFallback({
       if (picked.length >= count) break;
     }
   }
-  return orderKindsForArchetype(
-    picked.slice(0, count),
-    classifyDrillArchetype(userRequest, explanation),
-  );
+  const archetype = classifyDrillArchetype(userRequest, explanation);
+  return diversifyKindOrder(picked.slice(0, count), seed || context, archetype);
 }
 
 /**
@@ -1414,7 +1469,7 @@ async function pickExerciseKindsForLearnerNeed(apiKey, {
           { role: 'system', content: system },
           { role: 'user', content: user },
         ],
-        temperature: attempt > 1 ? 0.62 : 0.48,
+        temperature: attempt > 1 ? 0.85 : 0.72,
         max_tokens: 520,
         response_format: { type: 'json_object' },
       }),
@@ -1465,7 +1520,8 @@ async function pickExerciseKindsForLearnerNeed(apiKey, {
     const why =
       typeof parsed?.why === 'string' && parsed.why.trim() ? parsed.why.trim().slice(0, 200) : '';
     if (focus || why) console.log('[exercise-kinds]', archetype, focus || why);
-    const ordered = orderKindsForArchetype(picked.slice(0, count), archetype);
+    // Keep planner picks, but diversify order by seed — fixed archetype ladder made every drill identical.
+    const ordered = diversifyKindOrder(picked.slice(0, count), `${seed}:${attempt}`, archetype);
     return { kinds: ordered, focus, archetype };
   } catch (e) {
     console.warn('[exercise-kinds]', e instanceof Error ? e.message : e);
@@ -2509,10 +2565,21 @@ function buildExerciseBatchUserContent({
     ? '{"exercises":[...], "nextTopic":{...}}'
     : '{"exercises":[...]}';
 
+  const angleBucket = hashExerciseSeed(String(seed || 'x')) % 5;
+  const angleHint = [
+    'Angle A: бытовые мини-сцены (дом, улица, магазин) — другие реплики, не копируй прошлые формулировки.',
+    'Angle B: вежливость / тон (friend vs formal) — другие near-miss distractors.',
+    'Angle C: тайминг дня (утро / вечер / встреча) — другие контексты и примеры.',
+    'Angle D: ошибка ученика как ловушка — distractors = типичные путаницы этой темы.',
+    'Angle E: короткий диалог 2 реплики — другие персонажи и ситуации.',
+  ][angleBucket];
+
   return (
     `Последний запрос пользователя:\n${userRequest || '(не указан — выведи из контекста диалога выше)'}\n\n` +
     `Последний ответ AI:\n${teacherExplanation}\n\n` +
-    `Variation id: ${seed}.${variationBlock}${avoidBlock}${mistakesBlock}${kindsBlock}\n\n` +
+    `Variation id: ${seed}.${variationBlock}${avoidBlock}${mistakesBlock}${kindsBlock}\n` +
+    `${angleHint}\n` +
+    `CRITICAL: даже если тема та же — придумай ДРУГИЕ предложения, реплики, blanks и distractors. Не повторяй шаблон прошлого запуска.\n\n` +
     `Сгенерируй ровно ${kinds.length} упражнений (kinds как выше)${nextTopicLine}.\n` +
     `Каждое задание должно напрямую тренировать то, о чём просил пользователь.\n` +
     `BLANK: для type_word_in_blank / drag_word_to_blank / complete_dialogue — segments ОБЯЗАНЫ содержать text вокруг blank ` +
@@ -2782,7 +2849,8 @@ async function generateTeacherExerciseSetFull(apiKey, opts) {
     lessonTopic,
   } = opts;
 
-  const temperature = attempt > 1 ? 0.72 : 0.62;
+  // Higher temp + seed angles: same lesson must not clone the previous drill.
+  const temperature = attempt > 1 ? 0.92 : 0.82;
   const batch1Kinds = selectedKinds.slice(0, 5);
   const batch2Kinds = selectedKinds.slice(5, 10);
   const shared = {
@@ -3434,8 +3502,19 @@ app.post('/api/teacher-chat', async (req, res) => {
     return res.status(500).json({ error: 'Server misconfiguration: OPENAI_API_KEY is not set' });
   }
 
-  const { message, conversationHistory, language, lessonTopic, imageBase64, imageMimeType, uiLanguage, learnerLevel, learnerContext } =
-    req.body ?? {};
+  const {
+    message,
+    conversationHistory,
+    language,
+    lessonTopic,
+    imageBase64,
+    imageMimeType,
+    uiLanguage,
+    learnerLevel,
+    learnerContext,
+    curriculumFocusPrompt,
+    teachingTurn,
+  } = req.body ?? {};
   const hasImage = hasImagePayload(imageBase64);
   if (typeof message !== 'string' || (!message.trim() && !hasImage)) {
     return res.status(400).json({ error: 'message must be a non-empty string (or include imageBase64)' });
@@ -3444,14 +3523,23 @@ app.post('/api/teacher-chat', async (req, res) => {
   const m = uiLangMeta(ui);
   const requestedLang = normalizeRequestedTeacherLanguage(language);
   const lang = resolveTeacherTargetLanguage(requestedLang, message, lessonTopic);
+  const resolvedTeachingTurn =
+    teachingTurn === 'optional' || teachingTurn === 'required'
+      ? teachingTurn
+      : typeof curriculumFocusPrompt === 'string' && curriculumFocusPrompt.trim()
+        ? 'required'
+        : undefined;
 
   const history = sanitizeHistory(conversationHistory);
   const userMessageText = typeof message === 'string' ? message.trim() : '';
 
   try {
     // Photo-only / caption-only homework: always teach — don't gate OCR on a blind intent guess.
+    // System-initiated curriculum teach turns skip intent refusal gates.
     let intent = 'teach';
-    if (!hasImage) {
+    if (resolvedTeachingTurn === 'required') {
+      intent = 'teach';
+    } else if (!hasImage) {
       intent = await classifyTeacherIntent(apiKey, userMessageText, history);
       if (intent === 'cheat' || intent === 'jailbreak' || intent === 'off_topic' || intent === 'prohibited') {
         return res.json({ reply: teacherIntentReply(intent, ui) });
@@ -3473,7 +3561,15 @@ app.post('/api/teacher-chat', async (req, res) => {
       : '';
     const hasUsefulOcr = photoTranscript.length >= 24;
 
-    let systemContent = buildTeacherSystemPrompt(lang, lessonTopic, ui, learnerLevel, learnerContext);
+    let systemContent = buildTeacherSystemPrompt(
+      lang,
+      lessonTopic,
+      ui,
+      learnerLevel,
+      learnerContext,
+      curriculumFocusPrompt,
+      resolvedTeachingTurn,
+    );
     if (intent === 'practical' || isPracticalLanguageQuestion(userMessageText)) {
       systemContent += buildPracticalQuestionOverride(userMessageText, lang, ui);
     } else if (isVocabularyRequest(userMessageText)) {
